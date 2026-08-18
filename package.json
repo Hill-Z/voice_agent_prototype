@@ -3,9 +3,15 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "workspaces": [
+    "manual"
+  ],
   "scripts": {
+    "predev": "npm run build:docs",
     "dev": "vite",
-    "build": "vite build",
+    "build": "npm run build:docs && vite build",
+    "build:app": "vite build",
+    "build:docs": "npm run build --workspace=voice-agent-docs",
     "preview": "vite preview"
   },
   "dependencies": {

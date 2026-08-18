@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import type { LucideIcon } from 'lucide-react';
 import { 
   Bot, 
   LayoutDashboard, 
@@ -51,8 +52,9 @@ interface MenuItem {
   type?: string;
   label: string;
   id?: string;
-  icon?: any;
-  subItems?: { label: string; id: string; icon?: any }[];
+  href?: string;
+  icon?: LucideIcon;
+  subItems?: { label: string; id: string; icon?: LucideIcon }[];
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeSubItem, onNavigate }) => {
@@ -118,6 +120,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeSubItem, onNavigate }) =
     { icon: BookA, label: '词库管理', id: '词库管理' },
     { icon: MessageCircleQuestion, label: '问答对管理', id: '问答对管理' },
     { icon: Lightbulb, label: '知识发现', id: '知识发现' },
+
+    { type: 'header', label: '帮助与支持' },
+    { icon: BookOpen, label: '操作手册', id: '操作手册', href: '/docs/getting-started/activation/' },
     
     { type: 'header', label: '基础设施' },
     { icon: Link2, label: '集成中心', id: '集成中心' },
@@ -159,6 +164,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeSubItem, onNavigate }) =
 
           const isActive = activeSubItem === item.id || (item.subItems && item.subItems.some(sub => sub.id === activeSubItem));
           const isExpanded = expandedMenu === item.label;
+
+          if (item.href) {
+            return (
+              <div key={idx} className="mb-1">
+                <a
+                  href={item.href}
+                  className="relative mx-2 flex min-h-[var(--component-sidebar-group-height)] max-w-[calc(100%-16px)] items-center rounded-[var(--component-sidebar-item-radius)] px-6 text-left transition-colors duration-[var(--motion-duration-base)] hover:bg-[var(--color-sidebar-hover-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-semantic-primary)]"
+                >
+                  {item.icon && <item.icon size={18} className="mr-3 text-[var(--color-sidebar-icon)]" />}
+                  <span className="flex-1 text-sm font-semibold text-[var(--component-nav-text)]">{item.label}</span>
+                  <ChevronRight size={14} className="text-[var(--component-nav-text-muted)]" />
+                </a>
+              </div>
+            );
+          }
 
           return (
             <div key={idx} className="mb-1">

@@ -34,6 +34,12 @@ App.tsx
   └─ services：AI、模拟接口、RAG、向量检索、配置存取
        ↓
 types.ts：全项目共享的数据结构
+
+manual/：Docusaurus 操作手册源码
+  ↓ npm run build:docs
+public/docs/：构建期文档静态文件
+  ↓ vite build
+dist/docs/：与主系统一起部署的 /docs 子页面
 ```
 
 ## 4. 关键数据流
@@ -45,6 +51,7 @@ types.ts：全项目共享的数据结构
 5. 流程模块分为两类：单次通话 Flow 使用 `FlowConfig / FlowDefinition / FlowNode / FlowEdge` 等类型描述；任务流程配置使用方案列表、流程画布、节点/连线配置和运行任务视图描述多 Agent、跨天等待和人工兜底。
 6. 服务层提供模拟接口、提示词生成、RAG 检索、向量库、函数目录和问答分类存取，供页面按需调用。
 7. 客户画像、营销活动和自动跟进共享模拟数据；机器人配置决定是否启用识别、推荐、跟进、触达保护和结果回写。
+8. `manual/` 保留操作手册源码，根项目构建时先生成 `public/docs/`，再由 Vite 一并输出到 `dist/docs/`；主系统侧边栏和文档导航负责双向跳转。
 
 ## 5. 根目录文件职责
 
@@ -68,6 +75,8 @@ types.ts：全项目共享的数据结构
 | `PRD_AI_Prompt_Generator.md` | AI 提示词生成器相关产品需求文档。 |
 | `docs/` | 展示材料和需求文档存放目录。 |
 | `docs/html-showcase/` | 所有静态 HTML 设计展示稿的统一存放目录，`index.html` 提供搜索、分组筛选和内嵌预览。 |
+| `manual/` | 从 `voice_agent_docs` 融合进来的 Docusaurus 操作手册子项目，包含正文、目录、图片和本地全文搜索配置。 |
+| `public/docs/` | 操作手册的临时构建结果，由构建命令生成，不提交版本库。 |
 | `.trae/` | 历史产品方案、规格和实施计划资料。 |
 | `测试用例文档/` | 手工测试和产品逻辑说明文档。 |
 | `tests/` | 组件渲染和关键逻辑的自动化测试文件。 |
@@ -79,7 +88,7 @@ types.ts：全项目共享的数据结构
 
 | 文件 | 职责 |
 | --- | --- |
-| `LayoutComponents.tsx` | 提供侧边栏和顶部标题栏，是整个后台界面的外壳。 |
+| `LayoutComponents.tsx` | 提供侧边栏和顶部标题栏，并通过“操作手册”入口跳转到 `/docs`。 |
 | `FormComponents.tsx` | 提供通用输入框、选择器、标签、开关等表单控件。 |
 | `PromptEditor.tsx` | 提供提示词编辑体验，支持变量或结构化内容编辑。 |
 

@@ -12,6 +12,9 @@ node_modules
 .venv
 dist
 dist-ssr
+manual/.docusaurus
+manual/build
+public/docs
 *.local
 
 # Editor directories and files
