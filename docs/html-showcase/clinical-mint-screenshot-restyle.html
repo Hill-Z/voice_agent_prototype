@@ -1,0 +1,421 @@
+<!--
+  用途：基于 Moonmix 线上截图母版制作 Clinical Mint Ops / 医疗级薄荷运营后台风格的独立静态 HTML 原型。
+  关联：visual-contract.md 与 screenshots/ 中 16 张截图；保留左侧导航、顶部栏、面包屑、筛选区、表格、分页、机器人编辑页、弹窗和外呼详情页关系，仅替换视觉语言。
+  Style DNA：Clinical Mint 不是把后台染绿，而是用暖白底、浅薄荷分区、森林绿动作点、灰绿医疗标签和细边框质控感来组织组件；导航像轻量临床系统，筛选像筛查条件栏，表单像信息采集分组，工具和任务像安全能力清单与跟进质控台。
+-->
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI VOICEDESK · Clinical Mint Ops Prototype</title>
+  <style>
+    :root {
+      --bg: #fffdf8;
+      --canvas: #f6faf5;
+      --panel: #ffffff;
+      --panel-soft: #f5faf1;
+      --panel-mint: #e4f3df;
+      --mint: #cfe5cd;
+      --mint-2: #edf7ea;
+      --sage: #eef4ed;
+      --sage-2: #dfeade;
+      --cream: #fffaf1;
+      --accent: #0f3e17;
+      --accent-2: #2f6f3d;
+      --accent-soft: #dcefd8;
+      --text: #19331f;
+      --muted: #697a6b;
+      --soft: #8c9b8d;
+      --line: #e4e8df;
+      --line-strong: #d5dfd2;
+      --danger: #9e4f45;
+      --danger-soft: #f8ece8;
+      --warn: #637260;
+      --warn-soft: #eff3eb;
+      --shadow: 0 18px 44px rgba(33, 76, 39, .12);
+      --radius: 8px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font-size: 13px; letter-spacing: 0; }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    .app { display: grid; grid-template-columns: 254px 1fr; min-height: 100vh; }
+    .sidebar { background: linear-gradient(180deg, #fffdf8 0%, #f6fbf1 52%, #edf7ec 100%); border-right: 1px solid var(--line-strong); display: flex; flex-direction: column; min-height: 100vh; }
+    .brand { height: 63px; display: flex; align-items: center; gap: 10px; padding: 0 20px; border-bottom: 1px solid var(--line-strong); font-weight: 760; font-size: 15px; color: var(--accent); background: rgba(255, 253, 248, .9); }
+    .brand-mark { width: 30px; height: 30px; border-radius: 9px; background: #123f1b; color: #fffdf8; display: grid; place-items: center; font-size: 12px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.18); }
+    .nav-scroll { padding: 14px 10px 28px; overflow: auto; }
+    .nav-group { margin: 16px 0 7px; padding: 7px 12px 5px; color: #718371; font-size: 10px; font-weight: 760; letter-spacing: .06em; text-transform: uppercase; background: rgba(239, 247, 235, .74); border: 1px solid rgba(213, 223, 210, .72); border-radius: 7px; }
+    .nav-item, .sub-item {
+      width: 100%; border: 1px solid transparent; background: transparent; color: #304f36; display: flex; align-items: center; gap: 10px;
+      min-height: 38px; padding: 0 12px; border-radius: var(--radius); text-align: left;
+    }
+    .nav-item:hover, .sub-item:hover { background: rgba(237, 247, 234, .78); border-color: #dfeade; }
+    .nav-item.active, .sub-item.active { background: #e6f3e2; border-color: #cfe2cb; box-shadow: inset 3px 0 0 var(--accent); color: var(--accent); font-weight: 720; }
+    .nav-icon { width: 18px; height: 18px; border-radius: 6px; display: inline-grid; place-items: center; text-align: center; color: #668168; background: rgba(255, 255, 255, .62); font-size: 11px; }
+    .nav-item.active .nav-icon, .sub-item.active .nav-icon { color: var(--accent); background: #f9fff7; }
+    .subnav { margin-left: 28px; border-left: 1px dashed #cddbc9; padding: 5px 0 5px 8px; }
+    .sub-item { min-height: 32px; font-size: 12px; color: #526a56; }
+    main { min-width: 0; background: var(--canvas); }
+    .topbar { height: 63px; background: rgba(255, 253, 248, .94); border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; padding: 0 24px 0 32px; position: sticky; top: 0; z-index: 5; backdrop-filter: blur(10px); box-shadow: 0 1px 0 rgba(255,255,255,.74); }
+    .crumb { color: var(--muted); }
+    .crumb b { color: var(--accent); font-weight: 720; }
+    .user { display: flex; align-items: center; gap: 10px; color: #31533a; }
+    .user strong { font-weight: 660; }
+    .bell { position: relative; width: 30px; height: 30px; border: 1px solid var(--line-strong); border-radius: 8px; display: grid; place-items: center; color: #5d785f; background: #fff; }
+    .bell::after { content: ""; position: absolute; top: 5px; right: 5px; width: 7px; height: 7px; background: var(--accent-2); border: 2px solid #fff; border-radius: 50%; }
+    .avatar { width: 32px; height: 32px; border-radius: 9px; background: #e8f3e4; border: 1px solid #cfe2cb; color: var(--accent); display: grid; place-items: center; font-size: 12px; font-weight: 760; }
+    .page { display: none; padding: 26px 32px 34px; }
+    .page.active { display: block; }
+    .page-head { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 22px; gap: 16px; }
+    h1 { margin: 0 0 8px; font-size: 25px; line-height: 1.2; font-weight: 780; color: var(--accent); }
+    h2 { margin: 0; font-size: 16px; font-weight: 730; color: var(--accent); }
+    h3 { margin: 0 0 12px; font-size: 14px; font-weight: 720; color: #254a2c; }
+    .desc { color: var(--muted); margin: 0; }
+    .back { border: 0; background: transparent; color: var(--muted); padding: 0 0 10px; }
+    .btn { border: 1px solid var(--line-strong); background: #fff; color: #24482b; min-height: 32px; padding: 0 12px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; box-shadow: 0 1px 0 rgba(25, 51, 31, .03); }
+    .btn:hover { border-color: #b8d1bc; background: #f8fcf8; }
+    .btn.primary { border-color: var(--accent); background: var(--accent); color: #fffefc; font-weight: 680; }
+    .btn.primary:hover { background: #174f22; border-color: #174f22; }
+    .btn.ghost-strong { color: var(--accent); border-color: var(--mint); background: var(--mint-2); font-weight: 680; }
+    .btn.danger { color: var(--danger); border-color: #ecd2ce; background: var(--danger-soft); }
+    .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 14px; }
+    .toolbar:has(.filters), .table-card > .toolbar, .edit-panel > .toolbar { background: #f0f7ec; border: 1px solid #d9e7d5; border-radius: 8px; padding: 12px 14px; }
+    .filters { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .filters > span { color: #59705b; font-size: 12px; font-weight: 680; }
+    .input, .select, textarea {
+      border: 1px solid var(--line-strong); background: #fffefa; min-height: 36px; padding: 0 12px; border-radius: 7px; color: var(--text); outline: none;
+    }
+    .input:focus, .select:focus, textarea:focus { border-color: var(--accent-2); box-shadow: 0 0 0 3px rgba(207, 231, 211, .72); }
+    textarea { padding-top: 10px; min-height: 78px; resize: vertical; }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 1px 2px rgba(22, 62, 26, .025); }
+    .table-card { overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    th, td { border-bottom: 1px solid var(--line); padding: 10px 14px; text-align: left; vertical-align: middle; }
+    th { background: #eef7eb; color: #58705a; font-size: 11px; font-weight: 760; letter-spacing: .02em; }
+    tbody tr:hover { background: #fbfdf8; }
+    td strong { font-weight: 720; color: #19391f; }
+    .actions { display: flex; gap: 8px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
+    .link { border: 0; background: transparent; color: var(--accent-2); padding: 0; font-weight: 650; }
+    .link:hover { color: var(--accent); text-decoration: underline; }
+    .muted { color: var(--muted); }
+    .mono { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; font-size: 12px; }
+    .tag, .status { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line-strong); background: #f9fcf7; min-height: 22px; padding: 0 7px; border-radius: 5px; font-size: 12px; color: #526a56; white-space: nowrap; }
+    .status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .72; }
+    .status.ok, .status.info { color: #1d6b35; border-color: #bdddc1; background: #edf8eb; }
+    .status.warn { color: var(--warn); border-color: #ded7c9; background: var(--warn-soft); }
+    .status.off { color: #718075; border-color: #d8dfd9; background: #f4f6f4; }
+    .btn.danger, .status.danger { color: var(--danger); border-color: #e7c7c0; background: var(--danger-soft); }
+    .tabs { display: flex; align-items: center; gap: 20px; border-bottom: 1px solid var(--line); margin-bottom: 28px; }
+    .tab { border: 0; background: transparent; color: #526a56; padding: 0 0 13px; position: relative; }
+    .tab.active { color: var(--accent); font-weight: 740; }
+    .tab.active::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--accent); }
+    .grid-2, .grid-3 { display: grid; gap: 18px 28px; }
+    .grid-2 { grid-template-columns: 1fr 1fr; }
+    .grid-3 { grid-template-columns: repeat(3, 1fr); }
+    .form-block { padding: 0 24px 24px; margin-bottom: 24px; overflow: hidden; }
+    .form-block > h3, .modal-body > h3, .inspector-block > strong { display: block; margin: 0 -24px 18px; padding: 12px 24px; background: #eef7eb; border-bottom: 1px solid #d9e7d5; color: #244e2b; }
+    .form-block > h3:not(:first-child) { margin-top: 22px; border-top: 1px solid #d9e7d5; }
+    .field { margin-bottom: 16px; }
+    .field label { display: block; margin-bottom: 7px; color: #36583d; font-weight: 650; }
+    .field .input, .field .select, .field textarea { width: 100%; }
+    .required { color: var(--danger); }
+    .section-line { border-top: 1px dashed #d7e3d3; margin: 20px 0; }
+    .usage { display: grid; grid-template-columns: 160px 1fr 370px; gap: 30px; align-items: center; padding: 14px 18px; margin-bottom: 24px; background: #fffdf8; border-left: 4px solid #c9dfc8; }
+    .bar { height: 7px; background: #e4eee5; border-radius: 99px; overflow: hidden; }
+    .bar span { display: block; width: 11%; height: 100%; background: var(--accent-2); }
+    .notice { border: 1px solid #cfe2cb; background: #eff7eb; color: #2f5836; min-height: 44px; padding: 12px 16px; border-radius: var(--radius); margin-bottom: 16px; box-shadow: inset 4px 0 0 #95bd95; }
+    .pager { display: flex; justify-content: space-between; align-items: center; padding: 13px 16px; color: var(--muted); }
+    .pagebox { min-width: 30px; height: 30px; border: 1px solid var(--line-strong); border-radius: var(--radius); display: inline-grid; place-items: center; margin-left: 6px; background: #fff; padding: 0 8px; }
+    .pagebox.active { background: var(--accent); border-color: var(--accent); color: #fffefc; }
+    .tool-list .tool-row, .flow-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 16px; padding: 16px 18px; border-bottom: 1px solid var(--line); background: linear-gradient(90deg, rgba(239, 247, 235, .56), #fff 34%); }
+    .tool-list .tool-row:last-child, .flow-row:last-child { border-bottom: 0; }
+    .tool-meta { display: flex; gap: 12px; align-items: flex-start; }
+    .tool-ico { width: 42px; height: 42px; border: 1px solid #bdddc4; border-radius: 8px; display: grid; place-items: center; background: #edf8ee; color: var(--accent); font-weight: 760; font-size: 11px; box-shadow: inset 0 0 0 3px rgba(255,255,255,.56); }
+    .pill-tabs { display: flex; gap: 8px; margin-bottom: 24px; }
+    .pill-tabs button { border: 1px solid var(--line-strong); background: #fff; border-radius: var(--radius); min-height: 30px; padding: 0 12px; color: #45604a; }
+    .pill-tabs button.active { background: var(--accent); color: #fffefc; border-color: var(--accent); }
+    .switch { width: 43px; height: 24px; border-radius: 99px; background: #cfd8d1; padding: 3px; display: inline-flex; align-items: center; justify-content: flex-start; vertical-align: middle; }
+    .switch::after { content: ""; width: 18px; height: 18px; background: #fff; border-radius: 50%; box-shadow: 0 1px 2px rgba(15, 62, 23, .22); }
+    .switch.on { background: var(--accent-2); justify-content: flex-end; }
+    .debug-shell { display: grid; grid-template-columns: 1fr 320px; min-height: 720px; overflow: hidden; border-color: #d8e5d4; }
+    .chat { display: flex; flex-direction: column; min-height: 720px; }
+    .chat-head { height: 50px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; padding: 0 18px; background: #f0f7ec; }
+    .chat-head strong { color: #244e2b; }
+    .chat-empty { flex: 1; display: grid; place-items: center; color: #8a9a8d; }
+    .quick-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 16px; }
+    .chat-input { margin: 16px; display: flex; border: 1px solid var(--line-strong); border-radius: var(--radius); overflow: hidden; background: #fff; }
+    .chat-input input { flex: 1; border: 0; padding: 0 12px; outline: 0; }
+    .side-inspector { border-left: 1px solid var(--line); background: #f7fbf4; }
+    .inspector-block { border-bottom: 1px solid var(--line); padding: 18px; }
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .more-wrap { position: relative; display: inline-flex; }
+    .more-menu { display: none; position: absolute; top: 28px; right: 0; width: 368px; background: #fffdf8; border: 1px solid var(--line-strong); border-radius: 8px; box-shadow: var(--shadow); z-index: 4; padding: 8px 0; }
+    .more-menu.show { display: block; }
+    .more-menu button { width: 100%; height: 40px; border: 0; background: #fff; text-align: left; padding: 0 16px; color: #31533a; }
+    .more-menu button:hover, .more-menu .selected { background: #eef9ef; color: var(--accent); font-weight: 700; }
+    .detail-card { padding: 0 24px 24px; margin-bottom: 20px; background: #fffdf8; overflow: hidden; }
+    .detail-title { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 24px; }
+    .detail-card .detail-title { margin: 0 -24px 22px; padding: 14px 24px; background: #eef7eb; border-bottom: 1px solid #d9e7d5; }
+    .detail-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; border: 1px solid #e1e8dd; border-radius: 8px; overflow: hidden; }
+    .kv { display: grid; grid-template-columns: 92px 1fr; gap: 8px; min-height: 44px; padding: 10px 12px; border-right: 1px solid #e1e8dd; border-bottom: 1px solid #e1e8dd; background: #fff; }
+    .kv:nth-child(3n) { border-right: 0; }
+    .kv:nth-last-child(-n+3) { border-bottom: 0; }
+    .kv span:first-child { color: var(--muted); }
+    .modal-root { display: none; position: fixed; inset: 0; background: rgba(25, 51, 31, .34); z-index: 20; align-items: center; justify-content: center; padding: 28px; }
+    .modal-root.show { display: flex; }
+    .modal { width: 520px; max-height: calc(100vh - 56px); background: #fffdf8; border-radius: 10px; box-shadow: var(--shadow); display: flex; flex-direction: column; overflow: hidden; border: 1px solid #d5e4d7; }
+    .modal.wide { width: 704px; }
+    .modal.xwide { width: 800px; }
+    .modal-head, .modal-foot { min-height: 58px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; background: #eff7eb; border-bottom: 1px solid var(--line); }
+    .modal-foot { border-top: 1px solid var(--line); border-bottom: 0; justify-content: flex-end; gap: 10px; }
+    .modal-body { padding: 24px; overflow: auto; }
+    .close { border: 0; background: transparent; font-size: 22px; color: #6f806f; }
+    .segmented { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line-strong); border-radius: var(--radius); overflow: hidden; background: #eef6ef; }
+    .segmented button { border: 0; min-height: 32px; background: transparent; color: #45604a; }
+    .segmented button.active { background: #fff; color: var(--accent); font-weight: 720; }
+
+    @media (max-width: 1000px) {
+      .app { grid-template-columns: 218px 1fr; }
+      .grid-2, .grid-3, .debug-shell, .detail-grid, .usage { grid-template-columns: 1fr; }
+      .page { padding: 20px; }
+      .actions { justify-content: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark">AI</span>AI VOICEDESK</div>
+      <nav class="nav-scroll" aria-label="主导航">
+        <div class="nav-group">核心业务</div>
+        <button class="nav-item" data-page="seat"><span class="nav-icon">☏</span>智呼坐席管理</button>
+        <button class="nav-item active" data-page="botList"><span class="nav-icon">▣</span>机器人配置</button>
+        <button class="nav-item" data-page="tool"><span class="nav-icon">⌘</span>工具配置</button>
+        <button class="nav-item"><span class="nav-icon">▧</span>客户画像（暂时不做）</button>
+        <button class="nav-item"><span class="nav-icon">◁</span>营销活动（暂时不做）</button>
+        <button class="nav-item"><span class="nav-icon">↻</span>自动跟进（暂时不做）</button>
+        <button class="nav-item" data-page="outboundTasks"><span class="nav-icon">☎</span>外呼任务</button>
+        <div class="subnav">
+          <button class="sub-item" data-page="outboundTasks">外呼任务</button>
+          <button class="sub-item" data-page="templateList">外呼模版</button>
+          <button class="sub-item" data-page="contactList">外呼联系单</button>
+        </div>
+        <button class="nav-item"><span class="nav-icon">◷</span>通话记录</button>
+        <button class="nav-item"><span class="nav-icon">▥</span>监控报表</button>
+        <button class="nav-item"><span class="nav-icon">□</span>短信管理</button>
+        <button class="nav-item"><span class="nav-icon">⌬</span>流程配置</button>
+        <button class="nav-item"><span class="nav-icon">&lt;/&gt;</span>代码块</button>
+        <button class="nav-item"><span class="nav-icon">▤</span>信息提取配置</button>
+        <div class="nav-group">资源市场</div>
+        <button class="nav-item"><span class="nav-icon">◇</span>机器人模版</button>
+        <button class="nav-item"><span class="nav-icon">♫</span>音色市场</button>
+        <div class="nav-group">知识与资料</div>
+        <button class="nav-item"><span class="nav-icon">◫</span>集成中心（暂时不做）</button>
+        <button class="nav-item"><span class="nav-icon">▦</span>通信网关（暂时不做）</button>
+      </nav>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <div class="crumb" id="breadcrumb">控制台 / <b>机器人列表</b></div>
+        <div class="user"><span class="bell">◌</span><span class="avatar">AD</span><strong>Admin User</strong></div>
+      </header>
+
+      <section class="page active" id="botList" data-crumb="控制台 / 机器人列表">
+        <div class="page-head">
+          <div><h1>机器人方案管理</h1><p class="desc">创建和配置您的 AI 语音机器人话术方案</p></div>
+          <button class="btn primary">＋ 新建配置方案</button>
+        </div>
+        <div class="card table-card">
+          <table>
+            <thead><tr><th>名称</th><th>描述</th><th>状态</th><th>引擎</th><th>更新时间</th><th style="text-align:right">操作</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><strong>滴滴出行智能客服 (Demo)</strong></td>
+                <td class="muted">全场景演示：包含安全拦截、遗失物寻找、费用申诉自动化处理流程。</td>
+                <td><span class="status ok">已启用</span></td><td>Gemini Pro 1.5</td><td>2026/6/10</td>
+                <td><div class="actions"><button class="link" data-page="botEdit" data-tab="basic">编辑</button></div></td>
+              </tr>
+              <tr>
+                <td><strong>语音 Agent 演示（多工具场景）</strong></td>
+                <td class="muted">完整演示语音 Agent 边聊天边调用工具的能力。</td>
+                <td><span class="status ok">已启用</span></td><td>Gemini Pro 1.5</td><td>2026/6/10</td>
+                <td><div class="actions"><button class="link" data-page="botEdit" data-tab="basic">编辑</button></div></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="page" id="seat" data-crumb="控制台 / 智呼坐席管理">
+        <div class="page-head"><div><h1>智呼机器人坐席管理</h1><p class="desc">管理AI坐席实例，绑定话术配置并分配并发资源。</p></div></div>
+        <div class="card usage">
+          <div><span class="muted">总并发许可</span> <strong style="font-size:22px">200</strong></div>
+          <div><div style="display:flex;justify-content:space-between;margin-bottom:7px"><span>当前占用：21</span><span class="muted">11%</span></div><div class="bar"><span></span></div></div>
+          <div class="tag">资源说明：所有类型的呼叫（呼入/外呼）共享此并发资源池。</div>
+        </div>
+        <div class="card table-card">
+          <div class="toolbar" style="padding:16px"><input class="input" style="width:290px" placeholder="搜索座席名称..." /><button class="btn primary" data-modal="seatModal">＋ 新建坐席</button></div>
+          <table>
+            <thead><tr><th>AI座席ID</th><th>座席名称</th><th>机器人配置</th><th>数量/并发</th><th>排队语音</th><th>状态</th><th>创建时间</th><th style="text-align:right">操作</th></tr></thead>
+            <tbody>
+              <tr><td>9</td><td><strong>泰康Demo-02</strong></td><td><span class="tag">滴滴出行智能客服 (Demo)</span></td><td>5</td><td>排队语音提示</td><td><span class="status ok">已启用</span></td><td class="muted">2026/3/10 16:18:37</td><td><div class="actions"><button class="link">编辑</button></div></td></tr>
+              <tr><td>8</td><td><strong>泰康Demo-01</strong></td><td><span class="tag">滴滴出行智能客服 (Demo)</span></td><td>5</td><td>排队语音提示</td><td><span class="status ok">已启用</span></td><td class="muted">2026/3/10 16:18:14</td><td><div class="actions"><button class="link">编辑</button></div></td></tr>
+              <tr><td>6</td><td><strong>天鹅到家</strong></td><td><span class="tag">滴滴出行智能客服 (Demo)</span></td><td>1</td><td>默认排队语音</td><td><span class="status ok">已启用</span></td><td class="muted">2026/3/5 14:28:16</td><td><div class="actions"><button class="link">编辑</button></div></td></tr>
+              <tr><td>3</td><td><strong>智能体坐席_外卖骑手</strong></td><td><span class="tag">-</span></td><td>1</td><td>默认排队语音</td><td><span class="status off">已禁用</span></td><td class="muted">2026/1/19 14:59:56</td><td><div class="actions"><button class="link">编辑</button></div></td></tr>
+              <tr><td>5</td><td><strong>【勿动】官网呼入</strong></td><td><span class="tag">-</span></td><td>10</td><td>默认排队语音</td><td><span class="status ok">已启用</span></td><td class="muted">2026/3/5 10:38:59</td><td><div class="actions"><button class="link">编辑</button></div></td></tr>
+            </tbody>
+          </table>
+          <div class="pager"><span>共 5 条</span><span><span class="pagebox active">1</span></span></div>
+        </div>
+      </section>
+
+      <section class="page" id="botEdit" data-crumb="控制台 / 滴滴出行智能客服 (Demo)">
+        <button class="back" data-page="botList">← 返回列表</button>
+        <h1>编辑机器人配置</h1>
+        <div class="tabs">
+          <button class="tab active" data-edit-tab="basic">基础配置</button><button class="tab" data-edit-tab="flow">流程配置</button><button class="tab" data-edit-tab="topic">主题管理</button><button class="tab">触发器</button><button class="tab">对话策略</button><button class="tab">变量配置</button><button class="tab" data-edit-tab="debug">模型调试</button><button class="tab">知识检索配置</button>
+          <span class="more-wrap"><button class="tab" id="moreBtn">更多配置⌄</button><div class="more-menu" id="moreMenu"><button>意图技能</button><button>业务分析</button><button class="selected">营销与跟进</button><button>批量评测</button></div></span>
+        </div>
+        <div class="edit-panel" id="edit-basic">
+          <div class="card form-block">
+            <h3>基础信息</h3>
+            <div class="grid-2">
+              <div class="field"><label><span class="required">*</span> 配置模板名称</label><input class="input" value="滴滴出行智能客服 (Demo)" /></div>
+              <div class="field"><label>描述 <span class="tag">AI 智能生成</span></label><input class="input" value="全场景演示：包含安全拦截、遗失物寻找、费用申诉自动化处理流程。" /></div>
+            </div>
+            <div class="section-line"></div>
+            <h3>Agent 身份配置</h3>
+            <div class="grid-3">
+              <div class="field"><label>Agent 角色</label><input class="input" placeholder="如：客服代表、技术支持、销售顾问" /></div>
+              <div class="field"><label>人格设定</label><select class="select"><option>专业</option></select></div>
+              <div class="field"><label>业务场景</label><input class="input" placeholder="如：逾期催收、预约确认、投诉处理" /></div>
+            </div>
+          </div>
+          <div class="card form-block">
+            <h3>核心模型配置</h3>
+            <div class="grid-3">
+              <div class="field"><label>大模型类型</label><select class="select"><option>Gemini Pro 1.5</option></select></div>
+              <div class="field"><label>温度 (Temperature) <span class="tag">0.3</span></label><input type="range" min="0" max="1" step=".1" value=".3" style="width:100%" /></div>
+              <div class="field"><label>核采样 (Top-P) <span class="tag">0.8</span></label><input type="range" min="0" max="1" step=".1" value=".8" style="width:100%" /></div>
+            </div>
+          </div>
+          <button class="btn primary">保存配置</button> <button class="btn">取消</button>
+        </div>
+        <div class="edit-panel" id="edit-flow" hidden>
+          <div class="toolbar"><div><h3>流程列表</h3><p class="desc">先维护 Flow 名称和给大模型的提示词，再点击“编辑流程”进入流程图编辑器。</p></div><button class="btn primary">＋ 新建 Flow</button></div>
+          <div class="card">
+            <div class="flow-row"><div class="tool-meta"><div class="tool-ico">↪</div><div><strong>主入口 Flow</strong> <span class="tag">入口</span><br><span class="muted">无描述</span><br><span class="muted">3 节点 · 2 连线</span></div></div><div class="actions"><button class="btn">编辑</button><button class="btn">编辑流程</button><button class="btn danger">删除</button></div></div>
+            <div class="flow-row"><div class="tool-meta"><div class="tool-ico">↪</div><div><strong>身份验证 Flow</strong><br><span class="muted">无描述</span><br><span class="muted">5 节点 · 4 连线</span></div></div><div class="actions"><button class="btn">编辑</button><button class="btn">编辑流程</button><button class="btn danger">删除</button></div></div>
+            <div class="flow-row"><div class="tool-meta"><div class="tool-ico">↪</div><div><strong>订单查询 Flow</strong><br><span class="muted">无描述</span><br><span class="muted">3 节点 · 2 连线</span></div></div><div class="actions"><button class="btn">编辑</button><button class="btn">编辑流程</button><button class="btn danger">删除</button></div></div>
+            <div class="flow-row"><div class="tool-meta"><div class="tool-ico">↪</div><div><strong>转人工 Flow</strong><br><span class="muted">无描述</span><br><span class="muted">3 节点 · 2 连线</span></div></div><div class="actions"><button class="btn">编辑</button><button class="btn">编辑流程</button><button class="btn danger">删除</button></div></div>
+          </div>
+          <div style="margin-top:22px"><button class="btn primary">保存配置</button> <button class="btn">取消</button></div>
+        </div>
+        <div class="edit-panel" id="edit-topic" hidden>
+          <div class="card table-card">
+            <div class="toolbar" style="padding:24px 24px 8px"><h3>主题管理</h3><button class="btn primary">＋ 新建主题</button></div>
+            <div class="filters" style="padding:0 24px 24px"><input class="input" style="width:320px" placeholder="搜索主题..." /><select class="select"><option>全部</option></select><select class="select"><option>创建时间降序</option></select></div>
+            <table><thead><tr><th style="width:48px"><input type="checkbox"></th><th>名称</th><th>问题</th><th>状态</th><th>操作</th></tr></thead><tbody>
+              <tr><td><input type="checkbox"></td><td>产品咨询</td><td>这个产品有什么功能？</td><td><span class="switch on"></span></td><td><button class="btn">编辑</button> <button class="btn danger">删除</button></td></tr>
+              <tr><td><input type="checkbox"></td><td>投诉处理</td><td>我要投诉</td><td><span class="switch"></span></td><td><button class="btn">编辑</button> <button class="btn danger">删除</button></td></tr>
+              <tr><td><input type="checkbox"></td><td>退款申请</td><td>如何申请退款？</td><td><span class="switch on"></span></td><td><button class="btn">编辑</button> <button class="btn danger">删除</button></td></tr>
+              <tr><td><input type="checkbox"></td><td>账户余额查询</td><td>我的账户余额是多少？</td><td><span class="switch on"></span></td><td><button class="btn">编辑</button> <button class="btn danger">删除</button></td></tr>
+              <tr><td><input type="checkbox"></td><td>订单查询</td><td>如何查询我的订单状态？</td><td><span class="switch on"></span></td><td><button class="btn">编辑</button> <button class="btn danger">删除</button></td></tr>
+            </tbody></table><div class="pager"><span>分页：显示从 1 到 5 条，共 5 条</span><span><span class="pagebox">上一页</span><span class="pagebox active">1</span><span class="pagebox">下一页</span></span></div>
+          </div>
+        </div>
+        <div class="edit-panel" id="edit-debug" hidden>
+          <div class="card debug-shell">
+            <div class="chat"><div class="chat-head"><strong>模拟环境 (Mock) <span class="tag">调试模式</span></strong><button class="link">重置对话</button></div><div class="chat-empty"><div style="text-align:center"><div style="font-size:46px;color:#cfe0d2">□</div><div>请选择测试场景或直接输入</div><div class="quick-actions"><button class="btn primary">▷ 模拟外呼（自动带入变量）</button><button class="btn">模拟挂机并打标</button><button class="btn">你好（呼入）</button><button class="btn">转人工 (Action)</button><button class="btn">明天回访（提取）</button></div></div></div><div class="chat-input"><input placeholder="输入消息..." /><button class="btn">发送</button></div></div>
+            <div class="side-inspector"><div class="inspector-block" style="text-align:center"><div style="width:82px;height:82px;border:1px solid var(--line-strong);border-radius:50%;margin:0 auto 14px;display:grid;place-items:center;color:#6c886f;background:#fff">麦克风<br>点击说话</div><div class="toolbar"><span>保存录音</span><span class="switch on"></span></div><div class="field"><label>当前音色</label><select class="select"><option>Azure-Xiaoxiao</option></select></div></div><div class="inspector-block"><strong>客户标签 (Tags)</strong><div class="chips"><span class="tag">黑金会员</span><span class="tag">钻石会员</span><span class="tag">黄金会员</span><span class="tag">普通用户</span></div><p class="muted">诉求类型</p><div class="chips"><span class="tag">物品遗失</span><span class="tag">费用争议</span><span class="tag">安全投诉</span><span class="tag">发票问题</span><span class="tag">司机态度</span></div><p class="muted">情绪状态</p><div class="chips"><span class="tag">极度愤怒（高危）</span><span class="tag">焦急</span><span class="tag">平静</span></div></div><div class="inspector-block"><strong># 变量监视器</strong></div><div class="inspector-block"><strong>输入变量</strong><div class="kv"><span>客户姓名</span><b>张三</b></div></div></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="page" id="tool" data-crumb="控制台 / 工具配置">
+        <div class="page-head"><div><h1>工具配置</h1></div><div class="actions"><button class="btn ghost-strong" data-modal="mcpModal">添加 MCP 服务器</button><button class="btn primary" data-modal="toolModal">＋ 添加智能体工具</button></div></div>
+        <div class="pill-tabs"><button class="active">全部 5</button><button>API 2</button><button>通信 1</button><button>转接 1</button><button>其他 1</button></div>
+        <div class="card tool-list">
+          <div class="tool-row"><div class="tool-meta"><div class="tool-ico">API</div><div><strong>query_api</strong> <span class="tag">API</span> <span class="tag">API</span><br>调用外部接口获取数据<br><span class="mono muted">tool_api_call</span></div></div><div class="actions"><span class="status ok">已启用</span><button class="btn">编辑</button><button class="btn danger">删除</button></div></div>
+          <div class="tool-row"><div class="tool-meta"><div class="tool-ico">SMS</div><div><strong>send_sms</strong> <span class="tag">SMS</span> <span class="tag">通信</span><br>向用户发送短信通知<br><span class="mono muted">tool_sms</span></div></div><div class="actions"><span class="status ok">已启用</span><button class="btn">编辑</button><button class="btn danger">删除</button></div></div>
+          <div class="tool-row"><div class="tool-meta"><div class="tool-ico">API</div><div><strong>query_order</strong> <span class="tag">API</span> <span class="tag">API</span><br>查询用户订单状态<br><span class="mono muted">tool_query_order</span></div></div><div class="actions"><span class="status ok">已启用</span><button class="btn">编辑</button><button class="btn danger">删除</button></div></div>
+          <div class="tool-row"><div class="tool-meta"><div class="tool-ico">TEL</div><div><strong>transfer_call</strong> <span class="tag">TRANSFER</span> <span class="tag">转接</span><br>转接人工客服<br><span class="mono muted">tool_transfer</span></div></div><div class="actions"><span class="status ok">已启用</span><button class="btn">编辑</button><button class="btn danger">删除</button></div></div>
+          <div class="tool-row"><div class="tool-meta"><div class="tool-ico">GEO</div><div><strong>query_location</strong> <span class="tag">CUSTOM</span> <span class="tag">其他</span><br>查询地理位置信息（门店、网点等）<br><span class="mono muted">tool_geo_location</span></div></div><div class="actions"><span class="status ok">已启用</span><button class="btn">编辑</button><button class="btn danger">删除</button></div></div>
+        </div>
+      </section>
+
+      <section class="page" id="outboundTasks" data-crumb="控制台 / 外呼任务列表">
+        <div class="notice">当前租户支持的外呼时间为：8:00~22:00。超出此时间，系统自动停止拨号。（如需24小时外呼，请联系运营开通） <span style="float:right">×</span></div>
+        <div class="toolbar"><div class="filters"><span>任务状态:</span><select class="select"><option>全部状态</option></select><span>选择时间:</span><input class="input" placeholder="年/月/日" /><span>-</span><input class="input" placeholder="年/月/日" /><span>外呼任务名称:</span><input class="input" placeholder="请输入名称" /><button class="btn">确定</button></div><button class="btn primary">＋ 新建外呼任务</button></div>
+        <div class="card table-card"><table><thead><tr><th>ID</th><th>名称</th><th>状态</th><th>客户数</th><th>已执行</th><th>客户接听</th><th>未接听</th><th>尝试次数</th><th style="text-align:right">操作</th></tr></thead><tbody><tr><td>84011</td><td><strong>语音机器人英文Demo视频-外呼任务</strong></td><td><span class="status info">运行中</span></td><td>1</td><td>0</td><td>0</td><td>0</td><td>0</td><td><div class="actions"><button class="link" data-page="taskDetail">查看</button><button class="link">编辑</button><button class="link">删除</button></div></td></tr><tr><td>83957</td><td><strong>泰康01-外呼任务</strong></td><td><span class="status warn">已暂停</span></td><td>2</td><td>2</td><td>2</td><td>0</td><td>2</td><td><div class="actions"><button class="link" data-page="taskDetail">查看</button><button class="link">编辑</button><button class="link">删除</button></div></td></tr></tbody></table><div class="pager"><span>共 2 条</span><span><span class="pagebox active">1</span></span></div></div>
+      </section>
+
+      <section class="page" id="taskDetail" data-crumb="控制台 / 外呼任务列表">
+        <div style="border-bottom:1px solid var(--line); margin:-26px -32px 26px; padding:16px 32px;background:#fffefc;"><button class="back" data-page="outboundTasks">← 返回外呼任务</button> <strong style="border-left:1px solid var(--line);padding-left:14px;color:var(--accent)">查看外呼任务</strong></div>
+        <div class="card detail-card"><div class="detail-title"><h2>名称：语音机器人英文Demo视频-外呼任务</h2><div class="actions"><button class="btn ghost-strong">启动</button><button class="btn ghost-strong">暂停</button><button class="btn danger">停止</button><button class="btn ghost-strong">告警设置</button><button class="btn">编辑</button></div></div><div class="detail-grid"><div class="kv"><span>外呼模版:</span><b>【官网勿动】-金融贷款受理-崔艳</b></div><div class="kv"><span>机器人话术:</span><b>-</b></div><div class="kv"><span>任务优先级:</span><b>1</b></div><div class="kv"><span>状态:</span><b><span class="status info">运行中</span></b></div><div class="kv"><span>外呼模式:</span><b>智呼机器人</b></div><div class="kv"><span>主叫号码:</span><b>02160592249</b></div><div class="kv"><span>创建人:</span><b>Admin</b></div><div class="kv"><span>呼叫并发:</span><b>5</b></div><div class="kv"><span>目前并发量:</span><b>5</b></div><div class="kv"><span>任务开始时间:</span><b>2026-01-29 11:00:00</b></div><div class="kv"><span>创建时间:</span><b>2026-01-29 10:55:27</b></div><div class="kv"><span>任务执行时间:</span><b>官网呼入体验工作时间设置</b></div></div></div>
+        <div class="card table-card"><div class="tabs" style="margin:0 16px"><button class="tab active">联系单列表</button><button class="tab">智呼通话记录</button><button class="btn" style="margin-left:auto">刷新</button></div><div class="toolbar" style="padding:16px"><div class="filters"><span>联系单名称:</span><input class="input" placeholder="请输入名称" /><button class="btn primary">确定</button></div><div class="actions"><button class="btn">导出</button><button class="btn ghost-strong">＋ 创建联系单</button></div></div><table><thead><tr><th>ID</th><th>名称</th><th>状态</th><th>优先级</th><th>客户数</th><th>已执行客户数</th><th>客户接听</th><th>座席接听</th><th>尝试次数</th><th>外呼成功率</th><th>操作</th></tr></thead><tbody><tr><td>1</td><td><strong>高亲联系单</strong></td><td><span class="status info">运行中</span></td><td>1</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0%</td><td><button class="link">查看</button> <button class="link">编辑</button> <button class="link">暂停</button> <button class="link">停止</button></td></tr></tbody></table></div>
+      </section>
+
+      <section class="page" id="templateList" data-crumb="控制台 / 外呼模版">
+        <div class="toolbar"><div class="filters"><span>模板名称:</span><input class="input" style="width:256px" placeholder="请输入模板名称" /><button class="btn">确定</button></div><button class="btn primary" data-modal="templateModal">＋ 新建外呼模版</button></div>
+        <div class="card table-card"><table><thead><tr><th>ID</th><th>名称</th><th>备注</th><th>外呼模式</th><th style="text-align:right">操作</th></tr></thead><tbody><tr><td>967</td><td><strong>【官网勿动】-金融贷款受理-崔艳</strong></td><td>-</td><td>智呼机器人</td><td><div class="actions"><button class="link">编辑</button><button class="link">复制</button><button class="link">删除</button></div></td></tr><tr><td>968</td><td><strong>【官网勿动】-金融拓客营销-孙琳</strong></td><td>-</td><td>智呼机器人</td><td><div class="actions"><button class="link">编辑</button><button class="link">复制</button><button class="link">删除</button></div></td></tr></tbody></table><div class="pager"><span>共 2 条</span><span><span class="pagebox active">1</span></span></div></div>
+      </section>
+
+      <section class="page" id="contactList" data-crumb="控制台 / 外呼联系单">
+        <div class="toolbar"><input class="input" style="width:256px" placeholder="搜索联系单名称" /><div class="actions"><button class="btn">下载模板</button><button class="btn primary">上传联系单</button></div></div>
+        <div class="card table-card"><table><thead><tr><th>ID</th><th>联系单名称</th><th>总数量</th><th>有效数量</th><th>状态</th><th>上传时间</th><th style="text-align:right">操作</th></tr></thead><tbody><tr><td>1</td><td><strong>上海地区高意向客户_20240520</strong></td><td>1200</td><td>1180</td><td><span class="status ok">上传成功</span></td><td>2024/5/20 13:20:00</td><td><div class="actions"><button class="link">删除</button></div></td></tr><tr><td>2</td><td><strong>北京车展留资名单</strong></td><td>500</td><td>485</td><td><span class="status ok">上传成功</span></td><td>2024/5/19 13:20:00</td><td><div class="actions"><button class="link">删除</button></div></td></tr><tr><td>3</td><td><strong>官网咨询未接通回访</strong></td><td>120</td><td>120</td><td><span class="status ok">上传成功</span></td><td>2024/5/18 13:20:00</td><td><div class="actions"><button class="link">删除</button></div></td></tr></tbody></table><div class="pager"><span>共 3 条</span><span><span class="pagebox active">1</span></span></div></div>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal-root" id="seatModal"><div class="modal"><div class="modal-head"><h2>新建AI坐席</h2><button class="close" data-close>×</button></div><div class="modal-body"><div class="field"><label><span class="required">*</span> 座席名称</label><input class="input" placeholder="例如：外卖骑手招聘专席"></div><div class="field"><label><span class="required">*</span> 机器人配置</label><select class="select"><option>请选择关联的机器人...</option></select></div><div class="field"><label>排队语音提示</label><select class="select"><option>排队语音提示</option></select></div><div class="field"><label>并发数量</label><input class="input" value="1"></div><div class="toolbar"><span>初始状态</span><span>启用 <span class="switch on"></span></span></div></div><div class="modal-foot"><button class="btn" data-close>取消</button><button class="btn primary">确定</button></div></div></div>
+  <div class="modal-root" id="toolModal"><div class="modal wide"><div class="modal-head"><h2>添加智能体工具</h2><button class="close" data-close>×</button></div><div class="modal-body"><div class="field"><label><span class="required">*</span> 工具名称</label><input class="input" placeholder="e.g. query_order_status"></div><div class="field"><label><span class="required">*</span> 工具描述</label><textarea placeholder="例如：当用户询问发货状态、物流进度或订单详情时使用此工具。需要提供订单号。"></textarea></div><div class="field"><label>关联接口</label><select class="select"><option>不关联接口（仅作为模型能力）</option></select></div><div class="field"><label>模型使用指南</label><textarea>例如：&#10;1. 此工具需要在获取到订单号后才能调用&#10;2. 如果用户没有提供订单号，请先询问用户&#10;3. 返回结果包含 order_status 字段，值为：pending/shipped/delivered</textarea><p class="desc">给模型的详细使用说明，包括调用时机、参数要求、返回值说明等</p></div><div class="toolbar"><h3>参数定义</h3><button class="link">＋ 添加参数</button></div><div class="card" style="padding:14px;text-align:center;color:var(--soft)">此工具无需参数（空）</div><div class="card" style="padding:18px;margin-top:18px;background:#f1faf2"><h3>工具调用话术</h3><div class="field"><label>工具调用开始话术</label><input class="input" value="正在为您查询，请稍候..."></div></div></div><div class="modal-foot"><button class="btn" data-close>取消</button><button class="btn primary">保存工具</button></div></div></div>
+  <div class="modal-root" id="mcpModal"><div class="modal wide"><div class="modal-head"><h2>添加 MCP 服务器</h2><button class="close" data-close>×</button></div><div class="modal-body"><div class="toolbar"><div class="field" style="flex:1"><label><span class="required">*</span> 服务器名称</label><input class="input" placeholder="例如：文件系统服务器"></div><span>启用 <span class="switch on"></span></span></div><div class="field"><label><span class="required">*</span> 服务器描述</label><textarea placeholder="例如：提供文件系统操作能力，包括读取、写入、删除文件等功能。"></textarea></div><h3>连接配置</h3><div class="field"><label><span class="required">*</span> 连接类型</label><div class="segmented"><button class="active">STDIO</button><button>HTTP</button><button>WebSocket</button></div></div><div class="field"><label><span class="required">*</span> 命令</label><input class="input" placeholder="例如：npx 或 node"></div><div class="field"><label>参数（可选）</label><input class="input" placeholder="例如：-p 3000 --debug"></div></div><div class="modal-foot"><button class="btn" data-close>取消</button><button class="btn primary">保存服务器</button></div></div></div>
+  <div class="modal-root" id="templateModal"><div class="modal xwide"><div class="modal-head"><h2>新建外呼模版</h2><button class="close" data-close>×</button></div><div class="modal-body"><h3>通用设置</h3><div class="field"><label><span class="required">*</span> 模板名称</label><input class="input" placeholder="请输入模板名称"></div><div class="field"><label>备注</label><textarea placeholder="请输入备注"></textarea></div><h3>拨号设置</h3><div class="toolbar"><span>IVR模式</span><span class="switch"></span></div><div class="field"><label><span class="required">*</span> 外呼模式</label><select class="select"><option>智呼机器人</option></select></div><div class="field"><label><span class="required">*</span> 机器人话术</label><select class="select"><option>请选择机器人话术</option></select></div><div class="field"><label><span class="required">*</span> 主叫号码</label><div class="filters"><label><input type="radio" checked> 号码</label><label><input type="radio"> 号码池</label></div><select class="select"><option>02131445977</option></select></div></div><div class="modal-foot"><button class="btn" data-close>取消</button><button class="btn primary">保存</button></div></div></div>
+
+  <script>
+    // 页面切换：保持截图中的左侧菜单、顶部面包屑和主内容区关系。
+    const pages = [...document.querySelectorAll('.page')];
+    const navButtons = [...document.querySelectorAll('[data-page]')];
+    const crumb = document.getElementById('breadcrumb');
+    function showPage(id) {
+      pages.forEach(page => page.classList.toggle('active', page.id === id));
+      navButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.page === id));
+      const page = document.getElementById(id);
+      crumb.innerHTML = (page?.dataset.crumb || '控制台 / 页面').replace(/(.+) \/ (.+)/, '$1 / <b>$2</b>');
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }
+
+    // 机器人编辑页 Tab：覆盖基础配置、流程配置、主题管理、模型调试与更多配置下拉。
+    function showEditTab(name) {
+      document.querySelectorAll('[data-edit-tab]').forEach(tab => tab.classList.toggle('active', tab.dataset.editTab === name));
+      document.querySelectorAll('.edit-panel').forEach(panel => panel.hidden = panel.id !== `edit-${name}`);
+    }
+
+    navButtons.forEach(btn => btn.addEventListener('click', () => {
+      if (btn.dataset.tab) showEditTab(btn.dataset.tab);
+      showPage(btn.dataset.page);
+    }));
+    document.querySelectorAll('[data-edit-tab]').forEach(tab => tab.addEventListener('click', () => showEditTab(tab.dataset.editTab)));
+    document.getElementById('moreBtn').addEventListener('click', event => {
+      event.stopPropagation();
+      document.getElementById('moreMenu').classList.toggle('show');
+    });
+    document.addEventListener('click', () => document.getElementById('moreMenu').classList.remove('show'));
+
+    // 弹窗开关：覆盖新建坐席、添加工具、添加 MCP、新建外呼模版。
+    document.querySelectorAll('[data-modal]').forEach(btn => btn.addEventListener('click', () => document.getElementById(btn.dataset.modal).classList.add('show')));
+    document.querySelectorAll('[data-close]').forEach(btn => btn.addEventListener('click', () => btn.closest('.modal-root').classList.remove('show')));
+    document.querySelectorAll('.modal-root').forEach(root => root.addEventListener('click', event => {
+      if (event.target === root) root.classList.remove('show');
+    }));
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape') document.querySelectorAll('.modal-root.show').forEach(root => root.classList.remove('show'));
+    });
+  </script>
+</body>
+</html>

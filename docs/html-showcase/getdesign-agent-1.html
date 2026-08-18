@@ -1,0 +1,267 @@
+<!--
+  文件用途：AI VOICEDESK 单文件 UI 原型，包含机器人方案管理、流程配置、综合运营报表。
+  getdesign.md 风格来源：https://getdesign.md/design-md/retool
+  提炼规则：
+  1. 颜色：参考 Retool-style internal tool 的浅色工作台，使用 #f7f6f2 纸面背景、#ffffff 面板、#d9d6ce 细边界、#111827 主文字、#6b7280 次文字、#f45d22 橙色只用于主操作和选中态，蓝/绿/橙只用于状态。
+  2. 字体：中文优先 Noto Sans SC / Microsoft YaHei，英文和数字用 ui-sans-serif；标题保持 18-24px，表格和控件保持 12-14px，数字使用 tabular-nums。
+  3. 间距：采用 4px 基础节奏，控件高度 30-34px，面板内边距 10-14px，页面避免大 Hero，强调高密度后台操作。
+  4. 组件形态：4px 小圆角、硬朗细线、弱阴影或无阴影；按钮像内部工具控件，表格、属性面板、节点配置都保持紧凑。
+  5. 表格/仪表盘/工作台规则：顶部全局工具栏 + 左侧窄 rail；业务页面内部使用分栏工作台，表格保留横向滚动、右侧详情/配置面板；报表先筛选再 KPI，再图表和明细表，所有表格带搜索。
+-->
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI VOICEDESK · 展示版 A</title>
+<style>
+:root{
+  --bg:#f7f6f2;--surface:#fff;--surface-2:#fbfaf7;--ink:#111827;--muted:#6b7280;
+  --line:#d9d6ce;--line-2:#ebe8df;--accent:#f45d22;--accent-2:#fff1e9;
+  --blue:#2563eb;--green:#15803d;--amber:#b45309;--red:#b91c1c;--radius:4px;
+}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font:13px/1.45 "Noto Sans SC","Microsoft YaHei",ui-sans-serif,system-ui,sans-serif}
+button,input,select,textarea{font:inherit}button{cursor:pointer}b{font-weight:700}.num{text-align:right;font-variant-numeric:tabular-nums}.muted{color:var(--muted)}
+.app{min-height:100vh;display:grid;grid-template-columns:58px minmax(0,1fr)}
+.rail{background:#1f1f1d;color:#d6d3cb;display:flex;flex-direction:column;align-items:center;gap:8px;padding:10px 8px;position:sticky;top:0;height:100vh}
+.logo{width:34px;height:34px;border:1px solid #3a3935;border-radius:6px;display:grid;place-items:center;font-weight:800;color:#fff;background:#2a2926;margin-bottom:8px}
+.rail button{width:38px;height:38px;border:1px solid transparent;border-radius:6px;background:transparent;color:#d6d3cb;font-weight:800}
+.rail button:hover{background:#30302c}.rail button.active{background:#fff;color:#1f1f1d;border-color:#fff}.rail .spacer{flex:1}
+.main{min-width:0;display:grid;grid-template-rows:52px minmax(0,1fr)}
+.topbar{background:rgba(255,255,255,.86);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 14px;position:sticky;top:0;z-index:10}
+.workspace-name{display:flex;align-items:center;gap:10px}.workspace-name strong{font-size:14px}.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:3px 8px;color:#4b5563;font-size:12px;white-space:nowrap}
+.top-actions{display:flex;align-items:center;gap:8px}.avatar{width:28px;height:28px;border:1px solid var(--line);border-radius:50%;display:grid;place-items:center;background:#fff;font-weight:800;font-size:11px}
+.view{display:none;min-width:0}.view.active{display:block}.page{padding:12px;min-width:0}
+.page-grid{display:grid;grid-template-columns:260px minmax(0,1fr) 330px;gap:10px;align-items:start}.report-grid{display:grid;grid-template-columns:280px minmax(0,1fr);gap:10px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.panel-head{min-height:40px;padding:8px 10px;border-bottom:1px solid var(--line-2);display:flex;align-items:center;justify-content:space-between;gap:8px;background:#fff}
+.panel-head h1,.panel-head h2,.panel-head h3{margin:0;font-size:14px;line-height:1.25}.panel-head small{display:block;color:var(--muted);font-size:12px;margin-top:2px;font-weight:400}
+.section{padding:10px;border-bottom:1px solid var(--line-2)}.section:last-child{border-bottom:0}.section-title{font-size:11px;color:#71717a;text-transform:uppercase;letter-spacing:.05em;font-weight:800;margin:0 0 8px}
+.btn{height:32px;border:1px solid var(--line);background:#fff;color:#27272a;border-radius:var(--radius);padding:0 10px;font-weight:700}
+.btn:hover{border-color:#a8a29e;background:#fafaf9}.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}.btn.danger{color:var(--red);border-color:#fecaca;background:#fff}.btn:disabled{opacity:.45;cursor:not-allowed}
+.field{display:block;margin-bottom:8px}.field span{display:block;color:#52525b;font-size:12px;margin-bottom:4px}.field input,.field select,.field textarea,.search input,.toolbar select{width:100%;height:32px;border:1px solid var(--line);background:#fff;border-radius:var(--radius);padding:0 8px;outline:0}.field textarea{height:70px;padding:7px 8px;resize:vertical}.field input:focus,.field select:focus,.field textarea:focus,.search input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(244,93,34,.12)}
+.search{position:relative}.search input{padding-left:28px}.search:before{content:"⌕";position:absolute;left:9px;top:6px;color:#78716c;font-weight:800}
+.toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;border-bottom:1px solid var(--line-2);background:var(--surface-2)}.toolbar .search{flex:1 1 240px}.toolbar select{width:auto;min-width:112px}
+.seg{display:flex;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:#fff}.seg button{height:32px;border:0;border-right:1px solid var(--line);background:#fff;padding:0 10px;color:#52525b;font-weight:700}.seg button:last-child{border-right:0}.seg button.active{background:#1f1f1d;color:#fff}
+.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:850px}th{height:34px;background:#f4f2ec;border-bottom:1px solid var(--line);text-align:left;color:#57534e;font-size:12px;font-weight:800;padding:0 10px;white-space:nowrap}td{height:42px;border-bottom:1px solid var(--line-2);padding:7px 10px;vertical-align:middle;white-space:nowrap}tr[data-row]{cursor:pointer}tr[data-row]:hover{background:#fff8f3}tr.selected{background:var(--accent-2)}
+.name{font-weight:800}.desc{max-width:420px;overflow:hidden;text-overflow:ellipsis;color:#57534e;font-size:12px}.mono{font-family:"Cascadia Mono","SFMono-Regular",ui-monospace,monospace;font-size:12px;color:#3f3f46}
+.badge{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;padding:2px 7px;background:#fff;font-size:12px;font-weight:800}.badge.green{color:var(--green);background:#f0fdf4;border-color:#bbf7d0}.badge.blue{color:var(--blue);background:#eff6ff;border-color:#bfdbfe}.badge.amber{color:var(--amber);background:#fffbeb;border-color:#fde68a}.badge.red{color:var(--red);background:#fef2f2;border-color:#fecaca}
+.pager{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-top:1px solid var(--line-2);color:#57534e;font-size:12px;gap:8px}
+.list-item{width:100%;text-align:left;border:1px solid var(--line);background:#fff;border-radius:var(--radius);padding:9px;margin-bottom:7px}.list-item:hover,.list-item.active{border-color:var(--accent);background:#fff8f3}.list-item strong{display:block}.list-item small{display:block;color:var(--muted);margin-top:3px}
+.kv{display:grid;grid-template-columns:88px 1fr;gap:8px 10px;font-size:12px}.kv span{color:var(--muted)}.kv b{font-weight:700}
+.mini-metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px}.metric{border:1px solid var(--line);background:#fff;border-radius:var(--radius);padding:9px}.metric span{display:block;color:var(--muted);font-size:12px}.metric b{display:block;font-size:18px;margin-top:3px;font-variant-numeric:tabular-nums}.metric small{display:block;color:#78716c;margin-top:2px}
+.flow-shell{height:calc(100vh - 76px);min-height:660px;display:grid;grid-template-columns:252px minmax(0,1fr) 330px;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:#fff}
+.flow-list{border-right:1px solid var(--line);background:#fbfaf7;overflow:auto}.flow-canvas{min-width:0;display:grid;grid-template-rows:43px minmax(0,1fr);background:#fff}.canvas-bar{border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 10px;background:#fff}
+.canvas{position:relative;overflow:auto;background:#f8f7f3;background-image:linear-gradient(#e7e3da 1px,transparent 1px),linear-gradient(90deg,#e7e3da 1px,transparent 1px);background-size:24px 24px}
+.stage{position:relative;width:1450px;height:620px}.node{position:absolute;width:206px;border:1px solid #bdb8ad;background:#fff;border-radius:var(--radius);padding:10px;text-align:left;box-shadow:0 1px 0 rgba(17,24,39,.04)}.node:hover{border-color:#78716c}.node.selected{border-color:var(--accent);box-shadow:0 0 0 2px rgba(244,93,34,.16)}.node .type{font-size:11px;color:#78716c;font-weight:800}.node h3{margin:5px 0 3px;font-size:14px}.node p{margin:0;color:#57534e;font-size:12px}.node .out{border-top:1px solid var(--line-2);margin-top:8px;padding-top:6px;color:#44403c;font-size:12px}.day{position:absolute;right:8px;top:8px;font-size:11px;color:#57534e;border:1px solid var(--line);border-radius:999px;padding:1px 6px;background:#fafaf9}.wire{position:absolute;height:2px;background:#a8a29e;transform-origin:left center}.edge{position:absolute;height:24px;border:1px solid var(--line);border-radius:999px;background:#fff;padding:3px 8px;font-size:12px;color:#44403c}.edge:hover{border-color:var(--accent);color:var(--accent)}
+.config{border-left:1px solid var(--line);background:#fff;overflow:auto}.library-card{border:1px solid var(--line);background:#fff;border-radius:var(--radius);padding:8px;margin-bottom:7px}.library-card b{display:block}.library-card span{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+.kpi-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin-bottom:10px}.chart-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(300px,.75fr);gap:10px;margin-bottom:10px}.sub-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.chart{height:270px;padding:12px}.chart svg{width:100%;height:100%;display:block}.axis{stroke:#e7e5df}.line{fill:none;stroke:var(--accent);stroke-width:2.5}.area{fill:rgba(244,93,34,.09)}
+.bar-row{display:grid;grid-template-columns:1fr auto;gap:8px;margin:0 0 6px}.track{height:8px;border-radius:999px;background:#efede6;overflow:hidden;margin-bottom:10px}.fill{height:100%;background:var(--accent)}.fill.blue{background:var(--blue)}.fill.green{background:var(--green)}.fill.amber{background:var(--amber)}
+.heat{display:grid;grid-template-columns:42px repeat(24,1fr);gap:2px;min-width:760px;padding:10px}.heat div{height:16px;border-radius:2px;background:#ede9dd;font-size:10px;color:#78716c;text-align:center}.heat .h1{background:#ffe3d2}.heat .h2{background:#ffb58c}.heat .h3{background:#f97316}.heat .h4{background:#c2410c}.heat .label{background:transparent;text-align:right;padding-right:5px}
+.toast{position:fixed;right:16px;top:64px;background:#1f1f1d;color:#fff;border-radius:var(--radius);padding:9px 12px;font-size:13px;opacity:0;transform:translateY(-5px);transition:.16s;z-index:50}.toast.show{opacity:1;transform:translateY(0)}
+.empty{display:none;padding:28px;color:#78716c;text-align:center}.drawer-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+@media(max-width:1250px){.page-grid,.report-grid{grid-template-columns:1fr}.flow-shell{grid-template-columns:220px minmax(0,1fr)}.config{grid-column:1/-1;border-left:0;border-top:1px solid var(--line);max-height:390px}.kpi-grid{grid-template-columns:repeat(3,1fr)}.chart-grid,.sub-grid{grid-template-columns:1fr}}
+@media(max-width:760px){.app{grid-template-columns:1fr}.rail{height:auto;position:static;flex-direction:row;justify-content:flex-start;overflow:auto}.rail .spacer{display:none}.main{grid-template-rows:auto 1fr}.topbar{position:static;align-items:flex-start;gap:8px;flex-direction:column;padding:10px}.top-actions{flex-wrap:wrap}.kpi-grid,.mini-metrics{grid-template-columns:1fr}.page{padding:8px}.flow-shell{display:block;height:auto}.flow-list,.config{max-height:none;border:0;border-bottom:1px solid var(--line)}}
+
+/* Presentation polish */
+:focus-visible{outline:2px solid color-mix(in srgb,#2563eb 72%,white);outline-offset:2px}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+button:disabled{cursor:not-allowed}
+@media print{body{background:#fff!important}.toast,[data-design-source-badge]{display:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="rail" aria-label="主导航">
+    <div class="logo">AV</div>
+    <button class="active" data-view-btn="bots" title="机器人方案管理">机</button>
+    <button data-view-btn="flows" title="流程配置">流</button>
+    <button data-view-btn="reports" title="综合运营报表">报</button>
+    <div class="spacer"></div>
+    <button title="系统设置">设</button>
+  </nav>
+  <main class="main">
+    <header class="topbar">
+      <div class="workspace-name">
+        <strong>AI VOICEDESK</strong>
+        <span class="pill" id="crumb">机器人方案管理</span>
+        <span class="pill">工作区：Admin User</span>
+      </div>
+      <div class="top-actions">
+        <button class="btn" onclick="toast('已刷新当前页面')">刷新</button>
+        <button class="btn primary" id="topPrimary" onclick="primaryAction()">新建配置方案</button>
+        <div class="avatar">AD</div>
+      </div>
+    </header>
+
+    <section class="view active" id="bots">
+      <div class="page page-grid">
+        <aside class="panel">
+          <div class="panel-head"><div><h1>机器人方案管理</h1><small>创建和配置 AI 语音机器人话术方案</small></div></div>
+          <div class="section">
+            <p class="section-title">搜索</p>
+            <div class="search"><input id="botSearch" placeholder="搜索名称 / 描述 / 引擎" oninput="renderBots()"></div>
+          </div>
+          <div class="section">
+            <p class="section-title">筛选</p>
+            <label class="field"><span>状态</span><select id="botStatus" onchange="renderBots()"><option>全部状态</option><option>已启用</option></select></label>
+            <label class="field"><span>引擎</span><select id="botEngine" onchange="renderBots()"><option>全部引擎</option><option>Gemini Pro 1.5</option></select></label>
+            <button class="btn" onclick="resetBots()">重置筛选</button>
+          </div>
+          <div class="section mini-metrics">
+            <div class="metric"><span>配置方案</span><b>2</b><small>当前工作区</small></div>
+            <div class="metric"><span>已启用</span><b>2</b><small>可用于任务</small></div>
+          </div>
+        </aside>
+        <section class="panel">
+          <div class="panel-head"><h2>配置方案列表</h2><button class="btn primary" onclick="toast('打开新建配置方案')">新建</button></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th style="width:22%">名称</th><th style="width:34%">描述</th><th>状态</th><th>引擎</th><th>更新时间</th><th class="num">操作</th></tr></thead>
+              <tbody id="botRows"></tbody>
+            </table>
+            <div class="empty" id="botEmpty">暂无配置方案</div>
+          </div>
+          <div class="pager"><span id="botPager">共 2 条，当前 1 / 1 页</span><span><button class="btn" disabled>上一页</button> <button class="btn" disabled>下一页</button></span></div>
+        </section>
+        <aside class="panel" id="botDetail"></aside>
+      </div>
+    </section>
+
+    <section class="view" id="flows">
+      <div class="page">
+        <div class="flow-shell">
+          <aside class="flow-list">
+            <div class="panel-head"><div><h2>流程方案列表</h2><small>搜索 / 筛选 / 分页</small></div></div>
+            <div class="toolbar">
+              <div class="search"><input id="flowSearch" placeholder="搜索流程名 / 场景 / Agent" oninput="renderFlows()"></div>
+              <select id="flowStatus" onchange="renderFlows()"><option>全部状态</option><option>草稿</option><option>已发布</option><option>运行中</option><option>已停用</option></select>
+              <select id="flowScenario" onchange="renderFlows()"><option>全部场景</option><option>催收</option><option>退款</option><option>回访</option><option>预约</option></select>
+            </div>
+            <div class="section" id="flowCards"></div>
+            <div class="pager"><span id="flowPager">共 4 条，当前 1 / 1 页</span><span><button class="btn" disabled>上一页</button> <button class="btn" disabled>下一页</button></span></div>
+            <div class="section">
+              <p class="section-title">节点库</p>
+              <div class="library-card"><b>触发器</b><span>创建运行任务并接收外部数据</span></div>
+              <div class="library-card"><b>Agent</b><span>执行语音外呼或用户沟通</span></div>
+              <div class="library-card"><b>条件</b><span>按流转条件进入不同节点</span></div>
+              <div class="library-card"><b>等待</b><span>按日期字段或事件恢复流程</span></div>
+            </div>
+          </aside>
+          <section class="flow-canvas">
+            <div class="canvas-bar">
+              <div><b>流程画布</b> · <span id="canvasTitle">逾期提醒流程</span> <span class="badge green">运行中</span></div>
+              <div><button class="btn" onclick="toast('开始试运行')">试运行</button> <button class="btn" onclick="toast('运行任务已创建')">运行任务</button> <button class="btn primary" onclick="toast('草稿已保存')">保存草稿</button></div>
+            </div>
+            <div class="canvas" id="canvas">
+              <div class="stage">
+                <div class="wire" style="left:286px;top:132px;width:168px"></div>
+                <div class="wire" style="left:668px;top:132px;width:160px"></div>
+                <div class="wire" style="left:1030px;top:132px;width:124px;transform:rotate(30deg)"></div>
+                <div class="wire" style="left:1030px;top:132px;width:124px;transform:rotate(-28deg)"></div>
+                <button class="node selected" data-node="0" style="left:80px;top:82px" onclick="openNode(0)"><div class="type">触发器</div><span class="day">D+0</span><h3>导入逾期名单</h3><p>批量启动任务</p><div class="out">输出：待外呼任务</div></button>
+                <button class="node" data-node="1" style="left:462px;top:82px" onclick="openNode(1)"><div class="type">Agent</div><span class="day">D+0</span><h3>首次外呼</h3><p>确认还款意愿</p><div class="out">输出：承诺日期</div></button>
+                <button class="node" data-node="2" style="left:836px;top:82px" onclick="openNode(2)"><div class="type">等待</div><span class="day">D+3</span><h3>等待 3 天</h3><p>按承诺日期恢复</p><div class="out">输出：检查触发时间</div></button>
+                <button class="node" data-node="3" style="left:1160px;top:28px" onclick="openNode(3)"><div class="type">条件</div><span class="day">D+3</span><h3>检查是否已还款</h3><p>支付状态分支</p><div class="out">输出：还款判断</div></button>
+                <button class="node" data-node="4" style="left:1160px;top:214px" onclick="openNode(4)"><div class="type">Agent</div><span class="day">D+3</span><h3>第二次外呼</h3><p>未还款跟进</p><div class="out">输出：跟进原因</div></button>
+                <button class="edge" style="left:355px;top:106px" onclick="openEdge(0)">已承诺</button>
+                <button class="edge" style="left:724px;top:106px" onclick="openEdge(1)">到期检查</button>
+                <button class="edge" style="left:1060px;top:180px" onclick="openEdge(2)">未还款</button>
+              </div>
+            </div>
+          </section>
+          <aside class="config">
+            <div class="panel-head"><h2 id="configTitle">节点配置</h2><button class="btn danger" onclick="toast('确认删除节点')">节点删除</button></div>
+            <div id="configBody"></div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="reports">
+      <div class="page report-grid">
+        <aside class="panel">
+          <div class="panel-head"><div><h1>综合运营报表</h1><small>筛选会影响 KPI、图表和明细</small></div></div>
+          <div class="section">
+            <p class="section-title">时间筛选</p>
+            <div class="seg" id="timeSeg"><button>今日</button><button>昨日</button><button>本周</button><button class="active">本月</button></div>
+          </div>
+          <div class="section">
+            <p class="section-title">机器人筛选</p>
+            <label class="field"><span>机器人</span><select><option>全部机器人</option><option>滴滴出行智能客服</option><option>电商售后机器人</option><option>银行信用卡服务</option><option>保险理赔助手</option><option>餐饮预订机器人</option></select></label>
+            <label class="field"><span>呼叫方向</span><select><option>全部呼叫</option><option>呼入</option><option>外呼</option></select></label>
+            <div class="drawer-actions"><button class="btn" onclick="toast('正在导出当前报表')">导出</button><button class="btn primary" onclick="toast('报表已刷新')">刷新</button></div>
+          </div>
+          <div class="section">
+            <p class="section-title">表格搜索</p>
+            <div class="search"><input placeholder="搜 Topic / Flow / 工具" oninput="filterAllTables(this)"></div>
+          </div>
+        </aside>
+        <section>
+          <div class="kpi-grid">
+            <div class="metric"><span>通话总量</span><b>1,286</b></div>
+            <div class="metric"><span>接通率</span><b>78.4%</b></div>
+            <div class="metric"><span>有效通话率</span><b>71.6%</b><small>时长 &gt;15 秒</small></div>
+            <div class="metric"><span>平均通话时长</span><b>3分12秒</b></div>
+            <div class="metric"><span>转人工量</span><b>184</b><small>14.3%</small></div>
+            <div class="metric"><span>重复呼入客户</span><b>62</b><small>4.8%</small></div>
+            <div class="metric"><span>用户主动挂断量</span><b>138</b><small>10.7%</small></div>
+          </div>
+          <div class="chart-grid">
+            <div class="panel"><div class="panel-head"><h2>通话量趋势</h2><span class="pill">本月</span></div><div class="chart"><svg viewBox="0 0 720 260" role="img" aria-label="通话量趋势"><line class="axis" x1="40" y1="220" x2="700" y2="220"/><line class="axis" x1="40" y1="30" x2="40" y2="220"/><line class="axis" x1="40" y1="170" x2="700" y2="170"/><line class="axis" x1="40" y1="110" x2="700" y2="110"/><path class="area" d="M40 190 L150 155 L260 115 L370 165 L480 80 L590 125 L700 60 L700 220 L40 220 Z"/><path class="line" d="M40 190 L150 155 L260 115 L370 165 L480 80 L590 125 L700 60"/><g fill="#78716c" font-size="11"><text x="40" y="242">06-01</text><text x="142" y="242">06-05</text><text x="252" y="242">06-10</text><text x="362" y="242">06-15</text><text x="472" y="242">06-20</text><text x="582" y="242">06-25</text><text x="680" y="242">06-30</text></g></svg></div></div>
+            <div class="panel"><div class="panel-head"><h2>挂断 / 未接通原因</h2></div><div class="section"><div class="bar-row"><span>正常结束</span><b>438（43.8%）</b></div><div class="track"><div class="fill green" style="width:88%"></div></div><div class="bar-row"><span>用户主动挂断</span><b>256（25.6%）</b></div><div class="track"><div class="fill" style="width:52%"></div></div><div class="bar-row"><span>转人工</span><b>151（15.1%）</b></div><div class="track"><div class="fill amber" style="width:31%"></div></div><div class="bar-row"><span>超时挂断</span><b>104（10.4%）</b></div><div class="track"><div class="fill blue" style="width:21%"></div></div></div></div>
+          </div>
+          <div class="sub-grid">
+            <div class="panel"><div class="panel-head"><h2>时长 / 地域</h2></div><div class="section"><div class="bar-row"><span>华东 · 3分26秒</span><b>36%</b></div><div class="track"><div class="fill" style="width:72%"></div></div><div class="bar-row"><span>华南 · 3分04秒</span><b>28%</b></div><div class="track"><div class="fill blue" style="width:56%"></div></div><div class="bar-row"><span>华北 · 2分58秒</span><b>21%</b></div><div class="track"><div class="fill green" style="width:42%"></div></div></div></div>
+            <div class="panel"><div class="panel-head"><h2>呼叫热力图</h2></div><div class="table-wrap"><div class="heat" id="heat"></div></div></div>
+          </div>
+          <div class="panel" style="margin-bottom:10px"><div class="panel-head"><h2>Topic 主题分析</h2><div class="search" style="width:220px"><input placeholder="搜索主题" oninput="filterTable(this,'topicRows')"></div></div><div class="table-wrap"><table><thead><tr><th>主题</th><th class="num">命中通话数</th><th>主题占比</th><th class="num">首次主题通话数</th><th class="num">首次主题占比</th></tr></thead><tbody id="topicRows"><tr><td>高危安全拦截</td><td class="num">486</td><td>38%</td><td class="num">212</td><td class="num">16%</td></tr><tr><td>物品遗失查找</td><td class="num">398</td><td>31%</td><td class="num">184</td><td class="num">14%</td></tr><tr><td>费用异议/绕路</td><td class="num">326</td><td>25%</td><td class="num">139</td><td class="num">11%</td></tr></tbody></table></div></div>
+          <div class="panel" style="margin-bottom:10px"><div class="panel-head"><h2>Flow 流程分析</h2><div class="search" style="width:240px"><input placeholder="搜索 Flow / 机器人" oninput="filterTable(this,'reportFlowRows')"></div></div><div class="table-wrap"><table><thead><tr><th>Flow 名称</th><th>机器人</th><th class="num">进入量</th><th class="num">完成率</th><th class="num">平均流程时长</th><th>明细</th></tr></thead><tbody id="reportFlowRows"><tr><td>身份验证</td><td>滴滴出行智能客服</td><td class="num">814</td><td class="num"><span class="badge blue">78%</span></td><td class="num">42秒</td><td><button class="btn" onclick="toast('查看 Step 明细')">Step 明细</button></td></tr><tr><td>预约修改</td><td>餐饮预订机器人</td><td class="num">689</td><td class="num"><span class="badge amber">64%</span></td><td class="num">55秒</td><td><button class="btn" onclick="toast('查看边 / 分支')">边 / 分支</button></td></tr></tbody></table></div></div>
+          <div class="panel"><div class="panel-head"><h2>工具调用报表</h2><div class="search" style="width:260px"><input placeholder="搜工具 / 类型 / 失败原因" oninput="filterTable(this,'toolRows')"></div></div><div class="table-wrap"><table style="min-width:1320px"><thead><tr><th>工具名称</th><th>关联机器人</th><th>类型</th><th class="num">调用次数</th><th class="num">成功率</th><th class="num">平均耗时</th><th class="num">超时次数</th><th class="num">直接播报次数</th><th class="num">直接播报成功率</th><th class="num">调模型回复次数</th><th class="num">节省模型次数</th><th>失败原因 TOP1</th></tr></thead><tbody id="toolRows"><tr><td><b>订单查询工具</b></td><td>1 个</td><td><span class="badge blue">API</span></td><td class="num">849</td><td class="num"><span class="badge amber">86.0%</span></td><td class="num">1163ms</td><td class="num">38</td><td class="num">165</td><td class="num">98.0%</td><td class="num">227</td><td class="num">490</td><td>接口超时</td></tr><tr><td><b>人工转接工具</b></td><td>5 个</td><td><span class="badge blue">TRANSFER</span></td><td class="num">621</td><td class="num"><span class="badge blue">93.0%</span></td><td class="num">448ms</td><td class="num">22</td><td class="num">60</td><td class="num">95.0%</td><td class="num">132</td><td class="num">83</td><td>坐席忙线</td></tr><tr><td><b>身份校验函数</b></td><td>4 个</td><td><span class="badge blue">FUNCTION</span></td><td class="num">544</td><td class="num"><span class="badge blue">92.0%</span></td><td class="num">2102ms</td><td class="num">32</td><td class="num">34</td><td class="num">90.0%</td><td class="num">185</td><td class="num">164</td><td>参数缺失</td></tr></tbody></table></div></div>
+        </section>
+      </div>
+    </section>
+  </main>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const botData=[
+  {name:"滴滴出行智能客服 (Demo)",desc:"全场景演示：包含安全拦截、遗失物寻找、费用申诉自动化处理流程。",status:"已启用",engine:"Gemini Pro 1.5",date:"2026/6/8"},
+  {name:"AI 语音 Agent 演示 (多工具场景)",desc:"完整演示语音 Agent 边聊天边调用工具的能力，包含订单查询、物流追踪、企业微信添加、余额查询等完整场景。",status:"已启用",engine:"Gemini Pro 1.5",date:"2026/6/8"}
+];
+const flowData=[
+  ["逾期提醒流程","催收","运行中","226","78%","16","D+0 / D+3 / D+10"],
+  ["售后退款流程","退款","已发布","68","82%","4","提交后 24 小时"],
+  ["服务回访流程","回访","草稿","0","-","0","通话结束后"],
+  ["预约修改流程","预约","已停用","12","64%","2","用户来电触发"]
+];
+const nodes=[
+  ["导入逾期名单","触发器","批量启动任务","从账务系统读取逾期名单并创建任务实例。","待外呼任务"],
+  ["首次外呼","Agent","承诺还款","确认还款意愿并记录承诺日期。","承诺日期"],
+  ["等待 3 天","等待","恢复检查","按承诺日期恢复流程并检查支付状态。","检查触发时间"],
+  ["检查是否已还款","条件","支付状态分支","查询支付结果并决定后续流转。","还款判断"],
+  ["第二次外呼","Agent","未还款跟进","确认未还款原因并更新跟进结果。","跟进原因"]
+];
+const edges=[["已承诺","首次外呼","等待 3 天","条件命中","promise_date 不为空"],["到期检查","等待 3 天","检查是否已还款","定时恢复","当前时间 >= promise_date"],["未还款","检查是否已还款","第二次外呼","条件分支","paid_amount < due_amount"]];
+function toast(text){const el=document.getElementById("toast");el.textContent=text;el.classList.add("show");clearTimeout(window.__toast);window.__toast=setTimeout(()=>el.classList.remove("show"),1600)}
+function switchView(id){document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id===id));document.querySelectorAll("[data-view-btn]").forEach(b=>b.classList.toggle("active",b.dataset.viewBtn===id));const names={bots:"机器人方案管理",flows:"流程配置",reports:"综合运营报表"};document.getElementById("crumb").textContent=names[id];document.getElementById("topPrimary").textContent=id==="bots"?"新建配置方案":id==="flows"?"保存草稿":"导出报表"}
+function primaryAction(){const page=document.querySelector(".view.active").id;if(page==="bots")toast("打开新建配置方案");else if(page==="flows")toast("草稿已保存");else toast("正在导出当前报表")}
+document.querySelectorAll("[data-view-btn]").forEach(btn=>btn.addEventListener("click",()=>switchView(btn.dataset.viewBtn)));
+function statusClass(s){return s==="运行中"||s==="已启用"?"green":s==="已发布"?"blue":s==="草稿"?"amber":"red"}
+function renderBots(){const q=document.getElementById("botSearch").value.trim().toLowerCase();const status=document.getElementById("botStatus").value;const engine=document.getElementById("botEngine").value;const list=botData.filter(b=>(!q||(b.name+b.desc+b.engine).toLowerCase().includes(q))&&(status==="全部状态"||b.status===status)&&(engine==="全部引擎"||b.engine===engine));document.getElementById("botRows").innerHTML=list.map(b=>{const sourceIndex=botData.indexOf(b);return `<tr data-row data-idx="${sourceIndex}" onclick="selectBot(${sourceIndex})"><td><div class="name">${b.name}</div></td><td><div class="desc">${b.desc}</div></td><td><span class="badge ${statusClass(b.status)}">${b.status}</span></td><td class="mono">${b.engine}</td><td>${b.date}</td><td class="num"><button class="btn" onclick="event.stopPropagation();selectBot(${sourceIndex});toast('进入编辑')">编辑</button> <button class="btn danger" onclick="event.stopPropagation();toast('已触发删除确认')">删除</button></td></tr>`}).join("");document.getElementById("botEmpty").style.display=list.length?"none":"block";document.getElementById("botPager").textContent=`共 ${list.length} 条，当前 1 / 1 页`}
+function selectBot(i){const b=botData[i]||botData[0];document.querySelectorAll("#botRows tr").forEach(r=>r.classList.toggle("selected",Number(r.dataset.idx)===i));document.getElementById("botDetail").innerHTML=`<div class="panel-head"><div><h2>${b.name}</h2><small>当前方案详情</small></div><span class="badge ${statusClass(b.status)}">${b.status}</span></div><div class="section"><p style="margin:0;color:#57534e">${b.desc}</p></div><div class="section"><p class="section-title">基础信息</p><div class="kv"><span>名称</span><b>${b.name}</b><span>状态</span><b>${b.status}</b><span>引擎</span><b>${b.engine}</b><span>更新时间</span><b>${b.date}</b><span>操作</span><b>编辑 / 删除</b></div><div class="drawer-actions"><button class="btn" onclick="toast('进入编辑')">编辑</button><button class="btn danger" onclick="toast('已触发删除确认')">删除</button></div></div>`}
+function resetBots(){document.getElementById("botSearch").value="";document.getElementById("botStatus").value="全部状态";document.getElementById("botEngine").value="全部引擎";renderBots();selectBot(0)}
+function renderFlows(){const q=document.getElementById("flowSearch").value.trim().toLowerCase();const status=document.getElementById("flowStatus").value;const scenario=document.getElementById("flowScenario").value;const list=flowData.filter(f=>(!q||f.join("").toLowerCase().includes(q))&&(status==="全部状态"||f[2]===status)&&(scenario==="全部场景"||f[1]===scenario));document.getElementById("flowCards").innerHTML=list.map((f,i)=>`<button class="list-item ${i===0?"active":""}" onclick="selectFlow('${f[0]}',this)"><strong>${f[0]}</strong><small>${f[1]} · ${f[6]}</small><small><span class="badge ${statusClass(f[2])}">${f[2]}</span> 运行任务 ${f[3]} · 完成率 ${f[4]} · 异常 ${f[5]}</small></button>`).join("");document.getElementById("flowPager").textContent=`共 ${list.length} 条，当前 1 / 1 页`}
+function selectFlow(name,btn){document.querySelectorAll(".list-item").forEach(x=>x.classList.remove("active"));btn.classList.add("active");document.getElementById("canvasTitle").textContent=name;toast("已切换流程方案")}
+function openNode(i){document.querySelectorAll(".node").forEach(n=>n.classList.toggle("selected",Number(n.dataset.node)===i));const n=nodes[i];let extra="";if(n[1]==="等待"){extra=`<div class="section"><p class="section-title">等待恢复条件</p><label class="field"><span>等待方式</span><select><option>日期字段</option><option>固定等待</option><option>外部事件</option></select></label><label class="field"><span>提前恢复事件</span><input value="payment_status_changed"></label><label class="field"><span>超时后去向</span><input value="检查是否已还款"></label></div>`}else if(n[1]==="条件"){extra=`<div class="section"><p class="section-title">条件构建器</p><label class="field"><span>判断字段</span><input value="paid_amount"></label><label class="field"><span>判断关系</span><select><option>大于等于</option><option>等于</option><option>不等于</option></select></label><label class="field"><span>默认分支</span><input value="第二次外呼"></label></div>`}else if(n[1]==="触发器"){extra=`<div class="section"><p class="section-title">工具调用配置</p><label class="field"><span>工具名称</span><input value="逾期名单同步接口"></label><label class="field"><span>参数映射</span><textarea>customer_id -> customerId，task_id -> taskId</textarea></label></div>`}else{extra=`<div class="section"><p class="section-title">Agent 执行配置</p><label class="field"><span>执行说明</span><textarea>按执行目标处理当前任务，并记录处理结果。</textarea></label><label class="field"><span>人工交接摘要</span><textarea>客户：{{customer_name}}；当前节点：{{node_name}}；处理摘要：{{summary}}。</textarea></label></div>`}document.getElementById("configTitle").textContent="节点配置";document.getElementById("configBody").innerHTML=`<div class="section"><p class="section-title">基础信息</p><label class="field"><span>节点名称</span><input value="${n[0]}"></label><label class="field"><span>节点类型</span><input value="${n[1]}"></label><label class="field"><span>节点描述</span><textarea>${n[3]}</textarea></label><label class="field"><span>输出说明</span><input value="${n[4]}"></label></div>${extra}<div class="section"><p class="section-title">危险操作</p><button class="btn danger" onclick="toast('确认删除节点')">节点删除</button></div>`}
+function openEdge(i){const e=edges[i];document.getElementById("configTitle").textContent="流转条件";document.getElementById("configBody").innerHTML=`<div class="section"><p class="section-title">流转关系</p><label class="field"><span>起点</span><input value="${e[1]}" readonly></label><label class="field"><span>终点</span><input value="${e[2]}" readonly></label><label class="field"><span>流转名称</span><input value="${e[0]}"></label></div><div class="section"><p class="section-title">流转条件</p><label class="field"><span>流转类型</span><input value="${e[3]}"></label><label class="field"><span>命中条件</span><textarea>${e[4]}</textarea></label><label><input type="checkbox"> 默认分支</label></div>`}
+function filterTable(input,id){const q=input.value.trim().toLowerCase();document.querySelectorAll("#"+id+" tr").forEach(r=>r.style.display=r.textContent.toLowerCase().includes(q)?"":"none")}
+function filterAllTables(input){["topicRows","reportFlowRows","toolRows"].forEach(id=>filterTable(input,id))}
+function buildHeat(){const box=document.getElementById("heat");const hours=Array.from({length:24},(_,i)=>String(i).padStart(2,"0"));box.innerHTML=`<div></div>${hours.map(h=>`<div>${h}</div>`).join("")}`+["周一","周二","周三","周四","周五"].map((d,ri)=>`<div class="label">${d}</div>${hours.map((_,i)=>`<div class="h${((i+ri)%4)+1}"></div>`).join("")}`).join("")}
+document.querySelectorAll("#timeSeg button").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll("#timeSeg button").forEach(x=>x.classList.remove("active"));b.classList.add("active");toast("已按当前时间范围刷新")}));
+renderBots();selectBot(0);renderFlows();openNode(0);buildHeat();
+</script>
+</body>
+</html>

@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI VOICEDESK · HTML 展示中心</title>
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --panel: #ffffff;
+      --line: #e5e7eb;
+      --text: #111827;
+      --muted: #64748b;
+      --soft: #94a3b8;
+      --brand: #2563eb;
+      --brand-weak: #eff6ff;
+      --good: #0f766e;
+      --risk: #b42318;
+      --shadow: 0 18px 45px rgba(15, 23, 42, .08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+    }
+    .shell { display: grid; grid-template-columns: 390px minmax(0, 1fr); min-height: 100vh; }
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow: auto;
+      padding: 24px;
+      border-right: 1px solid var(--line);
+      background: rgba(255, 255, 255, .92);
+      backdrop-filter: blur(16px);
+    }
+    .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+    .logo {
+      width: 38px; height: 38px; border-radius: 12px;
+      display: grid; place-items: center;
+      color: #fff; font-weight: 800;
+      background: linear-gradient(135deg, #2563eb, #0f766e);
+      box-shadow: 0 10px 25px rgba(37, 99, 235, .22);
+    }
+    .brand h1 { margin: 0; font-size: 18px; letter-spacing: -.02em; }
+    .brand p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .stat {
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #f8fafc;
+    }
+    .stat b { display: block; font-size: 20px; }
+    .stat span { color: var(--muted); font-size: 12px; }
+    .search {
+      width: 100%; height: 42px; padding: 0 13px;
+      border: 1px solid var(--line); border-radius: 14px;
+      outline: none; color: var(--text); background: #fff;
+    }
+    .search:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(37, 99, 235, .12); }
+    .filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 18px; }
+    .filter {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: #475569;
+      padding: 8px 11px;
+      border-radius: 999px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .filter:hover { border-color: #bfdbfe; color: var(--brand); }
+    .filter.active { color: var(--brand); background: var(--brand-weak); border-color: #bfdbfe; font-weight: 700; }
+    .list { display: grid; gap: 10px; padding-bottom: 24px; }
+    .card {
+      width: 100%; text-align: left; cursor: pointer;
+      border: 1px solid var(--line); border-radius: 18px;
+      background: #fff; padding: 15px;
+      transition: .16s ease;
+    }
+    .card:hover { transform: translateY(-1px); box-shadow: 0 12px 30px rgba(15,23,42,.08); }
+    .card.active { border-color: #93c5fd; box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
+    .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .card h2 { margin: 0; font-size: 15px; line-height: 1.35; letter-spacing: -.01em; }
+    .card p { margin: 8px 0 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
+    .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+    .tag { padding: 4px 7px; border-radius: 999px; background: #f1f5f9; color: #475569; font-size: 11px; }
+    .tag.primary { background: #ecfeff; color: var(--good); font-weight: 700; }
+    .tag.risk { background: #fff1f2; color: var(--risk); font-weight: 700; }
+    .main { min-width: 0; padding: 24px; }
+    .hero {
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      margin-bottom: 16px;
+    }
+    .hero h2 { margin: 0; font-size: 24px; letter-spacing: -.03em; }
+    .hero p { margin: 7px 0 0; color: var(--muted); }
+    .actions { display: flex; gap: 10px; }
+    .btn {
+      border: 1px solid var(--line); background: #fff; color: #334155;
+      height: 40px; padding: 0 14px; border-radius: 13px;
+      font-weight: 700; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;
+    }
+    .btn.primary { border-color: var(--brand); background: var(--brand); color: #fff; }
+    .viewer {
+      height: calc(100vh - 112px);
+      min-height: 620px;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: #fff;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+    .viewer iframe { width: 100%; height: 100%; border: 0; display: block; background: #fff; }
+    .empty {
+      display: none; padding: 32px; text-align: center; color: var(--muted);
+      border: 1px dashed var(--line); border-radius: 18px; background: #fff;
+    }
+    @media (max-width: 1080px) {
+      .shell { grid-template-columns: 1fr; }
+      .sidebar { position: relative; height: auto; }
+      .viewer { height: 72vh; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo">AI</div>
+        <div>
+          <h1>AI VOICEDESK HTML 展示中心</h1>
+          <p>统一收口所有静态 HTML 设计稿</p>
+        </div>
+      </div>
+      <div class="summary">
+        <div class="stat"><b id="totalCount">19</b><span>展示页</span></div>
+        <div class="stat"><b>5</b><span>分组</span></div>
+        <div class="stat"><b>2</b><span>正式候选</span></div>
+      </div>
+      <input id="search" class="search" placeholder="搜索名称、风格、模块..." />
+      <div class="filters" id="filters"></div>
+      <div class="list" id="list"></div>
+      <div class="empty" id="empty">没有找到匹配的展示页。</div>
+    </aside>
+    <main class="main">
+      <div class="hero">
+        <div>
+          <h2 id="title">Clinical Mint Ops</h2>
+          <p id="desc">正式展示候选：医疗质控 / 运营筛查风格。</p>
+        </div>
+        <div class="actions">
+          <a class="btn" id="openNew" target="_blank" rel="noreferrer">新窗口打开</a>
+          <button class="btn primary" id="reload">刷新预览</button>
+        </div>
+      </div>
+      <section class="viewer">
+        <iframe id="preview" title="HTML 展示预览"></iframe>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    // 展示页数据集中放在入口页，方便后续删减和排序。
+    const demos = [
+      { file: 'clinical-mint-screenshot-restyle.html', title: 'Clinical Mint Ops', group: '正式候选', desc: '医疗质控 / 运营筛查风格，当前主推展示方向之一。', tags: ['截图驱动', '质控', '正式候选'] },
+      { file: 'brex-risk-screenshot-restyle.html', title: 'Brex Risk Workbench', group: '正式候选', desc: '风控审计 / 权限敏感风格，当前主推展示方向之一。', tags: ['截图驱动', '审计', '正式候选'] },
+      { file: 'parchment-ops-screenshot-restyle.html', title: 'Parchment Ops Console', group: '备选方向', desc: '纸张感运营控制台，适合轻量管理后台探索。', tags: ['截图驱动', '备选'] },
+      { file: 'june-lavender-screenshot-restyle.html', title: 'June Lavender Console', group: '备选方向', desc: '浅薰衣草数据后台方向，保留作对比。', tags: ['截图驱动', '备选'] },
+      { file: 'retool-screenshot-restyle.html', title: 'Retool Screenshot Restyle', group: '截图复刻', desc: '基于线上截图母版的 Retool 风格复刻。', tags: ['截图驱动', '历史对照'] },
+      { file: 'clickhouse-screenshot-restyle.html', title: 'ClickHouse Screenshot Restyle', group: '截图复刻', desc: '基于线上截图母版的 ClickHouse 风格复刻。', tags: ['截图驱动', '历史对照'] },
+      { file: 'basedash-screenshot-restyle.html', title: 'Basedash Screenshot Restyle', group: '截图复刻', desc: '基于线上截图母版的 Basedash 风格复刻。', tags: ['截图驱动', '历史对照'] },
+      { file: 'retool-workbench.html', title: 'Retool Workbench', group: 'Moonmix 复刻', desc: 'Moonmix 四菜单结构的 Retool 工作台风格。', tags: ['四菜单', '历史对照'] },
+      { file: 'clickhouse-console.html', title: 'ClickHouse Console', group: 'Moonmix 复刻', desc: 'Moonmix 四菜单结构的 ClickHouse 控制台风格。', tags: ['四菜单', '历史对照'] },
+      { file: 'basedash-data-ops.html', title: 'Basedash Data Ops', group: 'Moonmix 复刻', desc: 'Moonmix 四菜单结构的 Basedash 数据运营风格。', tags: ['四菜单', '历史对照'] },
+      { file: 'getdesign-agent-1.html', title: 'Getdesign Agent 1', group: '三模块整页', desc: '参考 getdesign.md 后产出的第一版三模块整页。', tags: ['三模块', '实验'] },
+      { file: 'getdesign-agent-2.html', title: 'Getdesign Agent 2', group: '三模块整页', desc: '参考 getdesign.md 后产出的第二版三模块整页。', tags: ['三模块', '实验'] },
+      { file: 'getdesign-agent-3.html', title: 'Getdesign Agent 3', group: '三模块整页', desc: '参考 getdesign.md 后产出的第三版三模块整页。', tags: ['三模块', '实验'] },
+      { file: 'agent-a-enterprise-clarity.html', title: 'Agent A · Enterprise Clarity', group: '三模块整页', desc: '早期多 agent 设计方向：企业清晰度。', tags: ['三模块', '早期'] },
+      { file: 'agent-b-automation-command.html', title: 'Agent B · Automation Command', group: '三模块整页', desc: '早期多 agent 设计方向：自动化指挥台。', tags: ['三模块', '早期'] },
+      { file: 'agent-c-data-ops.html', title: 'Agent C · Data Ops', group: '三模块整页', desc: '早期多 agent 设计方向：数据运营台。', tags: ['三模块', '早期'] },
+      { file: 'bot-management-enterprise.html', title: '机器人方案管理', group: '单页原型', desc: '机器人列表与方案管理单页原型。', tags: ['单页', '机器人'] },
+      { file: 'flow-config-workbench.html', title: '流程配置工作台', group: '单页原型', desc: '长期任务 / 多 Agent 流程配置工作台原型。', tags: ['单页', '流程'] },
+      { file: 'monitoring-report-analytics.html', title: '监控报表分析', group: '单页原型', desc: '综合运营报表单页原型。', tags: ['单页', '报表'] }
+    ];
+
+    const groups = ['全部', ...Array.from(new Set(demos.map(item => item.group)))];
+    let activeGroup = '全部';
+    let activeDemo = demos[0];
+
+    const list = document.getElementById('list');
+    const filters = document.getElementById('filters');
+    const search = document.getElementById('search');
+    const empty = document.getElementById('empty');
+    const preview = document.getElementById('preview');
+    const title = document.getElementById('title');
+    const desc = document.getElementById('desc');
+    const openNew = document.getElementById('openNew');
+    const reload = document.getElementById('reload');
+    document.getElementById('totalCount').textContent = demos.length;
+
+    function renderFilters() {
+      filters.innerHTML = groups.map(group => `<button class="filter ${group === activeGroup ? 'active' : ''}" data-group="${group}">${group}</button>`).join('');
+      filters.querySelectorAll('button').forEach(button => {
+        button.addEventListener('click', () => {
+          activeGroup = button.dataset.group;
+          renderFilters();
+          renderList();
+        });
+      });
+    }
+
+    function matches(item) {
+      const keyword = search.value.trim().toLowerCase();
+      const inGroup = activeGroup === '全部' || item.group === activeGroup;
+      const text = [item.title, item.group, item.desc, item.file, ...item.tags].join(' ').toLowerCase();
+      return inGroup && (!keyword || text.includes(keyword));
+    }
+
+    function renderList() {
+      const items = demos.filter(matches);
+      empty.style.display = items.length ? 'none' : 'block';
+      list.innerHTML = items.map(item => {
+        const tags = item.tags.map(tag => `<span class="tag ${tag === '正式候选' ? 'primary' : tag === '审计' ? 'risk' : ''}">${tag}</span>`).join('');
+        return `<button class="card ${item.file === activeDemo.file ? 'active' : ''}" data-file="${item.file}">
+          <div class="card-top"><h2>${item.title}</h2><span class="tag">${item.group}</span></div>
+          <p>${item.desc}</p>
+          <div class="tags">${tags}</div>
+        </button>`;
+      }).join('');
+      list.querySelectorAll('.card').forEach(card => {
+        card.addEventListener('click', () => {
+          const next = demos.find(item => item.file === card.dataset.file);
+          if (next) selectDemo(next);
+        });
+      });
+    }
+
+    function selectDemo(item) {
+      activeDemo = item;
+      title.textContent = item.title;
+      desc.textContent = item.desc;
+      preview.src = item.file;
+      openNew.href = item.file;
+      renderList();
+    }
+
+    search.addEventListener('input', renderList);
+    reload.addEventListener('click', () => { preview.src = activeDemo.file + '?t=' + Date.now(); });
+    renderFilters();
+    renderList();
+    selectDemo(activeDemo);
+  </script>
+</body>
+</html>

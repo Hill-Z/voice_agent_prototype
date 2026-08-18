@@ -1,0 +1,5 @@
+{
+  "name": "智呼语音机器人",
+  "description": "A professional dashboard for configuring AI voice robots, including LLM settings, TTS/ASR selection, and prompt engineering.",
+  "requestFramePermissions": []
+}

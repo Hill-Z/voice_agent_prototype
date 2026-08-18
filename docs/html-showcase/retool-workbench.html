@@ -1,0 +1,292 @@
+<!--
+  文件用途：AI VOICEDESK 四个线上菜单的静态产品展示原型，覆盖智呼坐席管理、机器人配置、工具配置、外呼任务及其二级页面。
+  风格来源：基于 evidence.md 记录的线上页面语义，视觉参考 getdesign-agent-1.html 中 Retool-style internal tool 原则；只更换为浅色、高密度、细边框、小圆角、橙色主操作的内部工具台风格。
+-->
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI VOICEDESK · Retool Workbench</title>
+<style>
+:root{
+  --bg:#f7f6f2;--panel:#fff;--panel-2:#fbfaf7;--ink:#141414;--muted:#6f6a62;
+  --line:#d8d3ca;--line-2:#ebe7df;--accent:#f45d22;--accent-soft:#fff1e9;
+  --green:#147a3d;--blue:#2563eb;--amber:#a15c07;--red:#b91c1c;--dark:#232321;
+  --radius:4px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font:13px/1.45 "Microsoft YaHei","Noto Sans SC",ui-sans-serif,system-ui,sans-serif}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+.app{min-height:100vh;display:grid;grid-template-columns:268px minmax(0,1fr)}
+.sidebar{height:100vh;position:sticky;top:0;background:#20201d;color:#ddd8cf;border-right:1px solid #34332f;display:flex;flex-direction:column;overflow:auto}
+.brand{height:54px;display:flex;align-items:center;gap:10px;padding:0 14px;border-bottom:1px solid #34332f}
+.mark{width:30px;height:30px;border:1px solid #504f49;border-radius:6px;display:grid;place-items:center;color:#fff;font-weight:900;background:#2a2925}
+.brand b{font-size:14px;letter-spacing:.02em}
+.nav{padding:10px 8px}
+.nav-group{margin-bottom:12px}
+.nav-title{margin:9px 8px 5px;color:#928e85;font-size:11px;font-weight:800;letter-spacing:.06em}
+.nav button{width:100%;height:32px;border:1px solid transparent;border-radius:var(--radius);background:transparent;color:#ddd8cf;text-align:left;padding:0 9px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.nav button:hover{background:#30302c}
+.nav button.active{background:#fff;color:#1f1f1d;border-color:#fff}
+.nav small{color:#9c978d;font-size:11px}
+.nav button.active small{color:#6f6a62}
+.subnav{margin:3px 0 0 14px;padding-left:9px;border-left:1px solid #3c3a35}
+.main{min-width:0;display:grid;grid-template-rows:54px minmax(0,1fr)}
+.topbar{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.9);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 14px;gap:12px}
+.crumb{display:flex;align-items:center;gap:8px;min-width:0}
+.crumb b{white-space:nowrap}.crumb span{color:var(--muted)}
+.top-actions{display:flex;align-items:center;gap:8px}
+.avatar{width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:#fff;display:grid;place-items:center;font-weight:900;font-size:11px}
+.page{display:none;padding:12px;min-width:0}
+.page.active{display:block}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.head{min-height:42px;padding:8px 10px;border-bottom:1px solid var(--line-2);display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff}
+.head h1,.head h2,.head h3{margin:0;font-size:15px;line-height:1.2}
+.head small{display:block;margin-top:2px;color:var(--muted);font-weight:400}
+.body{padding:10px}
+.grid-main{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:10px;align-items:start}
+.split{display:grid;grid-template-columns:260px minmax(0,1fr);gap:10px}
+.toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;border-bottom:1px solid var(--line-2);background:var(--panel-2)}
+.search{position:relative;flex:1 1 220px}
+.search input{padding-left:28px}
+.search:before{content:"⌕";position:absolute;left:9px;top:6px;color:#7d776f;font-weight:800}
+input,select,textarea{height:32px;border:1px solid var(--line);background:#fff;border-radius:var(--radius);padding:0 8px;outline:0;min-width:0}
+textarea{height:82px;padding:7px 8px;resize:vertical}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(244,93,34,.12)}
+.btn{height:32px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;color:#27231f;padding:0 10px;font-weight:700;white-space:nowrap}
+.btn:hover{background:#faf8f4;border-color:#aaa39a}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.danger{color:var(--red);border-color:#f1c7c7;background:#fff}
+.btn.ghost{background:transparent}
+.badge{display:inline-flex;align-items:center;border:1px solid var(--line);background:#fff;border-radius:999px;padding:2px 7px;font-size:12px;font-weight:800;white-space:nowrap}
+.badge.green{color:var(--green);background:#effaf2;border-color:#c2eccd}
+.badge.blue{color:var(--blue);background:#eef5ff;border-color:#c8dcff}
+.badge.amber{color:var(--amber);background:#fff8e8;border-color:#f3dda8}
+.badge.red{color:var(--red);background:#fff0f0;border-color:#f2c4c4}
+.muted{color:var(--muted)}
+.mono{font-family:"Cascadia Mono","SFMono-Regular",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.table-wrap{overflow:auto}
+table{width:100%;border-collapse:collapse;min-width:960px}
+th{height:34px;background:#f3f0e9;border-bottom:1px solid var(--line);text-align:left;color:#56504a;font-size:12px;padding:0 10px;white-space:nowrap}
+td{height:42px;border-bottom:1px solid var(--line-2);padding:7px 10px;vertical-align:middle;white-space:nowrap}
+tr:hover td{background:#fff8f3}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.ops{display:flex;gap:6px;justify-content:flex-end}
+.pager{height:40px;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 10px;border-top:1px solid var(--line-2);color:var(--muted);font-size:12px}
+.metric-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:10px}
+.metric{border:1px solid var(--line);border-radius:var(--radius);background:#fff;padding:10px}
+.metric span{display:block;color:var(--muted);font-size:12px}
+.metric b{display:block;margin-top:4px;font-size:19px;font-variant-numeric:tabular-nums}
+.progress{height:8px;background:#ede8df;border-radius:999px;overflow:hidden;margin-top:8px}.progress i{display:block;height:100%;background:var(--accent);width:11%}
+.kv{display:grid;grid-template-columns:110px 1fr;gap:8px 10px}.kv span{color:var(--muted)}.kv b{font-weight:700}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 10px}
+.field span{display:block;margin-bottom:4px;color:#56504a;font-size:12px}.field input,.field select,.field textarea{width:100%}
+.tabs{display:flex;gap:0;overflow:auto;border-bottom:1px solid var(--line);background:#fff}
+.tabs button{height:36px;border:0;border-right:1px solid var(--line-2);background:#fff;padding:0 12px;white-space:nowrap;color:#4f4943;font-weight:800}
+.tabs button.active{color:var(--accent);box-shadow:inset 0 -2px 0 var(--accent);background:#fff8f3}
+.tab-panel{display:none;padding:10px}.tab-panel.active{display:block}
+.card-list{display:grid;grid-template-columns:repeat(2,minmax(240px,1fr));gap:10px}
+.card{border:1px solid var(--line);border-radius:var(--radius);background:#fff;padding:10px}
+.card h3{margin:0 0 6px;font-size:14px}.card p{margin:0 0 8px;color:var(--muted)}
+.flow-canvas{height:320px;position:relative;overflow:auto;background:#f8f6f1;background-image:linear-gradient(#e8e2d7 1px,transparent 1px),linear-gradient(90deg,#e8e2d7 1px,transparent 1px);background-size:24px 24px;border:1px solid var(--line)}
+.node{position:absolute;width:185px;border:1px solid #bdb5a8;background:#fff;border-radius:var(--radius);padding:10px}
+.node b{display:block}.wire{position:absolute;height:2px;background:#9e9589;transform-origin:left center}
+.notice{border:1px solid #f0d6b8;background:#fff8ed;color:#7a3b07;border-radius:var(--radius);padding:9px 10px;margin-bottom:10px}
+.drawer,.modal-backdrop{position:fixed;inset:0;display:none;z-index:60}
+.drawer.open,.modal-backdrop.open{display:block}
+.drawer:before,.modal-backdrop:before{content:"";position:absolute;inset:0;background:rgba(20,20,18,.25)}
+.drawer-panel{position:absolute;right:0;top:0;height:100%;width:min(560px,94vw);background:#fff;border-left:1px solid var(--line);display:grid;grid-template-rows:48px minmax(0,1fr) 50px}
+.modal{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(540px,92vw);max-height:86vh;background:#fff;border:1px solid var(--line);border-radius:var(--radius);display:grid;grid-template-rows:48px minmax(0,1fr) 50px;box-shadow:0 16px 60px rgba(0,0,0,.18)}
+.dialog-body{padding:10px;overflow:auto}
+.dialog-foot{border-top:1px solid var(--line-2);padding:8px 10px;display:flex;align-items:center;justify-content:flex-end;gap:8px;background:#fbfaf7}
+.toast{position:fixed;right:16px;top:66px;background:#20201d;color:#fff;padding:9px 12px;border-radius:var(--radius);opacity:0;transform:translateY(-5px);transition:.15s;z-index:90}.toast.show{opacity:1;transform:translateY(0)}
+.detail-only{display:none}.detail-mode .list-only{display:none}.detail-mode .detail-only{display:block}
+@media(max-width:1100px){.app{grid-template-columns:1fr}.sidebar{position:static;height:auto}.grid-main,.split{grid-template-columns:1fr}.metric-row,.card-list{grid-template-columns:1fr}.topbar{position:static}.sidebar .nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}.subnav{margin-left:0}.nav-group{margin-bottom:0}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><div class="mark">AV</div><div><b>AI VOICEDESK</b><div class="muted">控制台</div></div></div>
+    <nav class="nav" aria-label="AI VOICEDESK 菜单">
+      <div class="nav-group">
+        <div class="nav-title">核心业务</div>
+        <button class="active" data-page="seats">智呼坐席管理</button>
+        <button data-page="robots">机器人配置</button>
+        <button data-page="tools">工具配置</button>
+        <button>客户画像（暂时不做）</button>
+        <button>营销活动（暂时不做）</button>
+        <button>自动跟进（暂时不做）</button>
+        <button data-page="outbound">外呼任务</button>
+        <div class="subnav">
+          <button data-page="outbound" data-sub="tasks">外呼任务</button>
+          <button data-page="outbound" data-sub="templates">外呼模版</button>
+          <button data-page="outbound" data-sub="contacts">外呼联系单</button>
+        </div>
+        <button>通话记录</button><button>监控报表</button><button>短信管理</button><button>流程配置</button><button>代码块</button><button>信息提取配置</button>
+      </div>
+      <div class="nav-group">
+        <div class="nav-title">资源市场</div>
+        <button>机器人模版</button><button>音色市场</button>
+      </div>
+      <div class="nav-group">
+        <div class="nav-title">知识与语料</div>
+        <button>词库管理</button><button>问答对管理</button><button>知识发现</button>
+      </div>
+      <div class="nav-group">
+        <div class="nav-title">基础设施</div>
+        <button>集成中心（暂时不做）</button><button>通信网关（暂时不做）</button>
+      </div>
+      <div class="nav-group">
+        <div class="nav-title">系统设置</div>
+        <button>号码管理</button><button>IVR管理</button><button>地理组合</button><button>工作时间</button><button>文件管理</button><button>模型训练</button><button>参数设置</button>
+      </div>
+    </nav>
+  </aside>
+  <main class="main">
+    <header class="topbar">
+      <div class="crumb"><b>控制台</b><span>/</span><b id="crumbText">智呼坐席管理</b></div>
+      <div class="top-actions"><button class="btn" onclick="toast('通知中心已打开')">通知</button><div class="avatar">AD</div><b>Admin User</b></div>
+    </header>
+
+    <section class="page active" id="seats">
+      <div class="head panel"><div><h1>智呼机器人坐席管理</h1><small>管理AI坐席实例，绑定话术配置并分配并发资源。</small></div><button class="btn primary" onclick="openSeat()">新建坐席</button></div>
+      <div class="metric-row" style="margin-top:10px">
+        <div class="metric"><span>总并发许可</span><b>200</b></div><div class="metric"><span>当前占用</span><b>21</b><div class="progress"><i></i></div></div><div class="metric"><span>占用比例</span><b>11%</b></div><div class="metric"><span>资源说明</span><small>所有类型的呼叫（呼入/外呼）共享此并发资源池。</small></div>
+      </div>
+      <div class="panel">
+        <div class="toolbar"><div class="search"><input data-filter="seatRows" placeholder="搜索座席名称..."></div><label class="filter-label">任务状态</label><select><option>全部状态</option><option>已启用</option><option>已禁用</option></select></div>
+        <div class="table-wrap"><table><thead><tr><th>AI座席ID</th><th>座席名称</th><th>机器人配置</th><th class="num">数量/并发</th><th>排队语音</th><th>状态</th><th>创建时间</th><th class="num">操作</th></tr></thead><tbody id="seatRows">
+          <tr><td>9</td><td>泰康Demo-02</td><td>滴滴出行智能客服 (Demo)</td><td class="num">5</td><td>排队语音提示</td><td><span class="badge green">已启用</span></td><td>2026/3/10 16:18:37</td><td class="ops"><button class="btn" onclick="openSeat('编辑坐席')">编辑</button><button class="btn">禁用</button><button class="btn danger" onclick="confirmDelete('确认删除该坐席吗？')">删除</button></td></tr>
+          <tr><td>8</td><td>泰康Demo-01</td><td>滴滴出行智能客服 (Demo)</td><td class="num">5</td><td>排队语音提示</td><td><span class="badge green">已启用</span></td><td>2026/3/10 16:18:14</td><td class="ops"><button class="btn" onclick="openSeat('编辑坐席')">编辑</button><button class="btn">禁用</button><button class="btn danger" onclick="confirmDelete('确认删除该坐席吗？')">删除</button></td></tr>
+          <tr><td>6</td><td>天鹅到家</td><td>滴滴出行智能客服 (Demo)</td><td class="num">1</td><td>默认排队语音</td><td><span class="badge green">已启用</span></td><td>2026/3/5 14:28:16</td><td class="ops"><button class="btn" onclick="openSeat('编辑坐席')">编辑</button><button class="btn">禁用</button><button class="btn danger" onclick="confirmDelete('确认删除该坐席吗？')">删除</button></td></tr>
+          <tr><td>3</td><td>智能体坐席_外卖骑手</td><td>-</td><td class="num">1</td><td>默认排队语音</td><td><span class="badge red">已禁用</span></td><td>2026/1/19 14:59:56</td><td class="ops"><button class="btn" onclick="openSeat('编辑坐席')">编辑</button><button class="btn">启用</button><button class="btn danger" onclick="confirmDelete('确认删除该坐席吗？')">删除</button></td></tr>
+          <tr><td>5</td><td>【勿动】官网呼入</td><td>-</td><td class="num">10</td><td>默认排队语音</td><td><span class="badge green">已启用</span></td><td>2026/3/5 10:38:59</td><td class="ops"><button class="btn" onclick="openSeat('编辑坐席')">编辑</button><button class="btn">禁用</button><button class="btn danger" onclick="confirmDelete('确认删除该坐席吗？')">删除</button></td></tr>
+        </tbody></table></div><div class="pager"><span>共 5 条，当前 1 / 1 页</span><span><button class="btn">上一页</button> <button class="btn">下一页</button></span></div>
+      </div>
+    </section>
+
+    <section class="page" id="robots">
+      <div id="robotList" class="list-only">
+        <div class="head panel"><div><h1>机器人方案管理</h1><small>创建和配置您的 AI 语音机器人话术方案</small></div><button class="btn primary" onclick="showRobotEditor('新建机器人配置')">新建配置方案</button></div>
+        <div class="panel" style="margin-top:10px">
+          <div class="toolbar"><div class="search"><input data-filter="robotRows" placeholder="搜索机器人名称/描述/引擎"></div></div>
+          <div class="table-wrap"><table><thead><tr><th>名称</th><th>描述</th><th>状态</th><th>引擎</th><th>更新时间</th><th class="num">操作</th></tr></thead><tbody id="robotRows">
+            <tr><td>滴滴出行智能客服 (Demo)</td><td>全场景演示：包含安全拦截、遗失物寻找、费用申诉自动化处理流程。</td><td><span class="badge green">已启用</span></td><td>Gemini Pro 1.5</td><td>2026/6/10</td><td class="ops"><button class="btn" onclick="showRobotEditor('编辑机器人配置')">编辑</button><button class="btn danger" onclick="confirmDelete('确认删除该机器人配置吗？')">删除</button></td></tr>
+            <tr><td>🤖 语音 Agent 演示 (多工具场景)</td><td>完整演示语音 Agent 边聊天边调用工具的能力 - 包含订单查询、物流追踪、企业微信添加、余额查询等完整场景</td><td><span class="badge green">已启用</span></td><td>Gemini Pro 1.5</td><td>2026/6/10</td><td class="ops"><button class="btn" onclick="showRobotEditor('编辑机器人配置')">编辑</button><button class="btn danger" onclick="confirmDelete('确认删除该机器人配置吗？')">删除</button></td></tr>
+          </tbody></table></div><div class="pager"><span>共 2 条，当前 1 / 1 页</span></div>
+        </div>
+      </div>
+      <div id="robotEditor" class="detail-only">
+        <div class="head panel"><div><button class="btn ghost" onclick="hideRobotEditor()">返回列表</button> <b id="robotEditorTitle">编辑机器人配置</b></div><div><button class="btn">取消</button><button class="btn primary">保存配置</button></div></div>
+        <div class="panel" style="margin-top:10px">
+          <div class="tabs" id="robotTabs"></div>
+          <div id="robotTabContent"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page" id="tools">
+      <div class="head panel"><div><h1>工具配置</h1><small>管理智能体可调用工具、MCP 服务器与地理位置查询工具。</small></div><div><button class="btn" onclick="openMcp()">添加 MCP</button> <button class="btn primary" onclick="openTool()">添加工具</button></div></div>
+      <div class="split" style="margin-top:10px">
+        <aside class="panel"><div class="head"><h2>分类</h2></div><div class="body"><button class="btn" style="width:100%;margin-bottom:6px">全部 5</button><button class="btn" style="width:100%;margin-bottom:6px">API 2</button><button class="btn" style="width:100%;margin-bottom:6px">通信 1</button><button class="btn" style="width:100%;margin-bottom:6px">转接 1</button><button class="btn" style="width:100%">其他 1</button></div></aside>
+        <section class="panel"><div class="toolbar"><div class="search"><input data-filter="toolRows" placeholder="搜索工具名称/描述/类型"></div></div><div class="table-wrap"><table><thead><tr><th>工具</th><th>类型</th><th>分类</th><th>描述</th><th>工具标识</th><th>状态</th><th class="num">操作</th></tr></thead><tbody id="toolRows">
+          <tr><td>🔧 query_api</td><td>API</td><td>API</td><td>调用外部接口获取数据</td><td class="mono">tool_api_call</td><td><span class="badge green">已启用</span></td><td class="ops"><button class="btn" onclick="openTool('编辑智能体工具')">编辑</button><button class="btn danger" onclick="confirmDelete('确定删除该工具吗？')">删除</button></td></tr>
+          <tr><td>🔧 send_sms</td><td>SMS</td><td>通信</td><td>向用户发送短信通知</td><td class="mono">tool_sms</td><td><span class="badge green">已启用</span></td><td class="ops"><button class="btn" onclick="openTool('编辑智能体工具')">编辑</button><button class="btn danger" onclick="confirmDelete('确定删除该工具吗？')">删除</button></td></tr>
+          <tr><td>🔧 query_order</td><td>API</td><td>API</td><td>查询用户订单状态</td><td class="mono">tool_query_order</td><td><span class="badge green">已启用</span></td><td class="ops"><button class="btn" onclick="openTool('编辑智能体工具')">编辑</button><button class="btn danger" onclick="confirmDelete('确定删除该工具吗？')">删除</button></td></tr>
+          <tr><td>🔧 transfer_call</td><td>TRANSFER</td><td>转接</td><td>转接人工客服</td><td class="mono">tool_transfer</td><td><span class="badge green">已启用</span></td><td class="ops"><button class="btn" onclick="openTool('编辑智能体工具')">编辑</button><button class="btn danger" onclick="confirmDelete('确定删除该工具吗？')">删除</button></td></tr>
+          <tr><td>📍 query_location</td><td>CUSTOM</td><td>其他</td><td>查询地理位置信息（门店、网点等）</td><td class="mono">tool_geo_location</td><td><span class="badge green">已启用</span></td><td class="ops"><button class="btn" onclick="openLocationTool()">编辑</button><button class="btn danger" onclick="confirmDelete('确定删除该工具吗？')">删除</button></td></tr>
+        </tbody></table></div><div class="pager"><span>共 5 条，当前 1 / 1 页，表格支持横向滚动</span></div></section>
+      </div>
+    </section>
+
+    <section class="page" id="outbound">
+      <div class="list-only" id="outboundShell">
+        <div class="tabs"><button class="active" data-out="tasks">外呼任务</button><button data-out="templates">外呼模版</button><button data-out="contacts">外呼联系单</button></div>
+        <div class="tab-panel active" id="out-tasks">
+          <div class="notice">当前租户支持的外呼时间为：8:00~22:00。超出此时间，系统自动停止拨号。（如需24小时外呼，请联系运营开通）</div>
+          <div class="panel"><div class="toolbar"><select><option>全部状态</option><option>运行中</option><option>已暂停</option><option>已完成</option></select><input type="date"><input type="date"><div class="search"><input data-filter="outTaskRows" placeholder="请输入名称"></div><button class="btn">确定</button><button class="btn primary" onclick="openOutboundTask()">+ 新建外呼任务</button></div>
+          <div class="table-wrap"><table><thead><tr><th>ID</th><th>名称</th><th>状态</th><th class="num">客户数</th><th class="num">已执行</th><th class="num">客户接听</th><th class="num">未接听</th><th class="num">尝试次数</th><th class="num">操作</th></tr></thead><tbody id="outTaskRows">
+            <tr><td>84011</td><td>语音机器人英文Demo视频-外呼任务</td><td><span class="badge green">运行中</span></td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="ops"><button class="btn" onclick="showOutboundDetail()">查看</button><button class="btn" onclick="openOutboundTask('编辑外呼任务')">编辑</button><button class="btn danger" onclick="confirmDelete('确认删除该外呼任务吗？')">删除</button></td></tr>
+            <tr><td>83957</td><td>泰康01-外呼任务</td><td><span class="badge amber">已暂停</span></td><td class="num">2</td><td class="num">2</td><td class="num">2</td><td class="num">0</td><td class="num">2</td><td class="ops"><button class="btn" onclick="showOutboundDetail()">查看</button><button class="btn" onclick="openOutboundTask('编辑外呼任务')">编辑</button><button class="btn danger" onclick="confirmDelete('确认删除该外呼任务吗？')">删除</button></td></tr>
+          </tbody></table></div><div class="pager"><span>共 2 条，当前 1 / 1 页</span></div></div>
+        </div>
+        <div class="tab-panel" id="out-templates">
+          <div class="panel"><div class="toolbar"><div class="search"><input data-filter="templateRows" placeholder="请输入模版名称"></div><button class="btn">确定</button><button class="btn primary" onclick="openTemplate()">新建外呼模版</button></div><div class="table-wrap"><table><thead><tr><th>ID</th><th>名称</th><th>备注</th><th>外呼模式</th><th class="num">操作</th></tr></thead><tbody id="templateRows">
+            <tr><td>967</td><td>【官网勿动】-金融贷款受理-崔艳</td><td>-</td><td>智呼机器人</td><td class="ops"><button class="btn" onclick="openTemplate('编辑外呼模版')">编辑</button><button class="btn">复制</button><button class="btn danger" onclick="confirmDelete('确认删除该外呼模版吗？')">删除</button></td></tr>
+            <tr><td>968</td><td>【官网勿动】-金融拓客营销-孙琳</td><td>-</td><td>智呼机器人</td><td class="ops"><button class="btn" onclick="openTemplate('编辑外呼模版')">编辑</button><button class="btn">复制</button><button class="btn danger" onclick="confirmDelete('确认删除该外呼模版吗？')">删除</button></td></tr>
+          </tbody></table></div><div class="pager"><span>共 2 条，当前 1 / 1 页</span></div></div>
+        </div>
+        <div class="tab-panel" id="out-contacts">
+          <div class="panel"><div class="toolbar"><div class="search"><input data-filter="contactRows" placeholder="搜索联系单名称"></div><button class="btn">下载模版</button><button class="btn primary">上传联系单</button></div><div class="table-wrap"><table><thead><tr><th>ID</th><th>联系单名称</th><th class="num">总数量</th><th class="num">有效数量</th><th>状态</th><th>上传时间</th><th class="num">操作</th></tr></thead><tbody id="contactRows">
+            <tr><td>1024</td><td>上海地区高意向客户_20240520</td><td class="num">168</td><td class="num">160</td><td><span class="badge green">上传成功</span></td><td>2026/6/10 09:28</td><td class="ops"><button class="btn danger" onclick="confirmDelete('确认删除该联系单吗？')">删除图标</button></td></tr>
+            <tr><td>1025</td><td>北京车展留资名单</td><td class="num">96</td><td class="num">92</td><td><span class="badge green">上传成功</span></td><td>2026/6/9 15:11</td><td class="ops"><button class="btn danger" onclick="confirmDelete('确认删除该联系单吗？')">删除图标</button></td></tr>
+            <tr><td>1026</td><td>官网咨询未接通回访</td><td class="num">54</td><td class="num">51</td><td><span class="badge green">上传成功</span></td><td>2026/6/8 18:03</td><td class="ops"><button class="btn danger" onclick="confirmDelete('确认删除该联系单吗？')">删除图标</button></td></tr>
+          </tbody></table></div><div class="pager"><span>共 3 条，当前 1 / 1 页</span></div></div>
+        </div>
+      </div>
+      <div class="detail-only" id="outboundDetail">
+        <div class="head panel"><div><button class="btn ghost" onclick="hideOutboundDetail()">返回外呼任务</button> <b>查看外呼任务</b></div><div><button class="btn primary">启动任务</button><button class="btn">暂停任务</button><button class="btn danger">停止任务</button><button class="btn">告警设置</button><button class="btn" onclick="openOutboundTask('编辑外呼任务')">编辑</button></div></div>
+        <div class="panel" style="margin-top:10px"><div class="head"><h2>语音机器人英文Demo视频-外呼任务</h2><span class="badge green">运行中</span></div><div class="body kv"><span>外呼模版</span><b>【官网勿动】-金融贷款受理-崔艳</b><span>机器人话术</span><b>滴滴出行智能客服 (Demo)</b><span>任务优先级</span><b>普通</b><span>状态</span><b>运行中</b><span>外呼模式</span><b>智呼机器人</b><span>主叫号码</span><b>号码池</b><span>创建人</span><b>Admin User</b><span>呼叫并发</span><b>5</b><span>目前并发量</span><b>0</b><span>任务开始时间</span><b>2026/6/10 09:00</b><span>创建时间</span><b>2026/6/10 08:55</b><span>任务执行时间</span><b>8:00~22:00</b></div></div>
+        <div class="panel" style="margin-top:10px"><div class="tabs"><button class="active" data-detail-tab="lists">联系单列表</button><button data-detail-tab="records">智呼通话记录</button></div>
+          <div class="tab-panel active" id="detail-lists"><div class="toolbar"><button class="btn">刷新</button><div class="search"><input placeholder="搜索联系单名称"></div><button class="btn">确定</button><button class="btn">导出</button><button class="btn primary">创建联系单</button></div><div class="table-wrap"><table><thead><tr><th>ID</th><th>名称</th><th>状态</th><th>优先级</th><th class="num">客户数</th><th class="num">已执行客户数</th><th class="num">客户接听</th><th class="num">座席接听</th><th class="num">尝试次数</th><th>外呼成功率</th><th class="num">操作</th></tr></thead><tbody><tr><td>3001</td><td>英文Demo联系单</td><td><span class="badge green">运行中</span></td><td>普通</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td>0%</td><td class="ops"><button class="btn">查看</button><button class="btn">编辑</button><button class="btn">暂停</button><button class="btn danger">停止</button></td></tr></tbody></table></div></div>
+          <div class="tab-panel" id="detail-records"><div class="toolbar"><input placeholder="主叫/被叫号码"><input placeholder="意向结果"><button class="btn">查询</button></div><div class="table-wrap"><table><thead><tr><th>通话ID</th><th>被叫号码</th><th>客户姓名</th><th>开始时间</th><th>通话时长</th><th>状态</th><th>意向结果</th><th class="num">对话轮次</th><th class="num">操作</th></tr></thead><tbody><tr><td>CALL-84011-001</td><td>138****0001</td><td>Sarah</td><td>2026/6/10 09:16</td><td>0秒</td><td><span class="badge amber">待拨打</span></td><td>-</td><td class="num">0</td><td class="ops"><button class="btn">查看详情</button></td></tr></tbody></table></div></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="drawer" id="drawer"><div class="drawer-panel"><div class="head"><h2 id="drawerTitle">抽屉</h2><button class="btn" onclick="closeDrawer()">关闭</button></div><div class="dialog-body" id="drawerBody"></div><div class="dialog-foot"><button class="btn" onclick="closeDrawer()">取消</button><button class="btn primary" onclick="closeDrawer();toast('已保存')">保存</button></div></div></div>
+<div class="modal-backdrop" id="modal"><div class="modal"><div class="head"><h2 id="modalTitle">确认</h2><button class="btn" onclick="closeModal()">关闭</button></div><div class="dialog-body" id="modalBody"></div><div class="dialog-foot" id="modalFoot"></div></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const robotTabs=["基础配置","流程配置","主题管理","触发器","对话策略","变量配置","模型调试","知识检索配置","更多配置"];
+const moreTabs=["意图技能","业务分析","营销与跟进","批量评测"];
+function toast(text){const el=document.getElementById("toast");el.textContent=text;el.classList.add("show");clearTimeout(window.__toast);window.__toast=setTimeout(()=>el.classList.remove("show"),1600)}
+function setPage(page,sub){document.querySelectorAll(".page").forEach(p=>p.classList.toggle("active",p.id===page));document.querySelectorAll("[data-page]").forEach(b=>b.classList.toggle("active",b.dataset.page===page&&!b.dataset.sub));document.getElementById("crumbText").textContent={seats:"智呼坐席管理",robots:"机器人配置",tools:"工具配置",outbound:"外呼任务"}[page]||page;if(page==="outbound"&&sub){switchOutbound(sub)}}
+document.querySelectorAll("[data-page]").forEach(btn=>btn.addEventListener("click",()=>setPage(btn.dataset.page,btn.dataset.sub)));
+document.querySelectorAll("[data-filter]").forEach(input=>input.addEventListener("input",()=>{const q=input.value.trim().toLowerCase();document.querySelectorAll("#"+input.dataset.filter+" tr").forEach(row=>row.style.display=row.textContent.toLowerCase().includes(q)?"":"none")}));
+function openDrawer(title,html){document.getElementById("drawerTitle").textContent=title;document.getElementById("drawerBody").innerHTML=html;document.getElementById("drawer").classList.add("open")}
+function closeDrawer(){document.getElementById("drawer").classList.remove("open")}
+function openModal(title,body,foot){document.getElementById("modalTitle").textContent=title;document.getElementById("modalBody").innerHTML=body;document.getElementById("modalFoot").innerHTML=foot;document.getElementById("modal").classList.add("open")}
+function closeModal(){document.getElementById("modal").classList.remove("open")}
+function confirmDelete(text){openModal("删除确认",`<p>${text}</p>`,`<button class="btn" onclick="closeModal()">取消</button><button class="btn danger" onclick="closeModal();toast('已确认，仅展示样式')">删除</button>`)}
+function formFields(items){return `<div class="form-grid">${items.map(i=>`<label class="field"><span>${i[0]}</span>${i[2]==="textarea"?`<textarea>${i[1]||""}</textarea>`:`<input value="${i[1]||""}" placeholder="${i[1]||""}">`}</label>`).join("")}</div>`}
+function openSeat(title="新建AI坐席"){openDrawer(title,formFields([["座席名称","外卖骑手招聘专席"],["机器人配置","滴滴出行智能客服 (Demo)"],["排队语音提示","排队语音提示"],["并发数量","5"],["初始状态","启用"]]))}
+function showRobotEditor(title){document.getElementById("robots").classList.add("detail-mode");document.getElementById("robotEditorTitle").textContent=title;renderRobotTabs()}
+function hideRobotEditor(){document.getElementById("robots").classList.remove("detail-mode")}
+function renderRobotTabs(){document.getElementById("robotTabs").innerHTML=robotTabs.map((t,i)=>`<button class="${i===0?"active":""}" onclick="switchRobotTab(${i})">${t}</button>`).join("");document.getElementById("robotTabContent").innerHTML=robotTabs.map((t,i)=>`<div class="tab-panel ${i===0?"active":""}" id="robot-tab-${i}">${robotContent(t)}</div>`).join("")}
+function switchRobotTab(i){document.querySelectorAll("#robotTabs button").forEach((b,n)=>b.classList.toggle("active",n===i));document.querySelectorAll("#robotTabContent .tab-panel").forEach((p,n)=>p.classList.toggle("active",n===i))}
+function robotContent(t){
+ if(t==="基础配置")return formFields([["配置模板名称","滴滴出行智能客服 (Demo)"],["描述","全场景演示：包含安全拦截、遗失物寻找、费用申诉自动化处理流程。","textarea"],["Agent 角色","专业客服"],["人设","专业/友好/温和/热情/严肃"],["业务场景","网约车客服"],["大模型类型","Gemini Pro 1.5"],["温度","0.6"],["Top-P","0.9"],["TTS模型","默认TTS"],["默认音色","中文女声"],["自动语种跟随","开启"],["音色映射表（中文/粤语）","中文=默认，粤语=粤语音色"],["音量","80"],["语速","1.0"],["情绪","温和"],["TTS朗读优化","匹配文本：订单号；替换文本：订单编号；添加优化规则","textarea"],["ASR模型","默认ASR"],["静音时长(ms)","800"],["允许被打断","允许"],["ASR文本修正","错误文本：滴滴；修正文本：嘀嘀；添加修正规则","textarea"],["全局 Prompt","你是专业的语音客服。","textarea"],["业务变量参数","customer_name、order_id、city","textarea"]])+`<div class="body"><button class="btn">AI 智能生成</button> <button class="btn">添加优化规则</button> <button class="btn">添加修正规则</button> <button class="btn">多语言模板</button> <button class="btn primary">保存配置</button></div>`;
+ if(t==="流程配置")return `<div class="notice">先维护 Flow 名称和给大模型的提示词，再点击编辑流程进入流程图编辑器</div><button class="btn primary" onclick="openFlow()">新建 Flow</button><div class="card-list" style="margin-top:10px">${["主入口 Flow（入口）","身份验证 Flow","订单查询 Flow","转人工 Flow"].map(x=>`<div class="card"><h3>${x}</h3><p>Flow 描述 / 大模型提示词</p><button class="btn" onclick="openFlow('Flow 信息')">编辑</button> <button class="btn" onclick="openFlowEditor('${x}')">编辑流程</button> <button class="btn danger" onclick="confirmDelete('确定删除吗？')">删除</button></div>`).join("")}</div><div class="flow-canvas" style="margin-top:10px"><div class="wire" style="left:170px;top:82px;width:170px"></div><div class="wire" style="left:520px;top:82px;width:150px"></div><div class="node" style="left:30px;top:50px"><b>开始节点</b><span class="muted">通话进入</span></div><div class="node" style="left:360px;top:50px"><b>身份验证</b><span class="muted">校验客户</span></div><div class="node" style="left:700px;top:50px"><b>工具调用</b><span class="muted">订单查询</span></div></div>`;
+ if(t==="主题管理")return `<div class="toolbar"><button class="btn primary" onclick="openTopic()">新建主题</button><div class="search"><input placeholder="搜索主题"></div><select><option>全部</option><option>已启用</option><option>已禁用</option></select><select><option>创建时间降序</option><option>创建时间升序</option><option>更新时间降序</option><option>更新时间升序</option><option>名称升序</option><option>名称降序</option></select><button class="btn">批量启用</button><button class="btn">批量禁用</button><button class="btn danger">批量删除</button><button class="btn">清空选择</button></div>${simpleTable(["名称","问题","状态","操作"],[["遗失物寻找","乘客反馈物品遗失","已启用","编辑 / 删除"],["费用申诉","用户对费用有异议","已启用","编辑 / 删除"]])}`;
+ if(t==="触发器")return `<div class="head"><div><h2>触发器管理</h2><small>配置通话开始和结束时的自动化动作</small></div><button class="btn primary" onclick="openTrigger()">新建触发器</button></div>${simpleTable(["触发器名称","启用状态","描述","触发时机","动作","操作"],[["通话开始通知","启用","创建会话记录","通话开始","调用接口","编辑 / 删除"],["结束满意度","启用","发送满意度调查","通话结束","发送满意度调查","编辑 / 删除"]])}`;
+ if(t==="对话策略")return formFields([["开场欢迎语","您好，请问有什么可以帮您？","textarea"],["转人工策略","客户要求人工时转接","textarea"],["挂机策略","确认无其他问题后挂机","textarea"],["全局静默播音","还在吗？"],["全局超时播音","稍后再为您服务"],["长业务内容智能等待","开启"],["安全拦截策略","命中高危内容时拦截","textarea"]])+`<div class="body"><button class="btn primary">保存配置</button> <button class="btn">取消</button></div>`;
+ if(t==="变量配置")return `<button class="btn primary" onclick="toast('新建变量')">新建变量</button> <button class="btn" onclick="toast('新建实体')">新建实体</button>${simpleTable(["变量表名称","类型","说明","来源","状态","操作"],[["customer_name","String","客户姓名","系统内置","不可编辑","-"],["order_id","String","订单编号","跨轮保留","启用","编辑 / 删除"]])}${simpleTable(["实体表名称","描述","规则","操作"],[["手机号","识别手机号","11位数字","编辑 / 删除"]])}`;
+ if(t==="模型调试")return `<div class="split"><div class="panel"><div class="head"><h2>聊天调试</h2></div><div class="body"><textarea placeholder="输入测试"></textarea><button class="btn primary">运行</button> <button class="btn">清空</button></div></div><div class="panel"><div class="head"><h2>对话日志 / 工具调用结果</h2></div><div class="body mono">user: 查询订单<br>tool_query_order: success<br>assistant: 您的订单正在配送中。</div></div></div>`;
+ if(t==="知识检索配置")return formFields([["知识库检索开关","开启"],["标签/召回","售后,订单,安全"],["TopK","5"],["相似度阈值","0.72"],["答案引用","开启"]])+`<div class="body"><button class="btn primary">保存</button></div>`;
+ return `<div class="tabs">${moreTabs.map((x,i)=>`<button class="${i===0?"active":""}">${x}</button>`).join("")}</div><div class="card-list" style="padding:10px">${moreTabs.map(x=>`<div class="card"><h3>${x}</h3><p>保留对应字段和操作的跳转页面。</p><button class="btn">进入配置</button><button class="btn primary">保存</button></div>`).join("")}</div>`;
+}
+function simpleTable(head,rows){return `<div class="table-wrap"><table><thead><tr>${head.map(h=>`<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table></div><div class="pager"><span>分页：当前 1 / 1 页</span></div>`}
+function openFlow(title="新建 Flow"){openDrawer(title,formFields([["Flow 名称","主入口 Flow"],["Flow 描述 / 大模型提示词","负责主入口意图识别和流程分发。","textarea"]]))}
+function openFlowEditor(name){openDrawer("编辑："+name,`<div class="notice">流程编辑器：返回列表、编辑 Flow 名称、画布、节点、连线、右侧配置。</div>${formFields([["Flow名称",name],["右侧配置","节点参数、连线条件、工具调用配置","textarea"]])}`)}
+function openTopic(){openDrawer("主题信息",formFields([["主题类型","普通主题/流程主题"],["主题名称","费用申诉"],["启用状态","启用"],["相似问","为什么费用变高了？","textarea"],["主题描述","识别费用异议"],["绑定流程","订单查询 Flow"],["知识库标签","费用"],["提示词","识别用户是否在投诉费用","textarea"],["工具","query_order"],["实体","订单号"]]))}
+function openTrigger(){openDrawer("触发器信息",formFields([["触发器名称","通话结束短信"],["启用状态","启用"],["描述","通话结束后发送短信"],["触发时机","通话结束"],["动作","发送短信"],["短信模板ID","SMS_001"],["短信参数JSON",'{"name":"{{customer_name}}"}',"textarea"],["接口配置ID","api_001"],["接口参数JSON","{}","textarea"],["提取字段","满意度"],["调查问题","请问您是否满意本次服务？"]]))}
+function openTool(title="添加智能体工具"){openDrawer(title,formFields([["工具名称","query_order"],["工具描述","查询用户订单状态","textarea"],["关联接口","订单查询接口"],["模型使用指南","当用户询问订单进度时调用。","textarea"],["参数定义","参数来源：自定义参数/引用变量；参数名 order_id；类型 String；描述 订单号","textarea"],["工具调用开始话术","我帮您查询一下"],["工具是否需要返回结果","是"],["返回结果后直接播报","是"],["固定播报话术","查询完成"],["工具调用成功话术","已查到订单状态"],["工具调用失败话术","暂时查询失败"],["调用中客户咨询回复话术","正在查询，请稍等"]]))}
+function openMcp(){openDrawer("添加 MCP 服务器",formFields([["服务器名称","订单工具 MCP"],["启用","启用"],["服务器描述","提供订单查询工具","textarea"],["连接配置",""],["连接类型","STDIO/HTTP/WebSocket"],["STDIO 命令","node"],["参数","server.js"],["HTTP/WebSocket 服务器 URL","https://mcp.example.com"],["请求头",'{"Authorization":"Bearer token"}',"textarea"]]))}
+function openLocationTool(){openDrawer("地理位置查询工具配置",`<div class="tabs"><button class="active">数据管理</button><button>工具配置</button><button>查询测试</button></div><div class="notice">数据管理：地理位置数据、搜索门店、上传 CSV、门店名称/城市/区域/地址/电话/标签、CSV 格式要求。</div>${simpleTable(["门店名称","城市","区域","地址","电话","标签"],[["人民广场店","上海","黄浦区","南京东路100号","021-000000","核心门店"],["朝阳门店","北京","朝阳区","朝阳门外大街","010-000000","直营网点"]])}${formFields([["工具名称","query_location"],["工具描述","查询地理位置信息（门店、网点等）"],["查询开始话术","我帮您查附近网点"],["查询成功话术","已为您找到以下网点"],["查询失败话术","暂时没有找到匹配网点"],["输入查询语句","上海黄浦区附近门店"]])}`)}
+document.querySelectorAll("[data-out]").forEach(b=>b.addEventListener("click",()=>switchOutbound(b.dataset.out)));
+function switchOutbound(name){document.querySelectorAll("[data-out]").forEach(b=>b.classList.toggle("active",b.dataset.out===name));["tasks","templates","contacts"].forEach(x=>document.getElementById("out-"+x).classList.toggle("active",x===name))}
+function openOutboundTask(title="新建外呼任务"){openDrawer(title,formFields([["外呼模版","【官网勿动】-金融贷款受理-崔艳"],["任务名称","语音机器人英文Demo视频-外呼任务"],["备注","","textarea"],["启动方式","手动启动/定时启动/周期启动"],["任务结束时间","2026/6/30 22:00"],["任务优先级","普通"],["无联系人自动停止","开启"],["联系单","暂无联系单；+ 添加联系单"]]))}
+function openTemplate(title="新建外呼模版"){openDrawer(title,formFields([["模版名称","【官网勿动】-金融贷款受理-崔艳"],["备注","-"],["IVR模式","默认"],["外呼模式","智呼机器人/预测式外呼"],["机器人话术","滴滴出行智能客服 (Demo)"],["主叫号码","号码/号码池"],["任务执行时间","8:00~22:00"],["限制呼叫名单","默认"],["任务并发数","5"],["机器人并发数/分时并发","5"],["最大振铃时长(秒)","45"],["呼叫有效性(秒)","15"],["重试选项","首呼优先/重呼优先"]]))}
+function showOutboundDetail(){document.getElementById("outbound").classList.add("detail-mode");document.getElementById("crumbText").textContent="外呼任务 / 查看外呼任务"}
+function hideOutboundDetail(){document.getElementById("outbound").classList.remove("detail-mode");document.getElementById("crumbText").textContent="外呼任务"}
+document.querySelectorAll("[data-detail-tab]").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll("[data-detail-tab]").forEach(x=>x.classList.toggle("active",x===b));document.getElementById("detail-lists").classList.toggle("active",b.dataset.detailTab==="lists");document.getElementById("detail-records").classList.toggle("active",b.dataset.detailTab==="records")}));
+</script>
+</body>
+</html>

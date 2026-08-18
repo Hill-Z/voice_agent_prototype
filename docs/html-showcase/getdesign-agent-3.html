@@ -1,0 +1,996 @@
+<!--
+  getdesign.md 风格来源：https://getdesign.md/design-md/basedash
+  提炼规则：
+  1. 颜色：采用深色数据产品底色，低饱和石墨黑作为背景，青绿/蓝色只用于关键 KPI、趋势和状态，不做大面积渐变。
+  2. 字体：正文使用系统无衬线保证后台可读性，数字使用等宽字体，标题短促、冷静，突出审计感。
+  3. 间距：8px 基准网格，表格与筛选区高密度排列，模块之间用细线和面板分隔，而不是大卡片堆叠。
+  4. 组件形态：方正小圆角、细边框、轻阴影；按钮像交易/分析工具，状态标签低饱和，危险操作明确但不过度装饰。
+  5. 表格/仪表盘/工作台规则：KPI 先给口径和更新时间；筛选始终靠上；表格列可横向比较；流程画布也用指标、版本、运行任务和条件置信度辅助判断。
+-->
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI VOICEDESK · 展示版 C</title>
+  <style>
+    :root {
+      --bg: #0b0f14;
+      --panel: #10161d;
+      --panel-2: #151d26;
+      --panel-3: #1b2530;
+      --line: #263341;
+      --line-soft: #1c2732;
+      --text: #e9eef4;
+      --muted: #91a0ad;
+      --faint: #63707d;
+      --green: #34d399;
+      --cyan: #22d3ee;
+      --blue: #60a5fa;
+      --amber: #fbbf24;
+      --red: #f87171;
+      --white: #ffffff;
+      --shadow: 0 18px 44px rgba(0, 0, 0, 0.34);
+      --radius: 6px;
+      --mono: "SFMono-Regular", "Cascadia Mono", "Consolas", monospace;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background:
+        linear-gradient(180deg, rgba(34, 211, 238, 0.04), transparent 260px),
+        radial-gradient(circle at 85% 0%, rgba(52, 211, 153, 0.06), transparent 340px),
+        var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      letter-spacing: 0;
+    }
+
+    button, input, select, textarea { font: inherit; }
+
+    .shell {
+      display: grid;
+      grid-template-columns: 248px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    .side {
+      border-right: 1px solid var(--line);
+      background: rgba(12, 17, 23, 0.92);
+      padding: 20px 16px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .brand-mark {
+      width: 30px;
+      height: 30px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, #13212d, #0d131a);
+      color: var(--green);
+      font-family: var(--mono);
+      font-size: 13px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.2;
+      font-weight: 700;
+    }
+
+    .brand p {
+      margin: 3px 0 0;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .nav-label {
+      color: var(--faint);
+      font-family: var(--mono);
+      font-size: 10px;
+      text-transform: uppercase;
+      margin: 18px 6px 8px;
+    }
+
+    .tab {
+      width: 100%;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      min-height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-radius: var(--radius);
+      padding: 0 10px;
+      cursor: pointer;
+    }
+
+    .tab + .tab { margin-top: 4px; }
+
+    .tab:hover { background: rgba(255, 255, 255, 0.04); color: var(--text); }
+    .tab.active {
+      border-color: #315063;
+      background: #12202a;
+      color: var(--white);
+      box-shadow: inset 2px 0 0 var(--cyan);
+    }
+
+    .tab span:first-child { font-size: 13px; font-weight: 650; }
+    .tab span:last-child { font-family: var(--mono); font-size: 10px; color: var(--faint); }
+
+    .side-stat {
+      margin-top: 20px;
+      border: 1px solid var(--line-soft);
+      background: #0e141b;
+      border-radius: var(--radius);
+      padding: 12px;
+    }
+
+    .side-stat strong {
+      display: block;
+      font-family: var(--mono);
+      font-size: 21px;
+      color: var(--green);
+      margin-bottom: 4px;
+    }
+
+    .side-stat span { color: var(--muted); font-size: 12px; }
+
+    .main {
+      min-width: 0;
+      padding: 18px 20px 28px;
+    }
+
+    .topbar {
+      height: 54px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border: 1px solid var(--line-soft);
+      background: rgba(16, 22, 29, 0.78);
+      backdrop-filter: blur(10px);
+      border-radius: var(--radius);
+      padding: 0 14px;
+      margin-bottom: 16px;
+    }
+
+    .topbar-title { display: flex; align-items: center; gap: 10px; }
+    .topbar h2 { margin: 0; font-size: 15px; }
+    .updated { font-family: var(--mono); color: var(--faint); font-size: 11px; }
+
+    .health {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: var(--green);
+      box-shadow: 0 0 14px rgba(52, 211, 153, 0.7);
+    }
+
+    .view { display: none; }
+    .view.active { display: block; }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .panel {
+      border: 1px solid var(--line-soft);
+      background: rgba(16, 22, 29, 0.92);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .panel-head {
+      min-height: 44px;
+      border-bottom: 1px solid var(--line-soft);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      gap: 10px;
+    }
+
+    .panel-title {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 720;
+    }
+
+    .panel-sub {
+      color: var(--faint);
+      font-family: var(--mono);
+      font-size: 10px;
+      white-space: nowrap;
+    }
+
+    .metric {
+      padding: 13px 12px 12px;
+      min-height: 92px;
+    }
+
+    .metric label {
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 9px;
+    }
+
+    .metric .value {
+      font-family: var(--mono);
+      font-size: 28px;
+      line-height: 1;
+      font-weight: 700;
+    }
+
+    .metric .delta {
+      margin-top: 8px;
+      font-size: 11px;
+      color: var(--faint);
+    }
+
+    .up { color: var(--green); }
+    .down { color: var(--red); }
+    .warn { color: var(--amber); }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line-soft);
+    }
+
+    .input, .select {
+      height: 32px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: #0c1218;
+      color: var(--text);
+      padding: 0 10px;
+      outline: none;
+      min-width: 150px;
+    }
+
+    .input:focus, .select:focus { border-color: var(--cyan); box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.12); }
+    .input.search { min-width: 240px; }
+
+    .btn {
+      height: 32px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: #111922;
+      color: var(--text);
+      padding: 0 10px;
+      cursor: pointer;
+      font-weight: 650;
+      font-size: 12px;
+    }
+
+    .btn:hover { border-color: #3f5365; background: #172230; }
+    .btn.primary { background: #0f2b2f; border-color: #1f6f78; color: #d9fbff; }
+    .btn.danger { color: #ffd7d7; border-color: #5b2b32; background: #241317; }
+    .btn.ghost { background: transparent; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    th {
+      color: var(--faint);
+      font-family: var(--mono);
+      font-size: 10px;
+      text-align: left;
+      font-weight: 700;
+      height: 34px;
+      border-bottom: 1px solid var(--line-soft);
+      padding: 0 10px;
+      text-transform: uppercase;
+    }
+
+    td {
+      border-bottom: 1px solid var(--line-soft);
+      padding: 10px;
+      color: #d7dee6;
+      vertical-align: top;
+    }
+
+    tr:hover td { background: rgba(255, 255, 255, 0.025); }
+
+    .name { font-weight: 720; color: var(--white); }
+    .desc { color: var(--muted); font-size: 11px; margin-top: 3px; max-width: 340px; }
+    .mono { font-family: var(--mono); }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      height: 22px;
+      padding: 0 7px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.03);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .badge.green { color: #baf7d9; border-color: rgba(52, 211, 153, 0.35); background: rgba(52, 211, 153, 0.08); }
+    .badge.blue { color: #cde4ff; border-color: rgba(96, 165, 250, 0.35); background: rgba(96, 165, 250, 0.08); }
+    .badge.amber { color: #ffe6a5; border-color: rgba(251, 191, 36, 0.36); background: rgba(251, 191, 36, 0.08); }
+    .badge.red { color: #ffd1d1; border-color: rgba(248, 113, 113, 0.35); background: rgba(248, 113, 113, 0.08); }
+
+    .split {
+      display: grid;
+      grid-template-columns: minmax(0, 1.6fr) 340px;
+      gap: 10px;
+      align-items: start;
+    }
+
+    .detail {
+      padding: 12px;
+      position: sticky;
+      top: 72px;
+    }
+
+    .detail h3 { margin: 0 0 6px; font-size: 15px; }
+    .detail p { margin: 0 0 12px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+
+    .kv {
+      display: grid;
+      grid-template-columns: 90px 1fr;
+      gap: 8px;
+      padding: 8px 0;
+      border-top: 1px solid var(--line-soft);
+      font-size: 12px;
+    }
+
+    .kv span:first-child { color: var(--faint); }
+    .kv span:last-child { color: var(--text); }
+
+    .mini-chart {
+      height: 46px;
+      display: flex;
+      align-items: end;
+      gap: 4px;
+      padding: 6px 0 2px;
+    }
+
+    .bar {
+      flex: 1;
+      min-width: 4px;
+      border-radius: 2px 2px 0 0;
+      background: linear-gradient(180deg, var(--cyan), rgba(34, 211, 238, 0.12));
+    }
+
+    .flow-layout {
+      display: grid;
+      grid-template-columns: 290px minmax(540px, 1fr) 320px;
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .list-card {
+      border-bottom: 1px solid var(--line-soft);
+      padding: 11px 12px;
+      cursor: pointer;
+    }
+
+    .list-card:hover, .list-card.active { background: rgba(34, 211, 238, 0.05); }
+    .list-card.active { box-shadow: inset 2px 0 0 var(--cyan); }
+    .list-card h4 { margin: 0 0 5px; font-size: 13px; }
+    .list-card p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+
+    .pager {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 10px 12px;
+      color: var(--faint);
+      font-size: 11px;
+      font-family: var(--mono);
+    }
+
+    .canvas {
+      min-height: 590px;
+      position: relative;
+      overflow: hidden;
+      background:
+        linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+        #0d131a;
+      background-size: 28px 28px;
+    }
+
+    .canvas-head {
+      position: absolute;
+      inset: 0 0 auto;
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      border-bottom: 1px solid var(--line-soft);
+      background: rgba(13, 19, 26, 0.86);
+      z-index: 2;
+    }
+
+    .node {
+      position: absolute;
+      width: 170px;
+      border: 1px solid #344554;
+      background: #111a23;
+      border-radius: 5px;
+      padding: 10px;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32);
+    }
+
+    .node h4 {
+      margin: 0 0 8px;
+      font-size: 12px;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .node p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+    .node .num { font-family: var(--mono); color: var(--green); font-size: 10px; }
+    .node.start { left: 60px; top: 94px; border-color: rgba(52, 211, 153, 0.5); }
+    .node.ask { left: 270px; top: 170px; }
+    .node.tool { left: 490px; top: 110px; border-color: rgba(96, 165, 250, 0.48); }
+    .node.condition { left: 490px; top: 320px; border-color: rgba(251, 191, 36, 0.46); }
+    .node.end { left: 710px; top: 230px; border-color: rgba(52, 211, 153, 0.5); }
+
+    .edge {
+      position: absolute;
+      height: 1px;
+      background: linear-gradient(90deg, rgba(34, 211, 238, 0.15), rgba(34, 211, 238, 0.85));
+      transform-origin: left center;
+    }
+
+    .edge.e1 { width: 145px; left: 220px; top: 180px; transform: rotate(20deg); }
+    .edge.e2 { width: 125px; left: 440px; top: 185px; transform: rotate(-18deg); }
+    .edge.e3 { width: 150px; left: 610px; top: 195px; transform: rotate(24deg); }
+    .edge.e4 { width: 120px; left: 560px; top: 336px; transform: rotate(-33deg); }
+
+    .library {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 7px;
+      padding: 12px;
+      border-top: 1px solid var(--line-soft);
+    }
+
+    .lib-item {
+      border: 1px solid var(--line-soft);
+      background: #0c1218;
+      border-radius: 4px;
+      min-height: 48px;
+      padding: 8px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .lib-item strong { display: block; color: var(--text); margin-bottom: 4px; }
+
+    .form-section { padding: 12px; border-bottom: 1px solid var(--line-soft); }
+    .form-section h4 { margin: 0 0 10px; font-size: 12px; }
+    .field { margin-bottom: 10px; }
+    .field label { display: block; color: var(--faint); font-size: 11px; margin-bottom: 5px; }
+    .field input, .field textarea, .field select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: #0c1218;
+      color: var(--text);
+      padding: 8px;
+      outline: none;
+      resize: vertical;
+    }
+
+    .condition-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: center;
+      border: 1px solid var(--line-soft);
+      background: #0c1218;
+      border-radius: 4px;
+      padding: 8px;
+      margin-bottom: 8px;
+      font-size: 11px;
+    }
+
+    .report-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(360px, 0.9fr);
+      gap: 10px;
+      align-items: start;
+    }
+
+    .chart {
+      height: 230px;
+      padding: 14px 14px 10px;
+      display: grid;
+      grid-template-rows: 1fr auto;
+      gap: 8px;
+    }
+
+    .trend {
+      position: relative;
+      border-left: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      background:
+        linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+      background-size: 100% 25%;
+    }
+
+    .line {
+      position: absolute;
+      inset: 18px 12px 24px;
+      background:
+        linear-gradient(112deg, transparent 0 8%, var(--cyan) 8% 9%, transparent 9% 18%, var(--cyan) 18% 19%, transparent 19% 31%, var(--cyan) 31% 32%, transparent 32% 44%, var(--cyan) 44% 45%, transparent 45% 58%, var(--cyan) 58% 59%, transparent 59% 72%, var(--cyan) 72% 73%, transparent 73% 86%, var(--cyan) 86% 87%, transparent 87%),
+        linear-gradient(67deg, transparent 0 12%, var(--green) 12% 13%, transparent 13% 24%, var(--green) 24% 25%, transparent 25% 39%, var(--green) 39% 40%, transparent 40% 52%, var(--green) 52% 53%, transparent 53% 67%, var(--green) 67% 68%, transparent 68% 80%, var(--green) 80% 81%, transparent 81%);
+      opacity: 0.9;
+    }
+
+    .axis {
+      display: flex;
+      justify-content: space-between;
+      color: var(--faint);
+      font-family: var(--mono);
+      font-size: 10px;
+    }
+
+    .reason-bars { padding: 14px; }
+    .reason { display: grid; grid-template-columns: 90px 1fr 42px; align-items: center; gap: 10px; margin-bottom: 12px; font-size: 12px; }
+    .track { height: 8px; background: #0b1117; border-radius: 999px; overflow: hidden; border: 1px solid var(--line-soft); }
+    .fill { height: 100%; background: linear-gradient(90deg, var(--blue), var(--cyan)); border-radius: inherit; }
+
+    .heatmap {
+      padding: 14px;
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+    }
+
+    .heat {
+      aspect-ratio: 1.35;
+      border-radius: 3px;
+      background: rgba(96, 165, 250, var(--a));
+      border: 1px solid rgba(96, 165, 250, calc(var(--a) + 0.08));
+      min-height: 24px;
+    }
+
+    .table-wrap { overflow: auto; }
+    .nowrap { white-space: nowrap; }
+    .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      border: 1px solid #2e4e45;
+      background: #0d1b19;
+      color: #c9fbe5;
+      border-radius: var(--radius);
+      padding: 10px 12px;
+      font-size: 12px;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: 0.2s ease;
+      pointer-events: none;
+    }
+
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    @media (max-width: 1180px) {
+      .shell { grid-template-columns: 1fr; }
+      .side { position: static; height: auto; display: block; }
+      .flow-layout, .split, .report-grid { grid-template-columns: 1fr; }
+      .detail { position: static; }
+      .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 760px) {
+      .main { padding: 12px; }
+      .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
+      .topbar { align-items: flex-start; height: auto; padding: 12px; flex-direction: column; }
+      .input.search { min-width: 100%; }
+      .toolbar { align-items: stretch; }
+      .input, .select, .btn { width: 100%; }
+      .canvas { overflow: auto; }
+    }
+  
+/* Presentation polish */
+:focus-visible{outline:2px solid color-mix(in srgb,#2563eb 72%,white);outline-offset:2px}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+button:disabled{cursor:not-allowed}
+@media print{body{background:#fff!important}.toast,[data-design-source-badge]{display:none!important}}
+</style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="side">
+      <div class="brand">
+        <div class="brand-mark">AI</div>
+        <div>
+          <h1>AI VOICEDESK 运营后台</h1>
+          <p>Analytics-grade prototype</p>
+        </div>
+      </div>
+      <div class="nav-label">Primary modules</div>
+      <button class="tab active" data-tab="bots"><span>机器人方案管理</span><span>01</span></button>
+      <button class="tab" data-tab="flows"><span>流程配置</span><span>02</span></button>
+      <button class="tab" data-tab="reports"><span>综合运营报表</span><span>03</span></button>
+      <div class="side-stat">
+        <strong>99.92%</strong>
+        <span>当前筛选范围数据入库完整率</span>
+      </div>
+      <div class="side-stat">
+        <strong>24m</strong>
+        <span>最近一次报表刷新延迟</span>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-title">
+          <span class="dot"></span>
+          <div>
+            <h2 id="pageTitle">机器人方案管理</h2>
+            <div class="updated">口径版本 v2026.06 · 更新时间 2026-06-10 09:42</div>
+          </div>
+        </div>
+        <div class="health">数据校验通过 · 最近 3 个批次无缺口</div>
+      </header>
+
+      <section id="bots" class="view active">
+        <div class="grid-4">
+          <div class="panel metric"><label><span>启用方案</span><span class="up">+2</span></label><div class="value">18</div><div class="delta">覆盖 6 条业务线</div></div>
+          <div class="panel metric"><label><span>平均接通后完成率</span><span class="up">+3.1%</span></label><div class="value">74.8%</div><div class="delta">按有效通话计算</div></div>
+          <div class="panel metric"><label><span>需要复核</span><span class="warn">4 项</span></label><div class="value">04</div><div class="delta">模型、知识或工具变更后未回归</div></div>
+          <div class="panel metric"><label><span>最近删除保护</span><span class="up">ON</span></label><div class="value">7d</div><div class="delta">删除前保留审计记录</div></div>
+        </div>
+
+        <div class="split">
+          <div class="panel">
+            <div class="panel-head">
+              <h3 class="panel-title">机器人方案列表</h3>
+              <span class="panel-sub">名称 / 描述 / 状态 / 引擎 / 更新时间 / 操作</span>
+            </div>
+            <div class="toolbar">
+              <span class="filter-label">搜索</span><input id="botSearch" class="input search" placeholder="搜索名称、描述或引擎" />
+              <select class="select" id="botStatus">
+                <option value="all">全部状态</option>
+                <option value="enabled">启用</option>
+                <option value="draft">草稿</option>
+                <option value="paused">停用</option>
+              </select>
+              <button class="btn primary" data-action="new-bot">新建方案</button>
+              <button class="btn" data-action="refresh-bot">刷新</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>名称</th><th>状态</th><th>引擎</th><th>更新时间</th><th>7 日完成率</th><th>操作</th></tr></thead>
+                <tbody id="botRows"></tbody>
+              </table>
+            </div>
+          </div>
+          <aside class="panel detail" id="botDetail"></aside>
+        </div>
+      </section>
+
+      <section id="flows" class="view">
+        <div class="grid-4">
+          <div class="panel metric"><label><span>流程方案</span><span class="up">+1</span></label><div class="value">12</div><div class="delta">8 个已发布，4 个草稿</div></div>
+          <div class="panel metric"><label><span>试运行通过率</span><span class="up">+4.6%</span></label><div class="value">91.3%</div><div class="delta">最近 50 次运行任务</div></div>
+          <div class="panel metric"><label><span>待修复节点</span><span class="warn">6</span></label><div class="value">06</div><div class="delta">条件缺失或工具超时</div></div>
+          <div class="panel metric"><label><span>平均流程时长</span><span class="down">+8s</span></label><div class="value">2m18s</div><div class="delta">售后类流程拉长</div></div>
+        </div>
+
+        <div class="flow-layout">
+          <section class="panel">
+            <div class="panel-head"><h3 class="panel-title">流程方案列表</h3><span class="panel-sub">筛选 / 分页</span></div>
+            <div class="toolbar">
+              <input class="input search" placeholder="搜索 Flow 名称或机器人" />
+              <select class="select"><option>全部状态</option><option>已发布</option><option>草稿</option><option>待复核</option></select>
+            </div>
+            <div class="list-card active"><h4>身份验证 Flow <span class="badge green">已发布</span></h4><p>绑定：滴滴出行智能客服 (Demo) · 完成率 82.6% · 平均 1m42s</p></div>
+            <div class="list-card"><h4>物品遗失 Flow <span class="badge blue">草稿</span></h4><p>绑定：语音 Agent 演示 (多工具场景) · 试运行 9/10 通过</p></div>
+            <div class="list-card"><h4>费用异议 Flow <span class="badge amber">待复核</span></h4><p>绑定：餐饮预订机器人 · 外呼转化 18.4%</p></div>
+            <div class="list-card"><h4>高危安全拦截 Flow <span class="badge green">已发布</span></h4><p>绑定：滴滴出行智能客服 (Demo) · 转人工率 12.1%</p></div>
+            <div class="pager"><span>第 1 / 3 页</span><span><button class="btn ghost">上一页</button> <button class="btn ghost">下一页</button></span></div>
+          </section>
+
+          <section class="panel canvas">
+            <div class="canvas-head">
+              <div><strong>流程画布：身份验证 Flow</strong> <span class="badge blue">版本 v18</span></div>
+              <div class="actions">
+                <button class="btn" data-action="dry-run">试运行</button>
+                <button class="btn" data-action="runs">运行任务</button>
+                <button class="btn primary" data-action="save-draft">保存草稿</button>
+              </div>
+            </div>
+            <div class="node start"><h4>开始节点 <span class="num">S01</span></h4><p>识别来电意图，读取客户号码与最近订单。</p></div>
+            <div class="node ask"><h4>确认身份 <span class="num">N02</span></h4><p>收集手机号后四位，失败 2 次转人工。</p></div>
+            <div class="node tool"><h4>订单查询工具 <span class="num">T03</span></h4><p>调用订单接口，超时阈值 1800ms。</p></div>
+            <div class="node condition"><h4>流转条件 <span class="num">C04</span></h4><p>已发货、未发货、查询失败三路分支。</p></div>
+            <div class="node end"><h4>结束播报 <span class="num">E05</span></h4><p>直接播报结果，必要时进入售后处理。</p></div>
+            <div class="edge e1"></div><div class="edge e2"></div><div class="edge e3"></div><div class="edge e4"></div>
+          </section>
+
+          <aside class="panel">
+            <div class="panel-head"><h3 class="panel-title">节点配置</h3><span class="panel-sub">选中 T03</span></div>
+            <div class="form-section">
+              <h4>基础配置</h4>
+              <div class="field"><label>节点名称</label><input value="订单查询工具" /></div>
+              <div class="field"><label>节点类型</label><select><option>工具调用</option><option>交互节点</option><option>条件判断</option></select></div>
+              <div class="field"><label>失败提示</label><textarea rows="3">暂时没有查到订单信息，我可以为您转接人工继续处理。</textarea></div>
+            </div>
+            <div class="form-section">
+              <h4>流转条件</h4>
+              <div class="condition-row"><span>status = shipped → 结束播报</span><button class="btn ghost">编辑</button></div>
+              <div class="condition-row"><span>status = pending → 售后处理</span><button class="btn ghost">编辑</button></div>
+              <div class="condition-row"><span>timeout = true → 转人工</span><button class="btn danger" data-action="delete-node">节点删除</button></div>
+            </div>
+            <div class="panel-head"><h3 class="panel-title">节点库</h3><span class="panel-sub">拖入画布</span></div>
+            <div class="library">
+              <div class="lib-item"><strong>交互节点</strong>收集、确认、追问</div>
+              <div class="lib-item"><strong>工具节点</strong>接口、知识、短信</div>
+              <div class="lib-item"><strong>条件节点</strong>意图、变量、结果</div>
+              <div class="lib-item"><strong>结束节点</strong>完成、转人工、挂断</div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section id="reports" class="view">
+        <div class="panel" style="margin-bottom:10px">
+          <div class="toolbar">
+            <label class="filter-label">时间筛选</label><select class="select"><option>今天</option><option>近 7 天</option><option>近 30 天</option></select>
+            <label class="filter-label">机器人筛选</label><select class="select"><option>全部机器人</option><option>滴滴出行智能客服 (Demo)</option><option>语音 Agent 演示 (多工具场景)</option><option>餐饮预订机器人</option></select>
+            <select class="select"><option>全部呼叫方向</option><option>呼入</option><option>外呼</option></select>
+            <label class="filter-label">搜索</label><input class="input search" placeholder="搜索 Topic、Flow、工具或客户号码" />
+            <button class="btn primary" data-action="export">导出</button>
+            <button class="btn" data-action="refresh-report">刷新</button>
+          </div>
+        </div>
+
+        <div class="grid-4">
+          <div class="panel metric"><label><span>通话总量</span><span class="up">+12.4%</span></label><div class="value">18,420</div><div class="delta">呼入 12,842 · 外呼 5,578</div></div>
+          <div class="panel metric"><label><span>有效处理率</span><span class="up">+2.7%</span></label><div class="value">76.2%</div><div class="delta">完成、预约、查询成功</div></div>
+          <div class="panel metric"><label><span>转人工率</span><span class="down">-1.6%</span></label><div class="value">9.8%</div><div class="delta">高危安全拦截 Flow 最高</div></div>
+          <div class="panel metric"><label><span>平均通话时长</span><span class="warn">+11s</span></label><div class="value">3m06s</div><div class="delta">短通话占比 6.4%</div></div>
+        </div>
+
+        <div class="report-grid">
+          <div class="panel">
+            <div class="panel-head"><h3 class="panel-title">通话 KPI 趋势</h3><span class="panel-sub">按当前时间与呼叫方向筛选</span></div>
+            <div class="chart">
+              <div class="trend"><div class="line"></div></div>
+              <div class="axis"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="panel">
+              <div class="panel-head"><h3 class="panel-title">原因分布</h3><span class="panel-sub">TOP 5</span></div>
+              <div class="reason-bars">
+                <div class="reason"><span>订单查询</span><div class="track"><div class="fill" style="width:82%"></div></div><span class="mono">82%</span></div>
+                <div class="reason"><span>价格咨询</span><div class="track"><div class="fill" style="width:64%"></div></div><span class="mono">64%</span></div>
+                <div class="reason"><span>物流投诉</span><div class="track"><div class="fill" style="width:43%"></div></div><span class="mono">43%</span></div>
+                <div class="reason"><span>预约提醒</span><div class="track"><div class="fill" style="width:38%"></div></div><span class="mono">38%</span></div>
+                <div class="reason"><span>身份验证</span><div class="track"><div class="fill" style="width:26%"></div></div><span class="mono">26%</span></div>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="panel-head"><h3 class="panel-title">时长 / 地域热力图</h3><span class="panel-sub">小时 × 地域</span></div>
+              <div class="heatmap">
+                <div class="heat" style="--a:.16"></div><div class="heat" style="--a:.28"></div><div class="heat" style="--a:.52"></div><div class="heat" style="--a:.74"></div><div class="heat" style="--a:.41"></div><div class="heat" style="--a:.23"></div><div class="heat" style="--a:.12"></div>
+                <div class="heat" style="--a:.22"></div><div class="heat" style="--a:.36"></div><div class="heat" style="--a:.66"></div><div class="heat" style="--a:.91"></div><div class="heat" style="--a:.55"></div><div class="heat" style="--a:.29"></div><div class="heat" style="--a:.18"></div>
+                <div class="heat" style="--a:.13"></div><div class="heat" style="--a:.31"></div><div class="heat" style="--a:.47"></div><div class="heat" style="--a:.69"></div><div class="heat" style="--a:.78"></div><div class="heat" style="--a:.33"></div><div class="heat" style="--a:.21"></div>
+                <div class="heat" style="--a:.18"></div><div class="heat" style="--a:.24"></div><div class="heat" style="--a:.39"></div><div class="heat" style="--a:.61"></div><div class="heat" style="--a:.84"></div><div class="heat" style="--a:.58"></div><div class="heat" style="--a:.27"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-top:10px">
+          <div class="panel">
+            <div class="panel-head"><h3 class="panel-title">Topic 主题分析</h3><span class="panel-sub">只看需求分布</span></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Topic</th><th>命中通话数</th><th>主题占比</th><th>首次主题占比</th></tr></thead>
+                <tbody>
+                  <tr><td class="name">订单状态查询</td><td class="mono">5,482</td><td>29.8%</td><td>42.1%</td></tr>
+                  <tr><td class="name">价格与续费咨询</td><td class="mono">3,106</td><td>16.9%</td><td>20.4%</td></tr>
+                  <tr><td class="name">物流延误投诉</td><td class="mono">2,208</td><td>12.0%</td><td>11.7%</td></tr>
+                  <tr><td class="name">预约提醒确认</td><td class="mono">1,844</td><td>10.0%</td><td>8.6%</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h3 class="panel-title">Flow 流程分析</h3><span class="panel-sub">流程级统计，可展开 Step</span></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Flow</th><th>机器人</th><th>进入量</th><th>完成率</th><th>平均流程时长</th></tr></thead>
+                <tbody>
+                  <tr><td class="name">身份验证 Flow</td><td>滴滴出行智能客服 (Demo)</td><td class="mono">7,402</td><td class="up">82.6%</td><td>1m42s</td></tr>
+                  <tr><td class="name">高危安全拦截 Flow</td><td>滴滴出行智能客服 (Demo)</td><td class="mono">2,186</td><td class="warn">61.3%</td><td>4m16s</td></tr>
+                  <tr><td class="name">物品遗失 Flow</td><td>语音 Agent 演示 (多工具场景)</td><td class="mono">1,024</td><td class="up">78.8%</td><td>2m36s</td></tr>
+                  <tr><td class="name">费用异议 Flow</td><td>餐饮预订机器人</td><td class="mono">3,318</td><td>54.9%</td><td>2m10s</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top:10px">
+          <div class="panel-head"><h3 class="panel-title">工具调用报表</h3><span class="panel-sub">稳定性 / 性能 / 失败原因</span></div>
+          <div class="toolbar">
+            <label class="filter-label">搜索</label><input class="input search" placeholder="搜索工具、Flow 或失败原因" />
+            <select class="select"><option>全部状态</option><option>成功</option><option>超时</option><option>失败</option></select>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>工具</th><th>关联 Flow</th><th>调用次数</th><th>成功率</th><th>平均耗时</th><th>超时次数</th><th>失败原因</th><th>直接播报</th><th>模型节省</th></tr></thead>
+              <tbody>
+                <tr><td class="name">订单查询接口</td><td>身份验证 Flow</td><td class="mono">8,944</td><td class="up">98.1%</td><td>642ms</td><td>41</td><td>上游限流</td><td>83.2%</td><td class="mono">6,104</td></tr>
+                <tr><td class="name">工单创建接口</td><td>高危安全拦截 Flow</td><td class="mono">1,406</td><td class="warn">91.4%</td><td>1,240ms</td><td>68</td><td>字段缺失</td><td>22.8%</td><td class="mono">380</td></tr>
+                <tr><td class="name">短信通知接口</td><td>预约提醒 Flow</td><td class="mono">2,766</td><td class="up">99.0%</td><td>418ms</td><td>12</td><td>号码无效</td><td>64.5%</td><td class="mono">1,784</td></tr>
+                <tr><td class="name">知识检索</td><td>物品遗失 Flow</td><td class="mono">4,112</td><td>95.6%</td><td>884ms</td><td>53</td><td>无匹配结果</td><td>48.9%</td><td class="mono">2,012</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast">操作已记录</div>
+
+  <script>
+    const bots = [
+      { id: 'b1', name: '滴滴出行智能客服 (Demo)', desc: '处理订单查询、物流投诉、售后转人工，绑定身份验证 Flow 与高危安全拦截 Flow。', status: 'enabled', statusText: '启用', engine: 'Gemini Pro 1.5 + ASR Pro', updated: '2026-06-10 09:18', rate: '82.6%', calls: '7,402', risk: '低' },
+      { id: 'b2', name: '语音 Agent 演示 (多工具场景)', desc: '面向团队版咨询，覆盖价格、功能、预约演示和企业资质确认。', status: 'draft', statusText: '草稿', engine: 'Gemini Pro 1.5 + TTS Pro', updated: '2026-06-09 18:04', rate: '78.8%', calls: '1,024', risk: '中' },
+      { id: 'b3', name: '餐饮预订机器人', desc: '执行沉睡客户外呼、预约确认和活动提醒，重点看外呼转化。', status: 'enabled', statusText: '启用', engine: 'Gemini Pro 1.5 + TTS Lite', updated: '2026-06-09 13:22', rate: '54.9%', calls: '3,318', risk: '中' },
+      { id: 'b4', name: '身份验证机器人', desc: '用于高风险操作前置验证，失败后进入人工复核。', status: 'paused', statusText: '停用', engine: 'Gemini Pro 1.5 + Rule Engine', updated: '2026-06-08 16:40', rate: '93.2%', calls: '884', risk: '低' }
+    ];
+
+    let selectedBot = bots[0];
+
+    function badgeFor(status, text) {
+      const tone = status === 'enabled' ? 'green' : status === 'draft' ? 'blue' : 'amber';
+      return `<span class="badge ${tone}">${text}</span>`;
+    }
+
+    function renderBots() {
+      const keyword = document.getElementById('botSearch').value.trim().toLowerCase();
+      const status = document.getElementById('botStatus').value;
+      const rows = bots.filter(bot => {
+        const hit = `${bot.name} ${bot.desc} ${bot.engine}`.toLowerCase().includes(keyword);
+        const statusHit = status === 'all' || bot.status === status;
+        return hit && statusHit;
+      }).map(bot => `
+        <tr>
+          <td><div class="name">${bot.name}</div><div class="desc">${bot.desc}</div></td>
+          <td>${badgeFor(bot.status, bot.statusText)}</td>
+          <td>${bot.engine}</td>
+          <td class="mono nowrap">${bot.updated}</td>
+          <td class="mono ${parseFloat(bot.rate) > 75 ? 'up' : 'warn'}">${bot.rate}</td>
+          <td><div class="actions"><button class="btn ghost" data-select="${bot.id}">详情</button><button class="btn ghost" data-action="edit">编辑</button><button class="btn danger" data-action="delete">删除</button></div></td>
+        </tr>`).join('');
+      document.getElementById('botRows').innerHTML = rows || '<tr><td colspan="6">没有匹配的机器人方案</td></tr>';
+      document.querySelectorAll('[data-select]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          selectedBot = bots.find(bot => bot.id === btn.dataset.select) || selectedBot;
+          renderDetail();
+        });
+      });
+    }
+
+    function renderDetail() {
+      document.getElementById('botDetail').innerHTML = `
+        <h3>${selectedBot.name}</h3>
+        <p>${selectedBot.desc}</p>
+        <div class="mini-chart">
+          <div class="bar" style="height:34%"></div><div class="bar" style="height:51%"></div><div class="bar" style="height:43%"></div><div class="bar" style="height:68%"></div><div class="bar" style="height:62%"></div><div class="bar" style="height:84%"></div><div class="bar" style="height:76%"></div>
+        </div>
+        <div class="kv"><span>状态</span><span>${badgeFor(selectedBot.status, selectedBot.statusText)}</span></div>
+        <div class="kv"><span>引擎</span><span>${selectedBot.engine}</span></div>
+        <div class="kv"><span>更新时间</span><span class="mono">${selectedBot.updated}</span></div>
+        <div class="kv"><span>通话量</span><span class="mono">${selectedBot.calls}</span></div>
+        <div class="kv"><span>完成率</span><span class="mono">${selectedBot.rate}</span></div>
+        <div class="kv"><span>复核风险</span><span>${selectedBot.risk}</span></div>
+        <div class="actions" style="margin-top:12px"><button class="btn primary" data-action="edit-detail">编辑</button><button class="btn danger" data-action="delete-detail">删除</button></div>
+      `;
+    }
+
+    function toast(text) {
+      const el = document.getElementById('toast');
+      el.textContent = text;
+      el.classList.add('show');
+      window.setTimeout(() => el.classList.remove('show'), 1800);
+    }
+
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab, .view').forEach(el => el.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(tab.dataset.tab).classList.add('active');
+        document.getElementById('pageTitle').textContent = tab.querySelector('span').textContent;
+      });
+    });
+
+    document.body.addEventListener('click', event => {
+      const action = event.target && event.target.dataset ? event.target.dataset.action : '';
+      if (!action) return;
+      const copy = {
+        'new-bot': '新建方案抽屉已打开',
+        'refresh-bot': '机器人方案已刷新',
+        edit: '编辑面板已打开',
+        delete: '删除前需要二次确认',
+        'edit-detail': '详情编辑已打开',
+        'delete-detail': '删除前需要二次确认',
+        'dry-run': '试运行任务已创建',
+        runs: '运行任务列表已打开',
+        'save-draft': '草稿已保存',
+        'delete-node': '节点删除前需要二次确认',
+        export: '报表导出任务已提交',
+        'refresh-report': '综合运营报表已刷新'
+      };
+      toast(copy[action] || '操作已记录');
+    });
+
+    document.getElementById('botSearch').addEventListener('input', renderBots);
+    document.getElementById('botStatus').addEventListener('change', renderBots);
+    renderBots();
+    renderDetail();
+  </script>
+</body>
+</html>

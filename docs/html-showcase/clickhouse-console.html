@@ -1,0 +1,1182 @@
+<!--
+  用途：Moonmix 线上四个菜单的静态产品展示复刻，覆盖智呼坐席管理、机器人配置、工具配置、外呼任务。
+  风格来源：参考统一展示中心中 getdesign-agent-2 的 ClickHouse-style automation console 的浅底技术控制台、黄色强调、等宽 ID 和工程化网格感；仅替换视觉风格，不改变证据包中的菜单、页面、按钮、字段、表格列、操作和跳转语义。
+-->
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI VOICEDESK · ClickHouse Console Replica</title>
+  <style>
+    :root {
+      --bg: #f7f7f2;
+      --paper: #ffffff;
+      --paper-soft: #fbfbf6;
+      --ink: #151515;
+      --muted: #6d716a;
+      --line: #d9ddd4;
+      --line-strong: #afb7aa;
+      --accent: #ffd829;
+      --accent-soft: #fff3a6;
+      --ok: #16834a;
+      --warn: #a96500;
+      --bad: #bd2f2a;
+      --blue: #245fbd;
+      --shadow: 0 18px 48px rgba(31, 34, 26, 0.11);
+      --radius: 6px;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      --sans: "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      font-family: var(--sans);
+      font-size: 14px;
+      line-height: 1.45;
+      background:
+        linear-gradient(90deg, rgba(21, 21, 21, 0.035) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(21, 21, 21, 0.035) 1px, transparent 1px),
+        var(--bg);
+      background-size: 24px 24px;
+    }
+
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    h1, h2, h3, p { margin: 0; }
+
+    .app {
+      display: grid;
+      grid-template-columns: 268px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      border-right: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(12px);
+      padding: 16px 12px;
+    }
+
+    .brand {
+      border: 1px solid var(--ink);
+      background: var(--accent);
+      border-radius: var(--radius);
+      box-shadow: 4px 4px 0 var(--ink);
+      padding: 12px;
+      margin-bottom: 14px;
+    }
+
+    .brand strong {
+      display: block;
+      font-size: 19px;
+      line-height: 1.1;
+    }
+
+    .brand span {
+      display: block;
+      margin-top: 5px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: rgba(21, 21, 21, 0.72);
+    }
+
+    .nav-section {
+      margin-top: 14px;
+    }
+
+    .nav-title {
+      padding: 9px 9px 5px;
+      color: var(--muted);
+      font-size: 12px;
+      font-family: var(--mono);
+      text-transform: uppercase;
+    }
+
+    .nav-btn, .sub-btn {
+      width: 100%;
+      border: 1px solid transparent;
+      background: transparent;
+      color: #4c514b;
+      border-radius: var(--radius);
+      padding: 9px 10px;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .nav-btn:hover, .sub-btn:hover {
+      border-color: var(--line);
+      background: var(--paper-soft);
+      color: var(--ink);
+    }
+
+    .nav-btn.active, .sub-btn.active {
+      border-color: var(--ink);
+      background: var(--ink);
+      color: #fff;
+    }
+
+    .sub-nav {
+      margin: 4px 0 4px 12px;
+      padding-left: 9px;
+      border-left: 1px solid var(--line);
+      display: grid;
+      gap: 4px;
+    }
+
+    .sub-btn {
+      padding: 7px 9px;
+      font-size: 13px;
+    }
+
+    .todo {
+      flex: none;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: #806700;
+      background: #fff5b7;
+      border: 1px solid #ead66a;
+      border-radius: 999px;
+      padding: 1px 6px;
+    }
+
+    main {
+      min-width: 0;
+      padding: 18px 20px 32px;
+    }
+
+    .header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: start;
+      margin-bottom: 16px;
+    }
+
+    .crumb {
+      font-family: var(--mono);
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 7px;
+    }
+
+    h1 {
+      font-size: 25px;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin-top: 7px;
+      color: var(--muted);
+      max-width: 840px;
+    }
+
+    .userbar {
+      border: 1px solid var(--ink);
+      border-radius: var(--radius);
+      background: var(--paper);
+      box-shadow: 3px 3px 0 var(--ink);
+      padding: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+
+    .mono, .num, code {
+      font-family: var(--mono);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .section {
+      display: none;
+    }
+
+    .section.active {
+      display: block;
+      animation: enter 180ms ease-out;
+    }
+
+    @keyframes enter {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .metric {
+      border: 1px solid var(--line-strong);
+      background: rgba(255, 255, 255, 0.82);
+      border-radius: var(--radius);
+      padding: 12px;
+      min-height: 92px;
+    }
+
+    .metric .label {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+
+    .metric strong {
+      display: block;
+      font-family: var(--mono);
+      font-size: 25px;
+      line-height: 1;
+    }
+
+    .metric.accent {
+      border-color: var(--ink);
+      background: linear-gradient(180deg, var(--accent), #ffe975);
+      box-shadow: 3px 3px 0 var(--ink);
+    }
+
+    .panel {
+      border: 1px solid var(--line-strong);
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: var(--radius);
+      box-shadow: 0 1px 0 rgba(21, 21, 21, 0.04);
+    }
+
+    .panel-head {
+      padding: 10px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .panel-title {
+      font-weight: 700;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .field {
+      min-height: 34px;
+      border: 1px solid var(--line-strong);
+      background: #fff;
+      border-radius: var(--radius);
+      padding: 7px 10px;
+      color: var(--ink);
+      outline: none;
+    }
+
+    textarea.field {
+      min-height: 84px;
+      resize: vertical;
+      width: 100%;
+    }
+
+    .field:focus {
+      border-color: var(--ink);
+      box-shadow: 0 0 0 3px rgba(255, 216, 41, 0.38);
+    }
+
+    .btn {
+      min-height: 34px;
+      border: 1px solid var(--ink);
+      background: #fff;
+      color: var(--ink);
+      border-radius: var(--radius);
+      padding: 7px 11px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+    }
+
+    .btn:hover {
+      transform: translate(-1px, -1px);
+      box-shadow: 2px 2px 0 var(--ink);
+    }
+
+    .btn.primary {
+      background: var(--accent);
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    .btn.ghost {
+      border-color: var(--line-strong);
+      color: #30342f;
+    }
+
+    .btn.danger {
+      color: var(--bad);
+      border-color: #d9a5a2;
+      background: #fff7f6;
+    }
+
+    .btn.link {
+      min-height: auto;
+      border: 0;
+      padding: 0;
+      background: transparent;
+      color: var(--blue);
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      scrollbar-color: var(--line-strong) transparent;
+    }
+
+    table {
+      width: 100%;
+      min-width: 920px;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #f2f2ea;
+      color: #454a43;
+      font-size: 12px;
+      font-family: var(--mono);
+      font-weight: 700;
+    }
+
+    tr:hover td {
+      background: #fffdf1;
+    }
+
+    .table-foot {
+      border-top: 1px solid var(--line);
+      padding: 9px 10px;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 12px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      border: 1px solid var(--line-strong);
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 12px;
+      background: #fff;
+    }
+
+    .badge.ok {
+      color: var(--ok);
+      border-color: #9bd7b5;
+      background: #f1fff6;
+    }
+
+    .badge.warn {
+      color: var(--warn);
+      border-color: #e0c386;
+      background: #fff9e5;
+    }
+
+    .badge.bad {
+      color: var(--bad);
+      border-color: #e3aaa6;
+      background: #fff5f3;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding: 10px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .tab {
+      flex: none;
+      border: 1px solid var(--line-strong);
+      background: #fff;
+      border-radius: var(--radius);
+      padding: 7px 10px;
+      color: #474c45;
+    }
+
+    .tab.active {
+      border-color: var(--ink);
+      background: var(--accent);
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    .tab-content {
+      display: none;
+      padding: 12px;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .form-grid.three {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .form-row {
+      display: grid;
+      gap: 5px;
+    }
+
+    .form-row label {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .wide {
+      grid-column: 1 / -1;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr) 300px;
+      min-height: 430px;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .node-list, .inspector {
+      background: var(--paper-soft);
+      padding: 12px;
+    }
+
+    .node-list {
+      border-right: 1px solid var(--line);
+    }
+
+    .inspector {
+      border-left: 1px solid var(--line);
+    }
+
+    .canvas {
+      position: relative;
+      min-height: 430px;
+      background:
+        radial-gradient(circle, rgba(21, 21, 21, 0.12) 1px, transparent 1px),
+        #fffef5;
+      background-size: 18px 18px;
+      overflow: hidden;
+    }
+
+    .flow-node {
+      position: absolute;
+      width: 150px;
+      border: 1px solid var(--ink);
+      border-radius: var(--radius);
+      background: #fff;
+      box-shadow: 3px 3px 0 rgba(21, 21, 21, 0.18);
+      padding: 9px;
+      font-size: 12px;
+    }
+
+    .flow-node.start { left: 56px; top: 58px; background: var(--accent); }
+    .flow-node.ask { left: 260px; top: 158px; }
+    .flow-node.tool { left: 472px; top: 80px; }
+    .flow-node.end { left: 492px; top: 278px; }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .flow-card, .tool-card, .mini-card {
+      border: 1px solid var(--line-strong);
+      background: #fff;
+      border-radius: var(--radius);
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .tool-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      padding: 12px;
+    }
+
+    .tool-card {
+      min-height: 196px;
+    }
+
+    .tool-type {
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+
+    .notice {
+      border: 1px solid #e6cc60;
+      background: #fff7ca;
+      border-radius: var(--radius);
+      padding: 10px 12px;
+      margin-bottom: 12px;
+      color: #5d4d00;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      padding: 12px;
+    }
+
+    .info {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+      padding: 10px;
+    }
+
+    .info span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+
+    .drawer-mask, .modal-mask {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      background: rgba(21, 21, 21, 0.28);
+    }
+
+    .drawer-mask.show, .modal-mask.show {
+      display: block;
+    }
+
+    .drawer {
+      position: absolute;
+      right: 0;
+      top: 0;
+      width: min(720px, 96vw);
+      height: 100%;
+      background: var(--paper);
+      border-left: 1px solid var(--ink);
+      box-shadow: var(--shadow);
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      animation: slideIn 170ms ease-out;
+    }
+
+    @keyframes slideIn {
+      from { transform: translateX(24px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    .drawer-head, .drawer-foot {
+      padding: 14px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .drawer-foot {
+      border-top: 1px solid var(--line);
+      border-bottom: 0;
+      justify-content: flex-end;
+    }
+
+    .drawer-body {
+      overflow-y: auto;
+      padding: 14px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .modal {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: min(560px, 94vw);
+      background: var(--paper);
+      border: 1px solid var(--ink);
+      border-radius: var(--radius);
+      box-shadow: 4px 4px 0 var(--ink), var(--shadow);
+      animation: pop 130ms ease-out;
+    }
+
+    @keyframes pop {
+      from { transform: translate(-50%, -48%) scale(0.98); opacity: 0; }
+      to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    }
+
+    .modal-head, .modal-body, .modal-foot {
+      padding: 14px;
+    }
+
+    .modal-head {
+      border-bottom: 1px solid var(--line);
+      font-weight: 700;
+    }
+
+    .modal-foot {
+      border-top: 1px solid var(--line);
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 1120px) {
+      .app { grid-template-columns: 220px minmax(0, 1fr); }
+      .metrics, .cards, .tool-grid, .detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .split { grid-template-columns: 210px minmax(0, 1fr); }
+      .inspector { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--line); }
+    }
+
+    @media (max-width: 760px) {
+      .app { display: block; }
+      .sidebar { position: relative; height: auto; }
+      .header { grid-template-columns: 1fr; }
+      .metrics, .cards, .tool-grid, .detail-grid, .form-grid, .form-grid.three { grid-template-columns: 1fr; }
+      .split { grid-template-columns: 1fr; }
+      .node-list, .inspector { border: 0; border-bottom: 1px solid var(--line); }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <strong>AI VOICEDESK</strong>
+        <span>automation console / cn-prod</span>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-title">核心业务</div>
+        <button class="nav-btn active" data-page="seats">智呼坐席管理</button>
+        <button class="nav-btn" data-page="bots">机器人配置</button>
+        <button class="nav-btn" data-page="tools">工具配置</button>
+        <button class="nav-btn disabled">客户画像（暂时不做）</button>
+        <button class="nav-btn disabled">营销活动（暂时不做）</button>
+        <button class="nav-btn disabled">自动跟进（暂时不做）</button>
+        <button class="nav-btn" data-page="outbound">外呼任务</button>
+        <div class="sub-nav">
+          <button class="sub-btn active" data-page="outbound">外呼任务</button>
+          <button class="sub-btn" data-page="templates">外呼模版</button>
+          <button class="sub-btn" data-page="contacts">外呼联系单</button>
+        </div>
+        <button class="nav-btn disabled">通话记录 <span class="todo">暂时不做</span></button>
+        <button class="nav-btn disabled">监控报表 <span class="todo">暂时不做</span></button>
+        <button class="nav-btn disabled">短信管理 <span class="todo">暂时不做</span></button>
+        <button class="nav-btn disabled">流程配置 <span class="todo">暂时不做</span></button>
+        <button class="nav-btn disabled">代码块 <span class="todo">暂时不做</span></button>
+        <button class="nav-btn disabled">信息提取配置 <span class="todo">暂时不做</span></button>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-title">资源市场</div>
+        <button class="nav-btn disabled">机器人模版 <span class="todo">暂时不做</span></button>
+        <button class="nav-btn disabled">音色市场 <span class="todo">暂时不做</span></button>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-title">知识与语料</div>
+        <button class="nav-btn disabled">词库管理 <span class="todo">暂时不做</span></button>
+        <button class="nav-btn disabled">问答对管理 <span class="todo">暂时不做</span></button>
+        <button class="nav-btn disabled">知识发现 <span class="todo">暂时不做</span></button>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-title">基础设施</div>
+        <button class="nav-btn disabled">集成中心（暂时不做）</button>
+        <button class="nav-btn disabled">通信网关（暂时不做）</button>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-title">系统设置</div>
+        <button class="nav-btn disabled">号码管理 <span class="todo">暂时不做</span></button>
+        <button class="nav-btn disabled">IVR管理 <span class="todo">暂时不做</span></button>
+        <button class="nav-btn disabled">地理组合 <span class="todo">暂时不做</span></button>
+        <button class="nav-btn disabled">工作时间 <span class="todo">暂时不做</span></button>
+        <button class="nav-btn disabled">文件管理 <span class="todo">暂时不做</span></button>
+        <button class="nav-btn disabled">模型训练 <span class="todo">暂时不做</span></button>
+        <button class="nav-btn disabled">参数设置 <span class="todo">暂时不做</span></button>
+      </div>
+    </aside>
+
+    <main>
+      <header class="header">
+        <div>
+          <div class="crumb">控制台 / <span id="crumbText">智呼坐席管理</span></div>
+          <h1 id="pageTitle">智呼机器人坐席管理</h1>
+          <p class="subtitle" id="pageSubtitle">管理AI坐席实例，绑定话术配置并分配并发资源。</p>
+        </div>
+        <div class="userbar">
+          <span class="mono">通知</span>
+          <span class="badge">AD</span>
+          <strong>Admin User</strong>
+        </div>
+      </header>
+
+      <section class="section active" id="page-seats">
+        <div class="metrics">
+          <div class="metric accent"><div class="label">总并发许可</div><strong>200</strong></div>
+          <div class="metric"><div class="label">当前占用</div><strong>21</strong></div>
+          <div class="metric"><div class="label">占用比例</div><strong>11%</strong></div>
+          <div class="metric"><div class="label">资源说明</div><p>所有类型的呼叫（呼入/外呼）共享此并发资源池。</p></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <div class="toolbar">
+              <input class="field js-search" data-table="seatTable" placeholder="搜索座席名称..." />
+              <label class="filter-label">任务状态</label><select class="field"><option>全部状态</option><option>已启用</option><option>已禁用</option></select>
+            </div>
+            <button class="btn primary" data-drawer="seat">+ 新建坐席</button>
+          </div>
+          <div class="table-wrap">
+            <table id="seatTable">
+              <thead><tr><th>AI座席ID</th><th>座席名称</th><th>机器人配置</th><th>数量/并发</th><th>排队语音</th><th>状态</th><th>创建时间</th><th>操作</th></tr></thead>
+              <tbody>
+                <tr><td class="num">9</td><td>泰康Demo-02</td><td>滴滴出行智能客服 (Demo)</td><td class="num">5</td><td>排队语音提示</td><td><span class="badge ok">已启用</span></td><td class="num">2026/3/10 16:18:37</td><td><button class="btn link" data-drawer="seatEdit">编辑</button> · <button class="btn link">禁用</button> · <button class="btn link" data-delete="确认删除该坐席吗？">删除</button></td></tr>
+                <tr><td class="num">8</td><td>泰康Demo-01</td><td>滴滴出行智能客服 (Demo)</td><td class="num">5</td><td>排队语音提示</td><td><span class="badge ok">已启用</span></td><td class="num">2026/3/10 16:18:14</td><td><button class="btn link" data-drawer="seatEdit">编辑</button> · <button class="btn link">禁用</button> · <button class="btn link" data-delete="确认删除该坐席吗？">删除</button></td></tr>
+                <tr><td class="num">6</td><td>天鹅到家</td><td>滴滴出行智能客服 (Demo)</td><td class="num">1</td><td>默认排队语音</td><td><span class="badge ok">已启用</span></td><td class="num">2026/3/5 14:28:16</td><td><button class="btn link" data-drawer="seatEdit">编辑</button> · <button class="btn link">禁用</button> · <button class="btn link" data-delete="确认删除该坐席吗？">删除</button></td></tr>
+                <tr><td class="num">3</td><td>智能体坐席_外卖骑手</td><td>-</td><td class="num">1</td><td>默认排队语音</td><td><span class="badge bad">已禁用</span></td><td class="num">2026/1/19 14:59:56</td><td><button class="btn link" data-drawer="seatEdit">编辑</button> · <button class="btn link">启用</button> · <button class="btn link" data-delete="确认删除该坐席吗？">删除</button></td></tr>
+                <tr><td class="num">5</td><td>【勿动】官网呼入</td><td>-</td><td class="num">10</td><td>默认排队语音</td><td><span class="badge ok">已启用</span></td><td class="num">2026/3/5 10:38:59</td><td><button class="btn link" data-drawer="seatEdit">编辑</button> · <button class="btn link">禁用</button> · <button class="btn link" data-delete="确认删除该坐席吗？">删除</button></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="table-foot"><span>共 5 条 · 每页 10 条</span><span class="mono">Page 1 / 1  ←  →</span></div>
+        </div>
+      </section>
+
+      <section class="section" id="page-bots">
+        <div class="panel" id="botList">
+          <div class="panel-head">
+            <div class="panel-title">机器人方案管理</div>
+            <button class="btn primary" data-bot-editor="new">+ 新建配置方案</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>名称</th><th>描述</th><th>状态</th><th>引擎</th><th>更新时间</th><th>操作</th></tr></thead>
+              <tbody>
+                <tr><td>滴滴出行智能客服 (Demo)</td><td>全场景演示：包含安全拦截、遗失物寻找、费用申诉自动化处理流程。</td><td><span class="badge ok">已启用</span></td><td>Gemini Pro 1.5</td><td class="num">2026/6/10</td><td><button class="btn link" data-bot-editor="edit">编辑</button> · <button class="btn link" data-delete="确定删除吗？">删除</button></td></tr>
+                <tr><td>🤖 语音 Agent 演示 (多工具场景)</td><td>完整演示语音 Agent 边聊天边调用工具的能力 - 包含订单查询、物流追踪、企业微信添加、余额查询等完整场景</td><td><span class="badge ok">已启用</span></td><td>Gemini Pro 1.5</td><td class="num">2026/6/10</td><td><button class="btn link" data-bot-editor="edit">编辑</button> · <button class="btn link" data-delete="确定删除吗？">删除</button></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="table-foot"><span>共 2 条 · 每页 10 条</span><span class="mono">可横向滚动查看完整描述</span></div>
+        </div>
+
+        <div class="panel hidden" id="botEditor">
+          <div class="panel-head">
+            <div class="toolbar"><button class="btn ghost" id="backBotList">← 返回列表</button><strong id="botEditorTitle">编辑机器人配置</strong></div>
+            <div class="toolbar"><button class="btn primary">保存配置</button><button class="btn ghost">取消</button></div>
+          </div>
+          <div class="tabs" data-tabs="botTabs">
+            <button class="tab active" data-tab="base">基础配置</button>
+            <button class="tab" data-tab="flow">流程配置</button>
+            <button class="tab" data-tab="topic">主题管理</button>
+            <button class="tab" data-tab="trigger">触发器</button>
+            <button class="tab" data-tab="policy">对话策略</button>
+            <button class="tab" data-tab="vars">变量配置</button>
+            <button class="tab" data-tab="debug">模型调试</button>
+            <button class="tab" data-tab="knowledge">知识检索配置</button>
+            <button class="tab" data-tab="more">更多配置</button>
+          </div>
+          <div class="tab-content active" data-tab-panel="base">
+            <div class="form-grid">
+              <div class="form-row"><label>配置模板名称</label><input class="field" value="滴滴出行智能客服 (Demo)" /></div>
+              <div class="form-row"><label>AI 智能生成</label><button class="btn primary">AI 智能生成</button></div>
+              <div class="form-row wide"><label>描述</label><textarea class="field">全场景演示：包含安全拦截、遗失物寻找、费用申诉自动化处理流程。</textarea></div>
+              <div class="form-row"><label>Agent 角色</label><input class="field" value="滴滴出行智能客服" /></div>
+              <div class="form-row"><label>人设</label><select class="field"><option>专业</option><option>友好</option><option>温和</option><option>热情</option><option>严肃</option></select></div>
+              <div class="form-row wide"><label>业务场景</label><input class="field" value="网约车客服、安全拦截、遗失物寻找、费用申诉" /></div>
+              <div class="form-row"><label>大模型类型</label><select class="field"><option>Gemini Pro 1.5</option></select></div>
+              <div class="form-row"><label>温度</label><input class="field mono" value="0.40" /></div>
+              <div class="form-row"><label>Top-P</label><input class="field mono" value="0.80" /></div>
+              <div class="form-row"><label>TTS模型</label><select class="field"><option>默认 TTS</option></select></div>
+              <div class="form-row"><label>默认音色</label><select class="field"><option>中文客服女声</option></select></div>
+              <div class="form-row"><label>自动语种跟随</label><select class="field"><option>开启</option><option>关闭</option></select></div>
+              <div class="form-row"><label>音色映射表（中文/粤语）</label><input class="field" value="中文=客服女声；粤语=粤语客服" /></div>
+              <div class="form-row"><label>音量</label><input class="field mono" value="80" /></div>
+              <div class="form-row"><label>语速</label><input class="field mono" value="1.0" /></div>
+              <div class="form-row"><label>情绪</label><select class="field"><option>温和</option><option>热情</option></select></div>
+              <div class="form-row wide"><label>TTS朗读优化</label><button class="btn ghost" data-drawer="ttsRule">添加优化规则</button></div>
+              <div class="form-row"><label>匹配文本</label><input class="field" value="APP" /></div>
+              <div class="form-row"><label>替换文本</label><input class="field" value="应用" /></div>
+              <div class="form-row"><label>ASR模型</label><select class="field"><option>默认 ASR</option></select></div>
+              <div class="form-row"><label>静音时长(ms)</label><input class="field mono" value="900" /></div>
+              <div class="form-row"><label>允许被打断</label><select class="field"><option>允许</option><option>不允许</option></select></div>
+              <div class="form-row wide"><label>ASR文本修正</label><button class="btn ghost" data-drawer="asrRule">添加修正规则</button></div>
+              <div class="form-row wide"><label>提示词与传参逻辑</label><textarea class="field">多语言模板；AI生成；全局 Prompt；业务变量参数。</textarea></div>
+            </div>
+          </div>
+          <div class="tab-content" data-tab-panel="flow">
+            <div class="panel-head" style="padding:0 0 10px;border-bottom:0;">
+              <p class="subtitle">先维护 Flow 名称和给大模型的提示词，再点击编辑流程进入流程图编辑器</p>
+              <button class="btn primary" data-drawer="flow">+ 新建 Flow</button>
+            </div>
+            <div class="cards">
+              <div class="flow-card"><strong>主入口 Flow <span class="badge warn">入口</span></strong><p>负责欢迎、身份识别和路由。</p><div><button class="btn link" data-drawer="flow">编辑</button> · <button class="btn link" data-flow-editor>编辑流程</button> · <button class="btn link" data-delete="确定删除吗？">删除</button></div></div>
+              <div class="flow-card"><strong>身份验证 Flow</strong><p>核验手机号与订单信息。</p><div><button class="btn link" data-drawer="flow">编辑</button> · <button class="btn link" data-flow-editor>编辑流程</button> · <button class="btn link" data-delete="确定删除吗？">删除</button></div></div>
+              <div class="flow-card"><strong>订单查询 Flow</strong><p>调用订单工具并返回状态。</p><div><button class="btn link" data-drawer="flow">编辑</button> · <button class="btn link" data-flow-editor>编辑流程</button> · <button class="btn link" data-delete="确定删除吗？">删除</button></div></div>
+              <div class="flow-card"><strong>转人工 Flow</strong><p>满足策略后转接人工客服。</p><div><button class="btn link" data-drawer="flow">编辑</button> · <button class="btn link" data-flow-editor>编辑流程</button> · <button class="btn link" data-delete="确定删除吗？">删除</button></div></div>
+            </div>
+            <div id="flowEditor" class="panel hidden" style="margin-top:12px;">
+              <div class="panel-head"><div class="toolbar"><button class="btn ghost" data-flow-back>← 返回列表</button><strong>编辑：主入口 Flow</strong></div></div>
+              <div class="split">
+                <div class="node-list"><strong>节点</strong><p class="subtitle">开始节点、模型判断、工具调用、结束节点</p></div>
+                <div class="canvas"><div class="flow-node start">开始<br><span class="mono">call.start</span></div><div class="flow-node ask">意图判断<br><span class="mono">llm.route</span></div><div class="flow-node tool">工具调用<br><span class="mono">query_order</span></div><div class="flow-node end">结束/转人工<br><span class="mono">handoff</span></div></div>
+                <div class="inspector"><strong>右侧配置</strong><div class="form-row" style="margin-top:10px;"><label>节点名称</label><input class="field" value="意图判断" /></div><div class="form-row"><label>连线条件</label><textarea class="field">用户需要订单、费用或安全处理时进入对应 Flow。</textarea></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="tab-content" data-tab-panel="topic">
+            <div class="panel-head" style="padding:0 0 10px;border-bottom:0;">
+              <div class="toolbar"><input class="field js-search" data-table="topicTable" placeholder="搜索主题" /><select class="field"><option>全部</option><option>已启用</option><option>已禁用</option></select><select class="field"><option>创建时间降序</option><option>创建时间升序</option><option>更新时间降序</option><option>更新时间升序</option><option>名称升序</option><option>名称降序</option></select></div>
+              <div class="toolbar"><button class="btn ghost">批量启用</button><button class="btn ghost">批量禁用</button><button class="btn danger">批量删除</button><button class="btn ghost">清空选择</button><button class="btn primary" data-drawer="topic">新建主题</button></div>
+            </div>
+            <div class="table-wrap"><table id="topicTable"><thead><tr><th>名称</th><th>问题</th><th>状态</th><th>操作</th></tr></thead><tbody><tr><td>费用申诉</td><td>为什么扣费、申请退费</td><td><span class="badge ok">已启用</span></td><td><button class="btn link" data-drawer="topic">编辑</button> · <button class="btn link" data-delete="确定删除吗？">删除</button></td></tr><tr><td>遗失物寻找</td><td>物品落在车上</td><td><span class="badge ok">已启用</span></td><td><button class="btn link" data-drawer="topic">编辑</button> · <button class="btn link" data-delete="确定删除吗？">删除</button></td></tr></tbody></table></div>
+            <div class="table-foot"><span>共 2 条 · 每页 10 条</span><span class="mono">Page 1 / 1</span></div>
+          </div>
+          <div class="tab-content" data-tab-panel="trigger">
+            <div class="panel-head" style="padding:0 0 10px;border-bottom:0;"><div><strong>触发器管理</strong><p class="subtitle">配置通话开始和结束时的自动化动作</p></div><button class="btn primary" data-drawer="trigger">新建触发器</button></div>
+            <div class="table-wrap"><table><thead><tr><th>触发器名称</th><th>启用状态</th><th>描述</th><th>触发时机</th><th>动作</th><th>动作配置</th><th>操作</th></tr></thead><tbody><tr><td>通话结束满意度</td><td><span class="badge ok">启用</span></td><td>结束后发送满意度调查</td><td>通话结束</td><td>发送满意度调查</td><td>调查问题、短信模板ID、短信参数JSON</td><td><button class="btn link" data-drawer="trigger">编辑</button> · <button class="btn link" data-delete="确定删除吗？">删除</button></td></tr><tr><td>开场信息提取</td><td><span class="badge ok">启用</span></td><td>通话开始时提取客户意图</td><td>通话开始</td><td>提取信息</td><td>提取字段、接口配置ID、接口参数JSON</td><td><button class="btn link" data-drawer="trigger">编辑</button> · <button class="btn link" data-delete="确定删除吗？">删除</button></td></tr></tbody></table></div>
+          </div>
+          <div class="tab-content" data-tab-panel="policy">
+            <div class="form-grid">
+              <div class="form-row wide"><label>开场欢迎语</label><textarea class="field">您好，这里是滴滴出行智能客服，请问有什么可以帮您？</textarea></div>
+              <div class="form-row"><label>转人工策略</label><textarea class="field">用户明确要求人工、投诉升级、安全事件。</textarea></div>
+              <div class="form-row"><label>挂机策略</label><textarea class="field">连续静默或明确结束时挂机。</textarea></div>
+              <div class="form-row"><label>全局静默播音</label><input class="field" value="请问您还在吗？" /></div>
+              <div class="form-row"><label>全局超时播音</label><input class="field" value="当前等待时间较长，请稍后再试。" /></div>
+              <div class="form-row"><label>长业务内容智能等待</label><select class="field"><option>开启</option><option>关闭</option></select></div>
+              <div class="form-row"><label>安全拦截策略</label><textarea class="field">涉敏、辱骂、越权问题直接拦截并转人工。</textarea></div>
+            </div>
+            <div class="toolbar" style="margin-top:12px;"><button class="btn primary">保存配置</button><button class="btn ghost">取消</button></div>
+          </div>
+          <div class="tab-content" data-tab-panel="vars">
+            <div class="panel-head" style="padding:0 0 10px;border-bottom:0;"><div class="toolbar"><button class="btn primary" data-drawer="variable">新建变量</button><button class="btn primary" data-drawer="entity">新建实体</button></div></div>
+            <div class="table-wrap"><table><thead><tr><th>变量表名称</th><th>类型</th><th>说明</th><th>来源</th><th>状态</th><th>操作</th></tr></thead><tbody><tr><td>customer_phone</td><td>String</td><td>客户手机号</td><td>系统内置</td><td><span class="badge">不可编辑</span></td><td>跨轮保留</td></tr><tr><td>order_id</td><td>String</td><td>订单编号</td><td>当前会话</td><td><span class="badge ok">可编辑</span></td><td><button class="btn link">编辑</button> · <button class="btn link" data-delete="确定删除吗？">删除</button></td></tr></tbody></table></div>
+            <div class="table-wrap" style="margin-top:12px;"><table><thead><tr><th>实体表名称</th><th>描述</th><th>规则</th><th>操作</th></tr></thead><tbody><tr><td>城市实体</td><td>识别城市名称</td><td>词典 + 正则</td><td><button class="btn link">编辑</button> · <button class="btn link" data-delete="确定删除吗？">删除</button></td></tr></tbody></table></div>
+          </div>
+          <div class="tab-content" data-tab-panel="debug">
+            <div class="split" style="grid-template-columns: minmax(0, 1fr) 340px;">
+              <div class="canvas" style="padding:12px;background:#fff;">
+                <strong>聊天调试</strong>
+                <div class="mini-card" style="margin-top:10px;">用户：我想查询订单费用为什么变高了</div>
+                <div class="mini-card" style="margin-top:10px;background:#fffdf1;">机器人：我可以帮您查询订单并说明费用构成，请提供订单号。</div>
+                <div class="toolbar" style="margin-top:12px;"><input class="field" style="flex:1;" placeholder="输入测试" /><button class="btn primary">运行</button><button class="btn ghost">清空</button></div>
+              </div>
+              <div class="inspector"><strong>对话日志 / 工具调用结果</strong><pre class="mono">tool: query_order
+status: success
+latency: 243ms</pre></div>
+            </div>
+          </div>
+          <div class="tab-content" data-tab-panel="knowledge">
+            <div class="form-grid">
+              <div class="form-row"><label>知识库检索开关</label><select class="field"><option>开启</option><option>关闭</option></select></div>
+              <div class="form-row"><label>标签/召回</label><input class="field" value="出行、费用、安全、遗失物" /></div>
+              <div class="form-row"><label>TopK</label><input class="field mono" value="5" /></div>
+              <div class="form-row"><label>相似度阈值</label><input class="field mono" value="0.72" /></div>
+              <div class="form-row wide"><label>答案引用</label><textarea class="field">回答时引用命中的知识标题和关键字段。</textarea></div>
+            </div>
+            <div class="toolbar" style="margin-top:12px;"><button class="btn primary">保存</button></div>
+          </div>
+          <div class="tab-content" data-tab-panel="more">
+            <div class="cards">
+              <div class="flow-card"><strong>意图技能</strong><p>意图识别、技能绑定、优先级。</p><button class="btn ghost" data-drawer="moreSkill">进入配置</button></div>
+              <div class="flow-card"><strong>业务分析</strong><p>业务字段、分析指标、导出。</p><button class="btn ghost" data-drawer="moreAnalysis">进入配置</button></div>
+              <div class="flow-card"><strong>营销与跟进</strong><p>跟进策略、触达动作、名单。</p><button class="btn ghost" data-drawer="moreMarketing">进入配置</button></div>
+              <div class="flow-card"><strong>批量评测</strong><p>评测集、运行、结果。</p><button class="btn ghost" data-drawer="moreEval">进入配置</button></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="page-tools">
+        <div class="panel">
+          <div class="panel-head">
+            <div class="toolbar">
+              <button class="btn primary" data-drawer="mcp">添加 MCP</button>
+              <button class="btn primary" data-drawer="tool">添加工具</button>
+            </div>
+            <div class="toolbar">
+              <button class="btn ghost">全部 5</button><button class="btn ghost">API 2</button><button class="btn ghost">通信 1</button><button class="btn ghost">转接 1</button><button class="btn ghost">其他 1</button>
+            </div>
+          </div>
+          <div class="tool-grid">
+            <div class="tool-card"><div><strong>🔧 query_api</strong><div class="tool-type">API / API</div></div><p>调用外部接口获取数据</p><code>tool_api_call</code><span class="badge ok">已启用</span><div><button class="btn link" data-drawer="tool">编辑</button> · <button class="btn link" data-delete="确定删除该工具吗？">删除</button></div></div>
+            <div class="tool-card"><div><strong>🔧 send_sms</strong><div class="tool-type">SMS / 通信</div></div><p>向用户发送短信通知</p><code>tool_sms</code><span class="badge ok">已启用</span><div><button class="btn link" data-drawer="tool">编辑</button> · <button class="btn link" data-delete="确定删除该工具吗？">删除</button></div></div>
+            <div class="tool-card"><div><strong>🔧 query_order</strong><div class="tool-type">API / API</div></div><p>查询用户订单状态</p><code>tool_query_order</code><span class="badge ok">已启用</span><div><button class="btn link" data-drawer="tool">编辑</button> · <button class="btn link" data-delete="确定删除该工具吗？">删除</button></div></div>
+            <div class="tool-card"><div><strong>🔧 transfer_call</strong><div class="tool-type">TRANSFER / 转接</div></div><p>转接人工客服</p><code>tool_transfer</code><span class="badge ok">已启用</span><div><button class="btn link" data-drawer="tool">编辑</button> · <button class="btn link" data-delete="确定删除该工具吗？">删除</button></div></div>
+            <div class="tool-card"><div><strong>📍 query_location</strong><div class="tool-type">CUSTOM / 其他</div></div><p>查询地理位置信息（门店、网点等）</p><code>tool_geo_location</code><span class="badge ok">已启用</span><div><button class="btn link" data-drawer="geoTool">编辑</button> · <button class="btn link" data-delete="确定删除该工具吗？">删除</button></div></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="page-outbound">
+        <div id="outboundList">
+          <div class="notice">当前租户支持的外呼时间为：8:00~22:00。超出此时间，系统自动停止拨号。（如需24小时外呼，请联系运营开通）</div>
+          <div class="panel">
+            <div class="panel-head">
+              <div class="toolbar"><select class="field"><option>全部状态</option><option>运行中</option><option>已暂停</option><option>已完成</option></select><input class="field mono" value="2026-06-01 ~ 2026-06-10" /><input class="field js-search" data-table="taskTable" placeholder="请输入名称" /><button class="btn ghost">确定</button></div>
+              <button class="btn primary" data-drawer="task">+ 新建外呼任务</button>
+            </div>
+            <div class="table-wrap"><table id="taskTable"><thead><tr><th>ID</th><th>名称</th><th>状态</th><th>客户数</th><th>已执行</th><th>客户接听</th><th>未接听</th><th>尝试次数</th><th>操作</th></tr></thead><tbody><tr><td class="num">84011</td><td>语音机器人英文Demo视频-外呼任务</td><td><span class="badge ok">运行中</span></td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td><button class="btn link" id="viewTask">查看</button> · <button class="btn link" data-drawer="task">编辑</button> · <button class="btn link" data-delete="确定删除吗？">删除</button></td></tr><tr><td class="num">83957</td><td>泰康01-外呼任务</td><td><span class="badge warn">已暂停</span></td><td class="num">2</td><td class="num">2</td><td class="num">2</td><td class="num">0</td><td class="num">2</td><td><button class="btn link" id="viewTask2">查看</button> · <button class="btn link" data-drawer="task">编辑</button> · <button class="btn link" data-delete="确定删除吗？">删除</button></td></tr></tbody></table></div>
+            <div class="table-foot"><span>共 2 条 · 每页 10 条</span><span class="mono">Page 1 / 1</span></div>
+          </div>
+        </div>
+        <div id="taskDetail" class="hidden">
+          <div class="panel">
+            <div class="panel-head">
+              <div class="toolbar"><button class="btn ghost" id="backTaskList">← 返回外呼任务</button><strong>查看外呼任务</strong></div>
+              <div class="toolbar"><button class="btn primary">启动任务</button><button class="btn ghost">暂停任务</button><button class="btn ghost">停止任务</button><button class="btn ghost">告警设置</button><button class="btn ghost" data-drawer="task">编辑</button></div>
+            </div>
+            <div class="detail-grid">
+              <div class="info"><span>名称</span>语音机器人英文Demo视频-外呼任务</div><div class="info"><span>外呼模版</span>英文Demo模版</div><div class="info"><span>机器人话术</span>滴滴出行智能客服 (Demo)</div><div class="info"><span>任务优先级</span>普通</div>
+              <div class="info"><span>状态</span><span class="badge ok">运行中</span></div><div class="info"><span>外呼模式</span>智呼机器人</div><div class="info"><span>主叫号码</span><span class="mono">021-50000000</span></div><div class="info"><span>创建人</span>Admin User</div>
+              <div class="info"><span>呼叫并发</span><span class="num">5</span></div><div class="info"><span>目前并发量</span><span class="num">0</span></div><div class="info"><span>任务开始时间</span><span class="num">2026/6/10 08:00:00</span></div><div class="info"><span>创建时间</span><span class="num">2026/6/10 07:55:00</span></div>
+              <div class="info"><span>任务执行时间</span><span class="mono">8:00~22:00</span></div>
+            </div>
+            <div class="tabs" data-tabs="taskTabs"><button class="tab active" data-tab="taskContacts">联系单列表</button><button class="tab" data-tab="callRecords">智呼通话记录</button></div>
+            <div class="tab-content active" data-tab-panel="taskContacts">
+              <div class="panel-head" style="padding:0 0 10px;border-bottom:0;"><div class="toolbar"><button class="btn ghost">刷新</button><input class="field js-search" data-table="detailContactTable" placeholder="搜索联系单名称" /><button class="btn ghost">确定</button><button class="btn ghost">导出</button><button class="btn primary">创建联系单</button></div></div>
+              <div class="table-wrap"><table id="detailContactTable"><thead><tr><th>ID</th><th>名称</th><th>状态</th><th>优先级</th><th>客户数</th><th>已执行客户数</th><th>客户接听</th><th>座席接听</th><th>尝试次数</th><th>外呼成功率</th><th>操作</th></tr></thead><tbody><tr><td class="num">C-001</td><td>英文Demo联系单</td><td><span class="badge ok">运行中</span></td><td>普通</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num">0%</td><td>查看、编辑、暂停、停止</td></tr></tbody></table></div>
+            </div>
+            <div class="tab-content" data-tab-panel="callRecords">
+              <div class="panel-head" style="padding:0 0 10px;border-bottom:0;"><div class="toolbar"><input class="field" placeholder="主叫/被叫号码" /><input class="field" placeholder="意向结果" /><button class="btn ghost">查询</button></div></div>
+              <div class="table-wrap"><table><thead><tr><th>通话ID</th><th>被叫号码</th><th>客户姓名</th><th>开始时间</th><th>通话时长</th><th>状态</th><th>意向结果</th><th>对话轮次</th><th>操作</th></tr></thead><tbody><tr><td class="num">CALL-84011-01</td><td class="mono">138****0001</td><td>张先生</td><td class="num">2026/6/10 09:12:33</td><td class="num">00:02:31</td><td><span class="badge ok">已接通</span></td><td>高意向</td><td class="num">8</td><td><button class="btn link">查看详情</button></td></tr></tbody></table></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="page-templates">
+        <div class="panel">
+          <div class="panel-head">
+            <div class="toolbar"><input class="field js-search" data-table="templateTable" placeholder="请输入模版名称" /><button class="btn ghost">确定</button></div>
+            <button class="btn primary" data-drawer="template">新建外呼模版</button>
+          </div>
+          <div class="table-wrap"><table id="templateTable"><thead><tr><th>ID</th><th>名称</th><th>备注</th><th>外呼模式</th><th>操作</th></tr></thead><tbody><tr><td class="num">967</td><td>【官网勿动】-金融贷款受理-崔艳</td><td>-</td><td>智呼机器人</td><td><button class="btn link" data-drawer="template">编辑</button> · <button class="btn link">复制</button> · <button class="btn link" data-delete="确定删除吗？">删除</button></td></tr><tr><td class="num">968</td><td>【官网勿动】-金融拓客营销-孙琳</td><td>-</td><td>智呼机器人</td><td><button class="btn link" data-drawer="template">编辑</button> · <button class="btn link">复制</button> · <button class="btn link" data-delete="确定删除吗？">删除</button></td></tr></tbody></table></div>
+          <div class="table-foot"><span>共 2 条 · 每页 10 条</span><span class="mono">Page 1 / 1</span></div>
+        </div>
+      </section>
+
+      <section class="section" id="page-contacts">
+        <div class="panel">
+          <div class="panel-head">
+            <div class="toolbar"><input class="field js-search" data-table="contactTable" placeholder="搜索联系单名称" /></div>
+            <div class="toolbar"><button class="btn ghost">下载模版</button><button class="btn primary" data-drawer="uploadContact">上传联系单</button></div>
+          </div>
+          <div class="table-wrap"><table id="contactTable"><thead><tr><th>ID</th><th>联系单名称</th><th>总数量</th><th>有效数量</th><th>状态</th><th>上传时间</th><th>操作</th></tr></thead><tbody><tr><td class="num">CL-20240520</td><td>上海地区高意向客户_20240520</td><td class="num">240</td><td class="num">236</td><td><span class="badge ok">上传成功</span></td><td class="num">2026/6/10 10:12:00</td><td><button class="btn danger" data-delete="确定删除吗？">删除图标</button></td></tr><tr><td class="num">CL-20240521</td><td>北京车展留资名单</td><td class="num">118</td><td class="num">112</td><td><span class="badge ok">上传成功</span></td><td class="num">2026/6/10 10:30:00</td><td><button class="btn danger" data-delete="确定删除吗？">删除图标</button></td></tr><tr><td class="num">CL-20240522</td><td>官网咨询未接通回访</td><td class="num">86</td><td class="num">80</td><td><span class="badge ok">上传成功</span></td><td class="num">2026/6/10 11:05:00</td><td><button class="btn danger" data-delete="确定删除吗？">删除图标</button></td></tr></tbody></table></div>
+          <div class="table-foot"><span>共 3 条 · 每页 10 条</span><span class="mono">Page 1 / 1</span></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="drawer-mask" id="drawerMask">
+    <div class="drawer">
+      <div class="drawer-head"><strong id="drawerTitle">配置</strong><button class="btn ghost" id="closeDrawer">关闭</button></div>
+      <div class="drawer-body" id="drawerBody"></div>
+      <div class="drawer-foot"><button class="btn ghost" id="cancelDrawer">取消</button><button class="btn primary" id="drawerSave">保存</button></div>
+    </div>
+  </div>
+
+  <div class="modal-mask" id="modalMask">
+    <div class="modal">
+      <div class="modal-head">确认操作</div>
+      <div class="modal-body" id="modalText">确定删除吗？</div>
+      <div class="modal-foot"><button class="btn ghost" id="cancelModal">取消</button><button class="btn danger" id="confirmModal">确定</button></div>
+    </div>
+  </div>
+
+  <script>
+    const pageMeta = {
+      seats: ["智呼坐席管理", "智呼机器人坐席管理", "管理AI坐席实例，绑定话术配置并分配并发资源。"],
+      bots: ["机器人配置", "机器人方案管理", "创建和配置您的 AI 语音机器人话术方案"],
+      tools: ["工具配置", "工具配置", "管理智能体可调用的 MCP 服务器、API、通信、转接和自定义工具。"],
+      outbound: ["外呼任务", "外呼任务", "管理外呼任务、执行状态与任务详情。"],
+      templates: ["外呼任务 / 外呼模版", "外呼模版", "维护外呼模版的拨号设置、机器人话术和呼叫选项。"],
+      contacts: ["外呼任务 / 外呼联系单", "外呼联系单", "上传和管理外呼任务使用的客户联系单。"]
+    };
+
+    const drawerForms = {
+      seat: { title: "新建AI坐席", html: seatForm("外卖骑手招聘专席") },
+      seatEdit: { title: "编辑坐席", html: seatForm("泰康Demo-02") },
+      flow: { title: "Flow 信息", html: fields([["Flow 名称", "主入口 Flow"], ["Flow 描述 / 大模型提示词", "识别用户意图并路由到对应业务流程。", "textarea"]]) },
+      topic: { title: "主题信息", html: fields([["主题类型", "普通主题"], ["主题名称", "费用申诉"], ["启用状态", "启用"], ["相似问", "为什么扣费；费用不对", "textarea"], ["主题描述", "费用争议处理主题", "textarea"], ["绑定流程", "订单查询 Flow"], ["知识库标签", "费用,申诉"], ["提示词", "按订单和费用明细解释。", "textarea"], ["工具", "query_order"], ["实体", "订单号"]]) },
+      trigger: { title: "触发器", html: fields([["触发器名称", "通话结束满意度"], ["启用状态", "启用"], ["描述", "配置通话开始和结束时的自动化动作", "textarea"], ["触发时机", "通话结束"], ["动作", "发送满意度调查"], ["短信模板ID", "SMS_001"], ["短信参数JSON", "{\"score\":\"${score}\"}", "textarea"], ["接口配置ID", "API_001"], ["接口参数JSON", "{\"callId\":\"${call_id}\"}", "textarea"], ["提取字段", "意向结果,客户情绪"], ["调查问题", "请评价本次服务"]]) },
+      variable: { title: "新建变量", html: fields([["变量表名称", "order_id"], ["类型", "String"], ["说明", "订单编号"], ["来源", "当前会话"], ["状态", "可编辑"]]) },
+      entity: { title: "新建实体", html: fields([["实体表名称", "城市实体"], ["描述", "识别城市名称", "textarea"], ["规则", "词典 + 正则", "textarea"]]) },
+      ttsRule: { title: "添加优化规则", html: fields([["匹配文本", "APP"], ["替换文本", "应用"]]) },
+      asrRule: { title: "添加修正规则", html: fields([["匹配文本", "滴滴打车"], ["替换文本", "滴滴出行"]]) },
+      mcp: { title: "添加 MCP 服务器", html: fields([["服务器名称", "订单服务 MCP"], ["启用", "启用"], ["服务器描述", "提供订单查询和物流追踪工具", "textarea"], ["连接配置", "生产环境"], ["连接类型", "STDIO"], ["STDIO 命令", "node server.js"], ["参数", "--tenant moonmix"], ["HTTP/WebSocket 服务器 URL", "https://api.example.com/mcp"], ["请求头", "{\"Authorization\":\"Bearer ***\"}", "textarea"]]) },
+      tool: { title: "添加智能体工具", html: fields([["工具名称", "query_order"], ["工具描述", "查询用户订单状态", "textarea"], ["关联接口", "订单查询接口"], ["模型使用指南", "当用户询问订单状态、费用明细时调用。", "textarea"], ["参数定义", "添加参数：参数来源、自定义参数/引用变量、参数名、类型 String/Number/Boolean、描述", "textarea"], ["工具调用开始话术", "我正在为您查询订单，请稍等。"], ["工具是否需要返回结果", "需要"], ["返回结果后直接播报", "是"], ["固定播报话术", "您的订单状态如下。"], ["工具调用成功话术", "查询成功。"], ["工具调用失败话术", "暂时没有查询到，请稍后再试。"], ["调用中客户咨询回复话术", "我正在处理，请稍等。", "textarea"]]) },
+      geoTool: { title: "地理位置查询工具配置", html: `<div class="tabs" data-tabs="geoTabs"><button class="tab active" data-tab="geoData">数据管理</button><button class="tab" data-tab="geoConfig">工具配置</button><button class="tab" data-tab="geoTest">查询测试</button></div><div class="tab-content active" data-tab-panel="geoData">${fields([["地理位置数据", "门店、网点"], ["搜索门店", "上海"], ["上传 CSV", "选择文件"], ["CSV 格式要求", "门店名称/城市/区域/地址/电话/标签", "textarea"]])}<div class="table-wrap"><table><thead><tr><th>门店名称</th><th>城市</th><th>区域</th><th>地址</th><th>电话</th><th>标签</th></tr></thead><tbody><tr><td>上海人民广场服务点</td><td>上海</td><td>黄浦</td><td>人民大道 1 号</td><td class="mono">021-000000</td><td>核心门店</td></tr></tbody></table></div></div><div class="tab-content" data-tab-panel="geoConfig">${fields([["工具名称", "query_location"], ["工具描述", "查询地理位置信息（门店、网点等）", "textarea"], ["查询开始话术", "我来帮您查询附近网点。"], ["查询成功话术", "已为您找到以下网点。"], ["查询失败话术", "暂未找到匹配网点。"]])}</div><div class="tab-content" data-tab-panel="geoTest">${fields([["输入查询语句", "上海人民广场附近有网点吗？"], ["测试查询", "点击测试"], ["结果卡片", "上海人民广场服务点 / 黄浦 / 021-000000", "textarea"]])}</div>` },
+      task: { title: "新建/编辑外呼任务", html: fields([["外呼模版", "英文Demo模版"], ["任务名称", "语音机器人英文Demo视频-外呼任务"], ["备注", "英文演示任务", "textarea"], ["启动方式", "手动启动/定时启动/周期启动"], ["任务结束时间", "2026-06-10 22:00"], ["任务优先级", "普通"], ["无联系人自动停止", "开启"], ["联系单", "暂无联系单"], ["优先级", "普通"], ["操作", "+ 添加联系单"]], "任务设置 / 联系单") },
+      template: { title: "新建/编辑外呼模版", html: fields([["模版名称", "【官网勿动】-金融贷款受理-崔艳"], ["备注", "-"], ["IVR模式", "默认"], ["外呼模式", "智呼机器人/预测式外呼"], ["机器人话术", "滴滴出行智能客服 (Demo)"], ["主叫号码", "号码/号码池"], ["任务执行时间", "8:00~22:00"], ["限制呼叫名单", "启用黑名单"], ["任务并发数", "5"], ["机器人并发数/分时并发", "5 / 分时"], ["最大振铃时长(秒)", "45"], ["呼叫有效性(秒)", "60"], ["重试选项", "首呼优先/重呼优先"]], "通用设置 / 拨号设置 / 呼叫选项") },
+      uploadContact: { title: "上传联系单", html: fields([["联系单名称", "上海地区高意向客户_20240520"], ["上传文件", "选择 CSV 文件"], ["总数量", "240"], ["有效数量", "236"]]) },
+      moreSkill: { title: "意图技能", html: fields([["技能名称", "费用申诉技能"], ["绑定意图", "费用申诉"], ["优先级", "高"], ["操作", "保存 / 删除"]]) },
+      moreAnalysis: { title: "业务分析", html: fields([["分析字段", "意向结果、客户情绪、问题类型"], ["操作", "生成分析 / 导出"]]) },
+      moreMarketing: { title: "营销与跟进", html: fields([["跟进策略", "高意向客户自动加入回访名单"], ["触达动作", "发送短信 / 外呼任务"]]) },
+      moreEval: { title: "批量评测", html: fields([["评测集", "客服场景回归集"], ["运行", "开始评测"], ["结果", "准确率、召回率、失败样例"]]) }
+    };
+
+    function fields(items, legend = "") {
+      const title = legend ? `<div class="notice">${legend}</div>` : "";
+      return title + `<div class="form-grid">${items.map(([label, value, type]) => `<div class="form-row ${type === "textarea" ? "wide" : ""}"><label>${label}</label>${type === "textarea" ? `<textarea class="field">${value}</textarea>` : `<input class="field" value="${value}" />`}</div>`).join("")}</div>`;
+    }
+
+    function seatForm(name) {
+      return fields([["座席名称", name], ["机器人配置", "滴滴出行智能客服 (Demo)"], ["可选机器人配置", "🤖 语音 Agent 演示 (多工具场景)"], ["排队语音提示", "排队语音提示 / 忙线排队提示 / 优先排队提示"], ["并发数量", "5"], ["初始状态", "启用/禁用"]]);
+    }
+
+    function switchPage(page) {
+      document.querySelectorAll(".section").forEach(section => section.classList.remove("active"));
+      document.getElementById(`page-${page}`).classList.add("active");
+      document.querySelectorAll(".nav-btn[data-page], .sub-btn[data-page]").forEach(btn => btn.classList.toggle("active", btn.dataset.page === page));
+      const meta = pageMeta[page];
+      document.getElementById("crumbText").textContent = meta[0];
+      document.getElementById("pageTitle").textContent = meta[1];
+      document.getElementById("pageSubtitle").textContent = meta[2];
+    }
+
+    function openDrawer(key) {
+      const spec = drawerForms[key];
+      if (!spec) return;
+      document.getElementById("drawerTitle").textContent = spec.title;
+      document.getElementById("drawerBody").innerHTML = spec.html;
+      document.getElementById("drawerMask").classList.add("show");
+      bindTabs(document.getElementById("drawerBody"));
+    }
+
+    function closeDrawer() {
+      document.getElementById("drawerMask").classList.remove("show");
+    }
+
+    function openDelete(text) {
+      document.getElementById("modalText").textContent = text;
+      document.getElementById("modalMask").classList.add("show");
+    }
+
+    function closeModal() {
+      document.getElementById("modalMask").classList.remove("show");
+    }
+
+    function bindTabs(scope = document) {
+      scope.querySelectorAll("[data-tabs]").forEach(group => {
+        group.querySelectorAll(".tab").forEach(tab => {
+          tab.addEventListener("click", () => {
+            const name = tab.dataset.tab;
+            const root = group.parentElement;
+            group.querySelectorAll(".tab").forEach(item => item.classList.toggle("active", item === tab));
+            root.querySelectorAll(":scope > .tab-content").forEach(panel => panel.classList.toggle("active", panel.dataset.tabPanel === name));
+          });
+        });
+      });
+    }
+
+    document.addEventListener("click", event => {
+      const nav = event.target.closest("[data-page]");
+      if (nav && !nav.classList.contains("disabled")) switchPage(nav.dataset.page);
+      const drawer = event.target.closest("[data-drawer]");
+      if (drawer) openDrawer(drawer.dataset.drawer);
+      const del = event.target.closest("[data-delete]");
+      if (del) openDelete(del.dataset.delete);
+      if (event.target.id === "closeDrawer" || event.target.id === "cancelDrawer") closeDrawer();
+      if (event.target.id === "cancelModal" || event.target.id === "confirmModal") closeModal();
+      if (event.target.dataset.botEditor) {
+        document.getElementById("botList").classList.add("hidden");
+        document.getElementById("botEditor").classList.remove("hidden");
+        document.getElementById("botEditorTitle").textContent = event.target.dataset.botEditor === "new" ? "新建机器人配置" : "编辑机器人配置";
+      }
+      if (event.target.id === "backBotList") {
+        document.getElementById("botEditor").classList.add("hidden");
+        document.getElementById("botList").classList.remove("hidden");
+      }
+      if (event.target.hasAttribute("data-flow-editor")) document.getElementById("flowEditor").classList.remove("hidden");
+      if (event.target.hasAttribute("data-flow-back")) document.getElementById("flowEditor").classList.add("hidden");
+      if (event.target.id === "viewTask" || event.target.id === "viewTask2") {
+        document.getElementById("outboundList").classList.add("hidden");
+        document.getElementById("taskDetail").classList.remove("hidden");
+      }
+      if (event.target.id === "backTaskList") {
+        document.getElementById("taskDetail").classList.add("hidden");
+        document.getElementById("outboundList").classList.remove("hidden");
+      }
+    });
+
+    document.querySelectorAll(".js-search").forEach(input => {
+      input.addEventListener("input", () => {
+        const table = document.getElementById(input.dataset.table);
+        if (!table) return;
+        const query = input.value.trim().toLowerCase();
+        table.querySelectorAll("tbody tr").forEach(row => {
+          row.style.display = row.textContent.toLowerCase().includes(query) ? "" : "none";
+        });
+      });
+    });
+
+    document.getElementById("drawerMask").addEventListener("click", event => {
+      if (event.target.id === "drawerMask") closeDrawer();
+    });
+
+    document.getElementById("modalMask").addEventListener("click", event => {
+      if (event.target.id === "modalMask") closeModal();
+    });
+
+    bindTabs();
+  </script>
+</body>
+</html>

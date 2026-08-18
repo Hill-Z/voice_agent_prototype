@@ -1,0 +1,1245 @@
+<!--
+  getdesign.md 风格来源：https://getdesign.md/clickhouse/design-md
+  提炼规则：
+  1. 颜色：采用技术文档式浅底，主文字接近黑色，边界用冷灰；高优先级操作只用单一 ClickHouse 式黄色强调。
+  2. 字体：标题使用紧凑无衬线，参数、状态、指标和表格编号使用等宽字体，形成开发者控制台感。
+  3. 间距：页面采用 8px 栅格，模块密度偏高，弱化营销式大留白；关键工作区以左右分栏和配置抽屉组织。
+  4. 组件：按钮、输入框、表格、面板保持小圆角和清晰边框；强调可编辑、可运行、可筛选的工作台形态。
+  5. 表格/仪表盘/工作台：表格列密集但可扫读；报表强调 KPI、趋势、原因、地域、Topic、Flow、工具调用；流程页突出画布、节点库、规则编辑器和运行反馈。
+-->
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI VOICEDESK · 展示版 B</title>
+  <style>
+    :root {
+      --bg: #f7f7f2;
+      --paper: #ffffff;
+      --paper-2: #fbfbf6;
+      --ink: #151515;
+      --muted: #6e726d;
+      --line: #d9ddd4;
+      --line-strong: #b9bfb4;
+      --accent: #ffd829;
+      --accent-ink: #1d1a00;
+      --ok: #16834a;
+      --warn: #a96500;
+      --bad: #bd2f2a;
+      --code: #22251f;
+      --shadow: 0 16px 42px rgba(28, 30, 24, 0.08);
+      --radius: 6px;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      --sans: "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(21, 21, 21, 0.035) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(21, 21, 21, 0.035) 1px, transparent 1px),
+        var(--bg);
+      background-size: 24px 24px;
+      color: var(--ink);
+      font-family: var(--sans);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+
+    .app {
+      display: grid;
+      grid-template-columns: 248px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      border-right: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.86);
+      backdrop-filter: blur(12px);
+      padding: 18px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .brand {
+      border: 1px solid var(--ink);
+      background: var(--accent);
+      color: var(--accent-ink);
+      padding: 12px;
+      border-radius: var(--radius);
+      box-shadow: 4px 4px 0 var(--ink);
+    }
+
+    .brand strong {
+      display: block;
+      font-size: 18px;
+      letter-spacing: 0;
+      margin-bottom: 4px;
+    }
+
+    .brand span {
+      color: rgba(29, 26, 0, 0.72);
+      font-size: 12px;
+      font-family: var(--mono);
+    }
+
+    .nav {
+      display: grid;
+      gap: 8px;
+    }
+
+    .nav button {
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      border-radius: var(--radius);
+      padding: 10px 11px;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav button:hover {
+      border-color: var(--line);
+      background: var(--paper-2);
+      color: var(--ink);
+    }
+
+    .nav button.active {
+      border-color: var(--ink);
+      background: var(--ink);
+      color: #fff;
+    }
+
+    .nav code, .chip, .kbd, .mono {
+      font-family: var(--mono);
+    }
+
+    .status-stack {
+      margin-top: auto;
+      display: grid;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .status-line {
+      display: flex;
+      justify-content: space-between;
+      border-top: 1px solid var(--line);
+      padding-top: 8px;
+    }
+
+    main {
+      min-width: 0;
+      padding: 18px 20px 30px;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: start;
+      margin-bottom: 16px;
+    }
+
+    h1, h2, h3, p { margin: 0; }
+    h1 {
+      font-size: 24px;
+      letter-spacing: 0;
+      line-height: 1.15;
+    }
+
+    .subtitle {
+      margin-top: 6px;
+      color: var(--muted);
+      max-width: 720px;
+    }
+
+    .quickbar {
+      border: 1px solid var(--ink);
+      background: var(--paper);
+      box-shadow: 3px 3px 0 var(--ink);
+      border-radius: var(--radius);
+      padding: 8px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .field {
+      border: 1px solid var(--line-strong);
+      background: #fff;
+      border-radius: var(--radius);
+      min-height: 34px;
+      padding: 7px 10px;
+      color: var(--ink);
+      outline: none;
+    }
+
+    .field:focus {
+      border-color: var(--ink);
+      box-shadow: 0 0 0 3px rgba(255, 216, 41, 0.38);
+    }
+
+    .btn {
+      min-height: 34px;
+      border: 1px solid var(--ink);
+      background: #fff;
+      color: var(--ink);
+      border-radius: var(--radius);
+      padding: 7px 11px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+    }
+
+    .btn:hover {
+      transform: translate(-1px, -1px);
+      box-shadow: 2px 2px 0 var(--ink);
+    }
+
+    .btn.primary {
+      background: var(--accent);
+      color: var(--accent-ink);
+      font-weight: 700;
+    }
+
+    .btn.ghost {
+      border-color: var(--line-strong);
+      color: var(--muted);
+    }
+
+    .btn.danger {
+      color: var(--bad);
+      border-color: rgba(189, 47, 42, 0.42);
+    }
+
+    .page {
+      display: none;
+    }
+
+    .page.active {
+      display: block;
+    }
+
+    .workbench {
+      display: grid;
+      grid-template-columns: minmax(0, 1.5fr) 360px;
+      gap: 14px;
+      align-items: start;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.93);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .panel-head {
+      min-height: 48px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: linear-gradient(180deg, #fff, #fbfbf4);
+    }
+
+    .panel-head h2 {
+      font-size: 15px;
+      letter-spacing: 0;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .panel-body {
+      padding: 14px;
+    }
+
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 740px;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 12px;
+      text-align: left;
+      font-weight: 700;
+      padding: 9px 10px;
+      border-bottom: 1px solid var(--line-strong);
+      background: #f8f8f0;
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 10px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: middle;
+    }
+
+    tr:hover td {
+      background: #fffce6;
+    }
+
+    .name-cell {
+      font-weight: 700;
+    }
+
+    .desc {
+      color: var(--muted);
+      max-width: 280px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--line-strong);
+      border-radius: 999px;
+      padding: 3px 8px;
+      font-size: 12px;
+      background: #fff;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--muted);
+    }
+
+    .dot.ok { background: var(--ok); }
+    .dot.warn { background: var(--warn); }
+    .dot.bad { background: var(--bad); }
+
+    .actions {
+      display: flex;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .link-btn {
+      border: 0;
+      background: transparent;
+      color: var(--ink);
+      padding: 4px 3px;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .link-btn.delete { color: var(--bad); }
+
+    .detail {
+      display: grid;
+      gap: 12px;
+    }
+
+    .detail-title {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .detail-title h3 {
+      font-size: 18px;
+    }
+
+    .kv {
+      display: grid;
+      grid-template-columns: 110px minmax(0, 1fr);
+      gap: 8px 10px;
+      font-size: 13px;
+    }
+
+    .kv span:nth-child(odd) {
+      color: var(--muted);
+    }
+
+    .codebox {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #20231d;
+      color: #f7f7ed;
+      padding: 12px;
+      font-family: var(--mono);
+      font-size: 12px;
+      overflow: auto;
+    }
+
+    .split-flow {
+      display: grid;
+      grid-template-columns: 280px minmax(520px, 1fr) 340px;
+      gap: 12px;
+      align-items: stretch;
+      min-height: 650px;
+    }
+
+    .flow-list,
+    .node-lib,
+    .config-drawer {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .flow-item {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 10px;
+      background: #fff;
+      margin-bottom: 8px;
+      display: grid;
+      gap: 7px;
+    }
+
+    .flow-item.active {
+      border-color: var(--ink);
+      box-shadow: 3px 3px 0 var(--accent);
+    }
+
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-family: var(--mono);
+    }
+
+    .pagination {
+      margin-top: auto;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 10px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .canvas {
+      position: relative;
+      min-height: 650px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background:
+        radial-gradient(circle, rgba(21, 21, 21, 0.12) 1px, transparent 1px),
+        #fffffb;
+      background-size: 18px 18px;
+      overflow: hidden;
+    }
+
+    .canvas-head {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      right: 10px;
+      z-index: 2;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.92);
+      border-radius: var(--radius);
+      padding: 8px;
+      backdrop-filter: blur(8px);
+    }
+
+    .canvas-stage {
+      position: absolute;
+      inset: 72px 18px 18px;
+    }
+
+    .node {
+      position: absolute;
+      width: 184px;
+      border: 1px solid var(--ink);
+      background: #fff;
+      border-radius: var(--radius);
+      box-shadow: 4px 4px 0 rgba(21, 21, 21, 0.18);
+      padding: 10px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .node.selected {
+      box-shadow: 4px 4px 0 var(--accent);
+      background: #fffef1;
+    }
+
+    .node .node-type {
+      color: var(--muted);
+      font-size: 11px;
+      font-family: var(--mono);
+      text-transform: uppercase;
+    }
+
+    .node .node-name {
+      font-weight: 800;
+    }
+
+    .node .node-desc {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .edge {
+      position: absolute;
+      height: 2px;
+      background: var(--ink);
+      transform-origin: left center;
+    }
+
+    .edge::after {
+      content: "";
+      position: absolute;
+      right: -1px;
+      top: -4px;
+      width: 0;
+      height: 0;
+      border-left: 8px solid var(--ink);
+      border-top: 5px solid transparent;
+      border-bottom: 5px solid transparent;
+    }
+
+    .edge-label {
+      position: absolute;
+      background: var(--accent);
+      border: 1px solid var(--ink);
+      border-radius: 999px;
+      padding: 2px 7px;
+      font-family: var(--mono);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .lib-item {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: var(--radius);
+      padding: 10px;
+      display: grid;
+      gap: 4px;
+      margin-bottom: 8px;
+    }
+
+    .lib-item:hover {
+      border-color: var(--ink);
+      box-shadow: 2px 2px 0 var(--accent);
+    }
+
+    .form-grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .label {
+      display: grid;
+      gap: 5px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .label input,
+    .label select,
+    .label textarea {
+      width: 100%;
+    }
+
+    textarea.field {
+      min-height: 78px;
+      resize: vertical;
+    }
+
+    .rule-row {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .run-log {
+      display: grid;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .log-line {
+      border-left: 3px solid var(--accent);
+      background: #fffdf0;
+      padding: 7px 9px;
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+
+    .report-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .kpi {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: var(--radius);
+      padding: 12px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .kpi .num {
+      font-family: var(--mono);
+      font-size: 26px;
+      font-weight: 800;
+    }
+
+    .kpi .trend {
+      color: var(--ok);
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+
+    .analytics-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(360px, 0.75fr);
+      gap: 12px;
+    }
+
+    .chart {
+      height: 260px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, #fff, #fffef4);
+      padding: 14px;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 12px;
+    }
+
+    .bars {
+      display: flex;
+      gap: 10px;
+      align-items: end;
+      height: 100%;
+      border-left: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      padding: 0 8px 8px;
+    }
+
+    .bar {
+      flex: 1;
+      min-width: 16px;
+      background: repeating-linear-gradient(
+        45deg,
+        var(--accent),
+        var(--accent) 8px,
+        #ffe972 8px,
+        #ffe972 16px
+      );
+      border: 1px solid var(--ink);
+      border-bottom: 0;
+      position: relative;
+    }
+
+    .bar span {
+      position: absolute;
+      bottom: -22px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+
+    .reason-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .reason {
+      display: grid;
+      grid-template-columns: 88px 1fr 44px;
+      gap: 8px;
+      align-items: center;
+      font-size: 12px;
+    }
+
+    .meter {
+      height: 8px;
+      border: 1px solid var(--line-strong);
+      background: #f4f4ea;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .meter i {
+      display: block;
+      height: 100%;
+      background: var(--ink);
+    }
+
+    .heatmap {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 5px;
+    }
+
+    .heat {
+      aspect-ratio: 1;
+      border: 1px solid var(--line);
+      border-radius: 3px;
+      background: #f1f1e7;
+      display: grid;
+      place-items: center;
+      font-family: var(--mono);
+      font-size: 10px;
+      color: rgba(21, 21, 21, 0.72);
+    }
+
+    .heat.l1 { background: #fff4a6; }
+    .heat.l2 { background: #ffe45e; }
+    .heat.l3 { background: #ffd829; border-color: var(--ink); }
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .topic {
+      border: 1px solid var(--line-strong);
+      background: #fff;
+      border-radius: 999px;
+      padding: 5px 8px;
+      font-size: 12px;
+    }
+
+    .flow-rank {
+      display: grid;
+      gap: 8px;
+    }
+
+    .rank-line {
+      display: grid;
+      grid-template-columns: 22px 1fr auto;
+      gap: 8px;
+      align-items: center;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 8px;
+      font-size: 13px;
+    }
+
+    .mobile-tabs {
+      display: none;
+      gap: 8px;
+      margin-bottom: 12px;
+      overflow-x: auto;
+    }
+
+    @media (max-width: 1180px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar {
+        display: none;
+      }
+      main { padding: 12px; }
+      .mobile-tabs { display: flex; }
+      .topbar, .workbench, .analytics-layout { grid-template-columns: 1fr; }
+      .split-flow { grid-template-columns: 1fr; }
+      .canvas { min-height: 620px; }
+      .report-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media (max-width: 720px) {
+      .quickbar { align-items: stretch; }
+      .quickbar .field, .quickbar .btn { width: 100%; justify-content: center; }
+      .report-grid { grid-template-columns: 1fr; }
+      .canvas-stage { transform: scale(0.82); transform-origin: top left; width: 760px; }
+    }
+  
+/* Presentation polish */
+:focus-visible{outline:2px solid color-mix(in srgb,#2563eb 72%,white);outline-offset:2px}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+button:disabled{cursor:not-allowed}
+@media print{body{background:#fff!important}.toast,[data-design-source-badge]{display:none!important}}
+</style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <strong>AI VOICEDESK</strong>
+        <span>workflow builder · ops console</span>
+      </div>
+      <nav class="nav" aria-label="主模块">
+        <button class="active" data-target="bots">机器人方案管理 <code>01</code></button>
+        <button data-target="flows">流程配置 <code>02</code></button>
+        <button data-target="reports">综合运营报表 <code>03</code></button>
+      </nav>
+      <div class="status-stack">
+        <div class="status-line"><span>当前环境</span><strong>演示</strong></div>
+        <div class="status-line"><span>上次同步</span><strong class="mono">14:28</strong></div>
+        <div class="status-line"><span>运行状态</span><strong>正常</strong></div>
+      </div>
+    </aside>
+
+    <main>
+      <div class="mobile-tabs nav" aria-label="移动端模块">
+        <button class="active" data-target="bots">机器人方案管理</button>
+        <button data-target="flows">流程配置</button>
+        <button data-target="reports">综合运营报表</button>
+      </div>
+
+      <section class="page active" id="bots">
+        <div class="topbar">
+          <div>
+            <h1>机器人方案管理</h1>
+            <p class="subtitle">用接近开发控制台的列表、详情面板和快捷操作管理语音机器人方案，保持名称、描述、状态、引擎、更新时间与操作信息可扫读。</p>
+          </div>
+          <div class="quickbar">
+            <span class="helper">搜索</span><input class="field" id="botSearch" type="search" placeholder="搜索名称或引擎" />
+            <select class="field" id="botState">
+              <option value="all">全部状态</option>
+              <option value="online">已启用</option>
+              <option value="draft">草稿</option>
+              <option value="offline">已停用</option>
+            </select>
+            <button class="btn primary" id="newBot">新建方案</button>
+          </div>
+        </div>
+
+        <div class="workbench">
+          <div class="panel">
+            <div class="panel-head">
+              <h2>方案列表</h2>
+              <div class="toolbar">
+                <span class="chip">共 <b id="botCount">5</b> 个方案</span>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>名称</th>
+                    <th>描述</th>
+                    <th>状态</th>
+                    <th>引擎</th>
+                    <th>更新时间</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="botRows"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <aside class="panel">
+            <div class="panel-head">
+              <h2>详情面板</h2>
+              <span class="badge"><span class="dot ok"></span>可编辑</span>
+            </div>
+            <div class="panel-body detail" id="botDetail"></div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="page" id="flows">
+        <div class="topbar">
+          <div>
+            <h1>流程配置</h1>
+            <p class="subtitle">围绕流程方案列表、流程画布、节点库、节点配置、流转条件和试运行反馈，形成偏自动化工具的配置体验。</p>
+          </div>
+          <div class="quickbar">
+            <span class="helper">搜索</span><input class="field" type="search" placeholder="搜索流程方案" />
+            <select class="field">
+              <option>全部状态</option>
+              <option>草稿</option>
+              <option>运行中</option>
+            </select>
+            <button class="btn">试运行</button>
+            <button class="btn primary">保存草稿</button>
+          </div>
+        </div>
+
+        <div class="split-flow">
+          <aside class="panel flow-list">
+            <div class="panel-head">
+              <h2>流程方案列表</h2>
+              <span class="badge">分页</span>
+            </div>
+            <div class="panel-body">
+              <div class="flow-item active">
+                <strong>物品遗失查找流程</strong>
+                <p class="desc">识别意图、收集信息、预约人工跟进</p>
+                <div class="meta-row"><span>运行中</span><span>2026-06-10</span></div>
+              </div>
+              <div class="flow-item">
+                <strong>高危安全拦截流程</strong>
+                <p class="desc">满意度确认、问题归因、工单创建</p>
+                <div class="meta-row"><span>草稿</span><span>2026-06-08</span></div>
+              </div>
+              <div class="flow-item">
+                <strong>催收三轮跟进流程</strong>
+                <p class="desc">身份核验、账期说明、短信补发</p>
+                <div class="meta-row"><span>运行中</span><span>2026-06-06</span></div>
+              </div>
+              <div class="pagination">
+                <button class="btn ghost">上一页</button>
+                <span>1 / 4</span>
+                <button class="btn ghost">下一页</button>
+              </div>
+            </div>
+          </aside>
+
+          <section class="canvas" aria-label="流程画布">
+            <div class="canvas-head">
+              <div class="toolbar">
+                <span class="badge"><span class="dot ok"></span>自动保存开启</span>
+                <span class="badge">画布缩放 92%</span>
+              </div>
+              <div class="toolbar">
+                <button class="btn ghost">运行任务</button>
+                <button class="btn danger" id="deleteNode">节点删除</button>
+              </div>
+            </div>
+            <div class="canvas-stage">
+              <div class="edge" style="left:156px;top:82px;width:178px;transform:rotate(14deg);"></div>
+              <div class="edge" style="left:430px;top:128px;width:160px;transform:rotate(0deg);"></div>
+              <div class="edge" style="left:430px;top:177px;width:165px;transform:rotate(38deg);"></div>
+              <div class="edge-label" style="left:256px;top:96px;">意图=咨询</div>
+              <div class="edge-label" style="left:486px;top:104px;">信息完整</div>
+              <div class="edge-label" style="left:510px;top:230px;">需人工</div>
+
+              <button class="node selected" style="left:22px;top:46px;" data-node="开始">
+                <span class="node-type">trigger</span>
+                <span class="node-name">开始</span>
+                <span class="node-desc">接入呼入电话并创建会话</span>
+              </button>
+              <button class="node" style="left:336px;top:88px;" data-node="意图识别">
+                <span class="node-type">classifier</span>
+                <span class="node-name">意图识别</span>
+                <span class="node-desc">判断咨询、投诉、转人工</span>
+              </button>
+              <button class="node" style="left:600px;top:88px;" data-node="信息收集">
+                <span class="node-type">dialog</span>
+                <span class="node-name">信息收集</span>
+                <span class="node-desc">收集姓名、号码和诉求</span>
+              </button>
+              <button class="node" style="left:610px;top:276px;" data-node="人工跟进">
+                <span class="node-type">handoff</span>
+                <span class="node-name">人工跟进</span>
+                <span class="node-desc">生成跟进任务并记录摘要</span>
+              </button>
+            </div>
+          </section>
+
+          <aside class="panel config-drawer">
+            <div class="panel-head">
+              <h2>节点配置</h2>
+              <span class="badge" id="selectedNode">开始</span>
+            </div>
+            <div class="panel-body">
+              <div class="form-grid">
+                <label class="label">节点名称
+                  <input class="field" value="开始" id="nodeName" />
+                </label>
+                <label class="label">节点类型
+                  <select class="field">
+                    <option>触发节点</option>
+                    <option>对话节点</option>
+                    <option>条件节点</option>
+                    <option>任务节点</option>
+                  </select>
+                </label>
+                <label class="label">节点说明
+                  <textarea class="field">接入呼入电话并创建会话，初始化客户上下文。</textarea>
+                </label>
+                <div>
+                  <p class="mono" style="margin-bottom:8px;">流转条件</p>
+                  <div class="rule-row">
+                    <input class="field" value="意图" />
+                    <select class="field"><option>等于</option><option>包含</option><option>为空</option></select>
+                    <input class="field" value="咨询" />
+                  </div>
+                </div>
+                <div class="codebox">试运行输出
+14:28:01 创建会话
+14:28:02 命中「物品遗失查找流程」
+14:28:05 等待客户回答</div>
+                <div class="run-log">
+                  <div class="log-line">运行任务 #RUN-260610-01 已生成</div>
+                  <div class="log-line">保存草稿成功，版本 v12</div>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="page" id="reports">
+        <div class="topbar">
+          <div>
+            <h1>综合运营报表</h1>
+            <p class="subtitle">把时间筛选、机器人筛选、呼叫方向、导出、刷新和多类运营分析放进同一张可查询工作台，偏数据控制台而不是展示大屏。</p>
+          </div>
+          <div class="quickbar">
+            <select class="field"><option>近 7 天</option><option>近 30 天</option><option>自定义时间</option></select>
+            <select class="field"><option>全部机器人</option><option>滴滴出行智能客服 (Demo)</option><option>回访机器人</option></select>
+            <select class="field"><option>全部方向</option><option>呼入</option><option>呼出</option></select>
+            <button class="btn">刷新</button>
+            <button class="btn primary">导出</button>
+          </div>
+        </div>
+
+        <div class="report-grid">
+          <div class="kpi"><span class="muted">通话总量</span><span class="num">18,426</span><span class="trend">+8.4%</span></div>
+          <div class="kpi"><span class="muted">接通率</span><span class="num">91.2%</span><span class="trend">+2.1%</span></div>
+          <div class="kpi"><span class="muted">平均时长</span><span class="num">03:48</span><span class="trend">-0:12</span></div>
+          <div class="kpi"><span class="muted">转人工率</span><span class="num">12.6%</span><span class="trend" style="color:var(--warn);">+0.7%</span></div>
+        </div>
+
+        <div class="analytics-layout">
+          <div class="panel">
+            <div class="panel-head">
+              <h2>通话趋势</h2>
+              <div class="toolbar">
+                <span class="helper">搜索</span><input class="field" type="search" placeholder="搜索报表、Topic、工具" />
+                <span class="badge">按小时聚合</span>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div class="chart">
+                <div class="meta-row"><strong>呼入/呼出通话 KPI 趋势</strong><span>单位：通话量</span></div>
+                <div class="bars">
+                  <div class="bar" style="height:42%;"><span>06-04</span></div>
+                  <div class="bar" style="height:58%;"><span>06-05</span></div>
+                  <div class="bar" style="height:54%;"><span>06-06</span></div>
+                  <div class="bar" style="height:72%;"><span>06-07</span></div>
+                  <div class="bar" style="height:66%;"><span>06-08</span></div>
+                  <div class="bar" style="height:84%;"><span>06-09</span></div>
+                  <div class="bar" style="height:78%;"><span>06-10</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head"><h2>原因分布</h2><span class="badge">Top 5</span></div>
+            <div class="panel-body reason-list">
+              <div class="reason"><span>价格咨询</span><div class="meter"><i style="width:82%;"></i></div><b>34%</b></div>
+              <div class="reason"><span>售后问题</span><div class="meter"><i style="width:62%;"></i></div><b>26%</b></div>
+              <div class="reason"><span>预约变更</span><div class="meter"><i style="width:44%;"></i></div><b>18%</b></div>
+              <div class="reason"><span>身份核验</span><div class="meter"><i style="width:31%;"></i></div><b>13%</b></div>
+              <div class="reason"><span>其他</span><div class="meter"><i style="width:22%;"></i></div><b>9%</b></div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head"><h2>时长 / 地域</h2><span class="badge">地域热力</span></div>
+            <div class="panel-body">
+              <div class="heatmap" aria-label="地域热力图">
+                <div class="heat l1">京</div><div class="heat l2">沪</div><div class="heat">津</div><div class="heat l3">粤</div><div class="heat l1">浙</div><div class="heat l2">苏</div><div class="heat">闽</div>
+                <div class="heat">湘</div><div class="heat l1">鄂</div><div class="heat l3">川</div><div class="heat l2">渝</div><div class="heat">陕</div><div class="heat l1">鲁</div><div class="heat">豫</div>
+                <div class="heat l2">辽</div><div class="heat">吉</div><div class="heat">黑</div><div class="heat l1">桂</div><div class="heat l2">云</div><div class="heat">贵</div><div class="heat l1">赣</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head"><h2>Topic / Flow</h2><span class="badge">会话归类</span></div>
+            <div class="panel-body">
+              <div class="tag-row" style="margin-bottom:14px;">
+                <span class="topic">#价格咨询 3,204</span>
+                <span class="topic">#预约跟进 2,118</span>
+                <span class="topic">#物品遗失 1,884</span>
+                <span class="topic">#转人工 1,126</span>
+              </div>
+              <div class="flow-rank">
+                <div class="rank-line"><b>1</b><span>物品遗失查找流程</span><strong>42%</strong></div>
+                <div class="rank-line"><b>2</b><span>高危安全拦截流程</span><strong>27%</strong></div>
+                <div class="rank-line"><b>3</b><span>催收三轮跟进流程</span><strong>19%</strong></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel" style="grid-column:1 / -1;">
+            <div class="panel-head">
+              <h2>工具调用报表</h2>
+              <div class="toolbar">
+                <span class="helper">搜索</span><input class="field" type="search" placeholder="搜索工具名称或结果" />
+                <button class="btn ghost">仅看失败</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>工具</th>
+                    <th>机器人</th>
+                    <th>Flow</th>
+                    <th>调用次数</th>
+                    <th>成功率</th>
+                    <th>平均耗时</th>
+                    <th>结果</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td class="name-cell">投诉记录工具</td><td>语音 Agent 演示 (多工具场景)</td><td>高危安全拦截流程</td><td class="mono">1,240</td><td>98.4%</td><td class="mono">420ms</td><td><span class="badge"><span class="dot ok"></span>正常</span></td></tr>
+                  <tr><td class="name-cell">短信通知工具</td><td>银行信用卡服务机器人</td><td>催收三轮跟进流程</td><td class="mono">3,108</td><td>96.1%</td><td class="mono">310ms</td><td><span class="badge"><span class="dot ok"></span>正常</span></td></tr>
+                  <tr><td class="name-cell">客户画像查询工具</td><td>滴滴出行智能客服 (Demo)</td><td>物品遗失查找流程</td><td class="mono">6,782</td><td>93.7%</td><td class="mono">680ms</td><td><span class="badge"><span class="dot warn"></span>需关注</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const bots = [
+      { name: "滴滴出行智能客服 (Demo)", desc: "回答价格、套餐和预约问题，必要时转人工跟进。", state: "online", label: "已启用", engine: "Gemini Pro 1.5 / ASR Pro", updated: "2026-06-10 14:20" },
+      { name: "语音 Agent 演示 (多工具场景)", desc: "完成满意度回访，识别投诉原因并创建工单。", state: "draft", label: "草稿", engine: "Gemini Pro 1.5 / ASR Pro", updated: "2026-06-09 18:42" },
+      { name: "银行信用卡服务机器人", desc: "呼出提醒账期、补发短信并记录客户反馈。", state: "online", label: "已启用", engine: "Gemini Flash / ASR Pro", updated: "2026-06-08 09:17" },
+      { name: "餐饮预订机器人", desc: "确认预约时间、门店和联系人信息。", state: "offline", label: "已停用", engine: "Gemini Flash / ASR Lite", updated: "2026-06-04 11:36" },
+      { name: "身份验证机器人", desc: "核验客户身份信息，为后续业务流程提供上下文。", state: "online", label: "已启用", engine: "Gemini Pro 1.5 / ASR Pro", updated: "2026-06-03 16:05" }
+    ];
+
+    let selectedBot = 0;
+
+    function dotClass(state) {
+      if (state === "online") return "ok";
+      if (state === "draft") return "warn";
+      return "bad";
+    }
+
+    function renderBots() {
+      const query = document.querySelector("#botSearch").value.trim().toLowerCase();
+      const state = document.querySelector("#botState").value;
+      const rows = document.querySelector("#botRows");
+      const filtered = bots.filter((bot) => {
+        const hit = `${bot.name} ${bot.engine}`.toLowerCase().includes(query);
+        const stateHit = state === "all" || bot.state === state;
+        return hit && stateHit;
+      });
+      document.querySelector("#botCount").textContent = filtered.length;
+      rows.innerHTML = filtered.map((bot, index) => `
+        <tr>
+          <td class="name-cell">${bot.name}</td>
+          <td><div class="desc">${bot.desc}</div></td>
+          <td><span class="badge"><span class="dot ${dotClass(bot.state)}"></span>${bot.label}</span></td>
+          <td class="mono">${bot.engine}</td>
+          <td class="mono">${bot.updated}</td>
+          <td>
+            <div class="actions">
+              <button class="link-btn" data-detail="${bots.indexOf(bot)}">详情</button>
+              <button class="link-btn">编辑</button>
+              <button class="link-btn delete">删除</button>
+            </div>
+          </td>
+        </tr>
+      `).join("");
+      rows.querySelectorAll("[data-detail]").forEach((button) => {
+        button.addEventListener("click", () => {
+          selectedBot = Number(button.dataset.detail);
+          renderDetail();
+        });
+      });
+    }
+
+    function renderDetail() {
+      const bot = bots[selectedBot];
+      document.querySelector("#botDetail").innerHTML = `
+        <div class="detail-title">
+          <div>
+            <h3>${bot.name}</h3>
+            <p class="subtitle">${bot.desc}</p>
+          </div>
+          <span class="badge"><span class="dot ${dotClass(bot.state)}"></span>${bot.label}</span>
+        </div>
+        <div class="kv">
+          <span>引擎</span><strong class="mono">${bot.engine}</strong>
+          <span>更新时间</span><strong class="mono">${bot.updated}</strong>
+          <span>最近操作</span><strong>编辑 / 删除 / 查看详情</strong>
+          <span>状态</span><strong>${bot.label}</strong>
+        </div>
+        <div class="codebox">方案摘要
+name: ${bot.name}
+engine: ${bot.engine}
+status: ${bot.label}
+updated_at: ${bot.updated}</div>
+        <div class="toolbar">
+          <button class="btn primary">编辑</button>
+          <button class="btn danger">删除</button>
+        </div>
+      `;
+    }
+
+    function setPage(target) {
+      document.querySelectorAll(".page").forEach((page) => page.classList.toggle("active", page.id === target));
+      document.querySelectorAll(".nav button").forEach((button) => button.classList.toggle("active", button.dataset.target === target));
+    }
+
+    document.querySelectorAll(".nav button").forEach((button) => {
+      button.addEventListener("click", () => setPage(button.dataset.target));
+    });
+
+    document.querySelector("#botSearch").addEventListener("input", renderBots);
+    document.querySelector("#botState").addEventListener("change", renderBots);
+    document.querySelector("#newBot").addEventListener("click", () => {
+      selectedBot = 1;
+      renderDetail();
+    });
+
+    document.querySelectorAll(".node").forEach((node) => {
+      node.addEventListener("click", () => {
+        document.querySelectorAll(".node").forEach((item) => item.classList.remove("selected"));
+        node.classList.add("selected");
+        document.querySelector("#selectedNode").textContent = node.dataset.node;
+        document.querySelector("#nodeName").value = node.dataset.node;
+      });
+    });
+
+    document.querySelector("#deleteNode").addEventListener("click", () => {
+      const selected = document.querySelector(".node.selected");
+      if (!selected) return;
+      selected.style.opacity = "0.38";
+      document.querySelector("#selectedNode").textContent = "待删除";
+    });
+
+    renderBots();
+    renderDetail();
+  </script>
+</body>
+</html>

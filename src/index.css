@@ -1,0 +1,99 @@
+@import '../design/tokens/tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .field {
+    @apply h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-800 outline-none transition-colors hover:border-slate-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-100;
+  }
+
+  .textarea {
+    @apply min-h-20 w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs leading-5 text-slate-800 outline-none transition-colors hover:border-slate-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-100;
+  }
+
+  .button-primary {
+    @apply inline-flex h-9 items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 text-xs font-semibold text-white transition-colors hover:bg-blue-700;
+  }
+
+  .button-secondary {
+    @apply inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50;
+  }
+
+  .icon-button {
+    @apply inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-blue-600;
+  }
+}
+
+@layer base {
+  :root {
+    /* Tailwind opacity utilities need channel values, while design tokens keep hex values. */
+    --tw-color-primary-rgb: 24 89 209;
+    --tw-color-secondary-rgb: 104 117 134;
+    --tw-color-sidebar-rgb: 11 20 32;
+  }
+
+  html {
+    font-family: var(--typography-font-sans);
+    background: var(--color-semantic-bg-page);
+    color: var(--color-semantic-text-primary);
+  }
+
+  body {
+    background: var(--color-semantic-bg-page);
+    color: var(--color-semantic-text-primary);
+    font-size: var(--typography-size-body);
+    line-height: var(--typography-line-height-normal);
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  button:focus-visible,
+  [role='button']:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  a:focus-visible {
+    outline: none;
+    box-shadow: var(--state-focus-ring);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .prompt-editor-fullscreen-backdrop {
+    animation: prompt-editor-backdrop-in 160ms ease-out both;
+  }
+
+  .prompt-editor-fullscreen-panel {
+    animation: prompt-editor-panel-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    transform-origin: center;
+  }
+}
+
+@keyframes prompt-editor-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes prompt-editor-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.prompt-editor-content:empty::before {
+  color: var(--color-semantic-text-tertiary);
+  content: attr(data-placeholder);
+  pointer-events: none;
+}
