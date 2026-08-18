@@ -30,6 +30,7 @@ View your app in AI Studio: https://ai.studio/apps/drive/1roavSagafxEJgVSbE9FoTx
 - 自动跟进规则已升级为规则画布，支持触发事件、条件判断、时间计算、触达保护、执行动作、重试策略和退出条件的图式查看。
 - 语音运行控制已补充安全护栏、工具调用分级与人工审批、机器人全局异常兜底及 Step 级异常覆盖配置。
 - 机器人配置支持单 Agent、Supervisor 和 Handoff 三种运行模式，并可在无限画布中组织 Flow、旧版意图流程、主题、静默任务、人工服务和挂机节点；Supervisor 与 Handoff 分别保存画布草稿。
+- 单个机器人的主题管理支持折叠式主题匹配设置，可配置最近历史消息条数及是否将上一轮主题用于下一轮判断，原主题列表管理保持不变。
 
 - 已整理所有静态 HTML 设计稿到 `docs/html-showcase/`，统一入口为 `docs/html-showcase/index.html`，包含 19 个展示页；Clinical Mint 和 Brex Risk 是当前正式展示候选。
 

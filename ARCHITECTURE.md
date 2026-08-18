@@ -1,6 +1,6 @@
 # AI 语音机器人前端架构文档
 
-更新时间：2026-06-10
+更新时间：2026-08-18
 
 ## 1. 项目定位
 
@@ -100,7 +100,8 @@ types.ts：全项目共享的数据结构
 | `BotIntentConfig.tsx` | 管理机器人意图、相似问法和意图内微流程。 |
 | `BotDebugConfig.tsx` | 提供机器人调试配置入口。 |
 | `BotTestConfig.tsx` | 管理测试用例、测试会话和结果展示。 |
-| `BotTopicManager.tsx` | 管理普通主题和流程主题；普通主题配置提示词、工具、实体和流程引用，流程主题只一一绑定 Flow。 |
+| `BotTopicManager.tsx` | 组合主题匹配设置与原主题列表，并管理普通主题和流程主题的增删改查。 |
+| `TopicMatchingSettings.tsx` | 提供默认收起的主题匹配上下文设置，配置历史消息条数和上一轮主题是否参与判断。 |
 | `BotTriggerManager.tsx` | 管理机器人触发条件和触发动作。 |
 | `BotMarketingConfig.tsx` | 配置机器人级客户运营能力绑定，包括画像识别、营销活动、自动跟进规则、策略模板与结果回写。 |
 | `PromptGeneratorModal.tsx` | 调用 Gemini 服务生成或优化机器人提示词。 |

@@ -3,6 +3,7 @@ import { Plus, Trash2, Edit2, X, Check, Search, Power, Tag, ChevronLeft, Chevron
 import { BotConfiguration, TopicSkill, BUILT_IN_FUNCTIONS } from '../../types';
 import PromptEditor from '../ui/PromptEditor';
 import SpeechListEditor from '../ui/SpeechListEditor';
+import TopicMatchingSettings from './TopicMatchingSettings';
 
 interface BotTopicManagerProps {
   config: BotConfiguration;
@@ -22,6 +23,9 @@ const BotTopicManager: React.FC<BotTopicManagerProps> = ({ config, updateField }
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
 
   const topics = config.topicSkillLibraryConfig?.skills || [];
+  const historyConversationEnabled = config.topicSkillLibraryConfig?.historyConversationEnabled ?? true;
+  const historyConversationCount = config.topicSkillLibraryConfig?.historyConversationCount ?? 5;
+  const previousTopicContextEnabled = config.topicSkillLibraryConfig?.previousTopicContextEnabled ?? false;
   const flowTopicPatch = { topicType: 'flow' as const };
   const normalTopicPatch = { topicType: 'normal' as const };
   const ivrOptions = [
@@ -667,8 +671,29 @@ const BotTopicManager: React.FC<BotTopicManagerProps> = ({ config, updateField }
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-      <div className="p-6 border-b border-gray-100">
+    <div className="space-y-4">
+      <TopicMatchingSettings
+        value={{
+          historyConversationEnabled,
+          historyConversationCount,
+          previousTopicContextEnabled,
+        }}
+        onChange={(patch) => updateField('topicSkillLibraryConfig', {
+          enabled: config.topicSkillLibraryConfig?.enabled ?? false,
+          skills: topics,
+          pageSize: config.topicSkillLibraryConfig?.pageSize ?? 10,
+          currentPage: config.topicSkillLibraryConfig?.currentPage ?? 1,
+          totalPages: config.topicSkillLibraryConfig?.totalPages ?? 1,
+          totalCount: config.topicSkillLibraryConfig?.totalCount ?? topics.length,
+          historyConversationEnabled,
+          historyConversationCount,
+          previousTopicContextEnabled,
+          ...patch,
+        })}
+      />
+
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-gray-100">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-bold text-slate-800">主题管理</h3>
           <button
@@ -939,6 +964,7 @@ const BotTopicManager: React.FC<BotTopicManagerProps> = ({ config, updateField }
             )}
           </>
         )}
+        </div>
       </div>
     </div>
   );

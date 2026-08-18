@@ -147,6 +147,9 @@ const DEFAULT_STRATEGY_DEFAULTS = {
   // 主题技能库配置
   topicSkillLibraryConfig: {
     enabled: false,
+    historyConversationEnabled: true,
+    historyConversationCount: 5,
+    previousTopicContextEnabled: false,
     skills: [
       {
         id: '1',

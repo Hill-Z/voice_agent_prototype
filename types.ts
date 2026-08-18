@@ -1514,6 +1514,9 @@ export interface TopicSkill {
 // 主题技能库配置类型
 export interface TopicSkillLibraryConfig {
   enabled: boolean;
+  historyConversationEnabled?: boolean;
+  historyConversationCount?: number;
+  previousTopicContextEnabled?: boolean;
   skills: TopicSkill[];
   pageSize: number;
   currentPage: number;
