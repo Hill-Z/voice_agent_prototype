@@ -148,8 +148,8 @@ const DEFAULT_STRATEGY_DEFAULTS = {
   topicSkillLibraryConfig: {
     enabled: false,
     historyConversationEnabled: true,
-    historyConversationCount: 5,
-    previousTopicContextEnabled: false,
+    historyConversationCount: 3,
+    previousTopicPriorityEnabled: false,
     skills: [
       {
         id: '1',

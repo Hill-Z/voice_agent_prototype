@@ -101,7 +101,7 @@ types.ts：全项目共享的数据结构
 | `BotDebugConfig.tsx` | 提供机器人调试配置入口。 |
 | `BotTestConfig.tsx` | 管理测试用例、测试会话和结果展示。 |
 | `BotTopicManager.tsx` | 组合主题匹配设置与原主题列表，并管理普通主题和流程主题的增删改查。 |
-| `TopicMatchingSettings.tsx` | 提供默认收起的主题匹配上下文设置，配置历史消息条数和上一轮主题是否参与判断。 |
+| `TopicMatchingSettings.tsx` | 提供默认收起的主题匹配设置，配置历史消息条数和是否优先匹配上一轮主题。 |
 | `BotTriggerManager.tsx` | 管理机器人触发条件和触发动作。 |
 | `BotMarketingConfig.tsx` | 配置机器人级客户运营能力绑定，包括画像识别、营销活动、自动跟进规则、策略模板与结果回写。 |
 | `PromptGeneratorModal.tsx` | 调用 Gemini 服务生成或优化机器人提示词。 |

@@ -1516,7 +1516,7 @@ export interface TopicSkillLibraryConfig {
   enabled: boolean;
   historyConversationEnabled?: boolean;
   historyConversationCount?: number;
-  previousTopicContextEnabled?: boolean;
+  previousTopicPriorityEnabled?: boolean;
   skills: TopicSkill[];
   pageSize: number;
   currentPage: number;

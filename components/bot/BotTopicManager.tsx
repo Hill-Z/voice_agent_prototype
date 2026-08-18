@@ -24,8 +24,8 @@ const BotTopicManager: React.FC<BotTopicManagerProps> = ({ config, updateField }
 
   const topics = config.topicSkillLibraryConfig?.skills || [];
   const historyConversationEnabled = config.topicSkillLibraryConfig?.historyConversationEnabled ?? true;
-  const historyConversationCount = config.topicSkillLibraryConfig?.historyConversationCount ?? 5;
-  const previousTopicContextEnabled = config.topicSkillLibraryConfig?.previousTopicContextEnabled ?? false;
+  const historyConversationCount = config.topicSkillLibraryConfig?.historyConversationCount ?? 3;
+  const previousTopicPriorityEnabled = config.topicSkillLibraryConfig?.previousTopicPriorityEnabled ?? false;
   const flowTopicPatch = { topicType: 'flow' as const };
   const normalTopicPatch = { topicType: 'normal' as const };
   const ivrOptions = [
@@ -676,7 +676,7 @@ const BotTopicManager: React.FC<BotTopicManagerProps> = ({ config, updateField }
         value={{
           historyConversationEnabled,
           historyConversationCount,
-          previousTopicContextEnabled,
+          previousTopicPriorityEnabled,
         }}
         onChange={(patch) => updateField('topicSkillLibraryConfig', {
           enabled: config.topicSkillLibraryConfig?.enabled ?? false,
@@ -687,7 +687,7 @@ const BotTopicManager: React.FC<BotTopicManagerProps> = ({ config, updateField }
           totalCount: config.topicSkillLibraryConfig?.totalCount ?? topics.length,
           historyConversationEnabled,
           historyConversationCount,
-          previousTopicContextEnabled,
+          previousTopicPriorityEnabled,
           ...patch,
         })}
       />

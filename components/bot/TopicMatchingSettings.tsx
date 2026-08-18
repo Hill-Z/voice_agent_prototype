@@ -6,7 +6,7 @@ import { Switch } from '../ui/FormComponents';
 
 type TopicMatchingSettingsPatch = Required<Pick<
   TopicSkillLibraryConfig,
-  'historyConversationEnabled' | 'historyConversationCount' | 'previousTopicContextEnabled'
+  'historyConversationEnabled' | 'historyConversationCount' | 'previousTopicPriorityEnabled'
 >>;
 
 interface TopicMatchingSettingsProps {
@@ -93,15 +93,15 @@ const TopicMatchingSettings: React.FC<TopicMatchingSettingsProps> = ({ value, on
 
           <div className="flex min-h-16 items-center justify-between gap-6 py-3">
             <div className="min-w-0">
-              <h4 className="text-sm font-semibold text-slate-800">上一轮主题辅助匹配</h4>
-              <p className="mt-1 text-xs text-slate-500">将上一轮匹配主题作为本轮判断线索。</p>
+              <h4 className="text-sm font-semibold text-slate-800">上一轮主题优先匹配</h4>
+              <p className="mt-1 text-xs text-slate-500">优先判断当前输入是否延续上一轮主题，不匹配时再识别其他主题。</p>
             </div>
             <Switch
               label=""
-              ariaLabel="上一轮主题辅助匹配"
+              ariaLabel="上一轮主题优先匹配"
               compact
-              checked={value.previousTopicContextEnabled}
-              onChange={(checked) => onChange({ previousTopicContextEnabled: checked })}
+              checked={value.previousTopicPriorityEnabled}
+              onChange={(checked) => onChange({ previousTopicPriorityEnabled: checked })}
             />
           </div>
         </div>
