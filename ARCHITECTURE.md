@@ -102,6 +102,7 @@ dist/docs/：与主系统一起部署的 /docs 子页面
 | `agentOrchestrationData.ts` | 多 Agent 默认配置、图快照、节点与边工厂、IVR 目标汇总及运行语义校验。 |
 | `BotBasicConfig.tsx` | 配置机器人名称、模型、语音、识别等基础信息。 |
 | `BotStrategyConfig.tsx` | 配置欢迎语、转人工、挂机、静默、安全护栏、全局异常兜底和语音优化策略。 |
+| `IntelligentAnsweringHandlingConfig.tsx` | 在对话策略底部配置 IVR、语音留言和 AI 助手接听后的当前通话及后续动作。 |
 | `BotBusinessConfig.tsx` | 配置业务参数、标签和上下文等业务相关信息。 |
 | `BotVariableConfig.tsx` | 管理机器人变量、实体和状态变量。 |
 | `BotAgentConfig.tsx` | 管理 Agent 工具、MCP 服务和函数调用相关配置。 |
@@ -351,6 +352,7 @@ App.tsx
 9. **机器人即 Agent 应用**：不新增独立应用层；单 Agent 沿用现有机器人配置，多 Agent 编排作为机器人级能力，并随机器人草稿和版本统一保存、发布。
 10. **对话所有权与任务执行分离**：Flow/主题 Agent 可以接管对话；Supervisor 只路由，任务 Agent 只静默执行并回传结构化结果；机器人级 ASR/TTS、转人工和挂机策略保持全局生效。
 11. **模式语义隔离**：Supervisor 的边代表能力分派并允许配置硬性准入条件；Handoff 的边代表显式接力并按条件和优先级执行，两种画布通过独立快照保存。
+12. **智能接听采用两阶段处理并强制防循环**：IVR、语音信箱和 AI 助手的识别策略归入机器人对话策略；语音留言与 AI 助手共用“无、延时重呼、加入指定外呼任务”三种后续操作，延时重呼必须配置时间和次数上限，跨任务流转同一联系人最多一次。AI 助手不进入本平台 IVR，只支持播报说明或挂机；低置信度时继续按真人接听处理。
 
 ## 11. 测试覆盖
 

@@ -53,6 +53,7 @@ View your app in AI Studio: https://ai.studio/apps/drive/1roavSagafxEJgVSbE9FoTx
 - 单个机器人的主题管理支持折叠式主题匹配设置，可配置最近历史消息条数及是否优先匹配上一轮主题，原主题列表管理保持不变。
 - 主系统内置独立操作手册，侧边栏进入后直接展示“快速开始”正文和完整文档目录；顶部支持中文全文搜索，文档页可返回主系统。
 - 音色市场以紧凑列表展示已接入音色，支持按厂商、语种、性别和关键词筛选，并可逐行播放试听。
+- 单个机器人的「对话策略」底部新增智能接听识别与处理；语音留言和 AI 助手共用无、有限次数延时重呼、加入指定外呼任务三种后续操作，并限制联系人跨任务流转次数。
 
 - 已整理所有静态 HTML 设计稿到 `docs/html-showcase/`，统一入口为 `docs/html-showcase/index.html`，包含 19 个展示页；Clinical Mint 和 Brex Risk 是当前正式展示候选。
 
@@ -70,3 +71,4 @@ View your app in AI Studio: https://ai.studio/apps/drive/1roavSagafxEJgVSbE9FoTx
 - 客户运营增强基于已确认的语音机器人场景方案和现有页面结构实施，未新增外部方案依赖。
 - 任务流程配置基于本地 `DESIGN.md`、现有流程代码和项目内流程分析图设计，未新增外部搜索；实现时补齐了拖拽、连线、搜索、排序、分页和完整性校验。
 - 音色市场参考 ElevenLabs Voice Library 和 Google Cloud Text-to-Speech 音色目录后，最终按产品反馈收敛为厂商/语种/性别筛选、基础标签和逐行试听，不加入详情、购买或音色管理能力。
+- 智能接听处理参考 Twilio Answering Machine Detection、Twilio Studio Flow 和 Amazon Connect Call Progress：采用“识别结果—当前通话处理—通话结束后动作”的结构；语音留言等待提示音后播放内容，AI 助手可进入专用 IVR 流程或挂机，再记录结果、重呼或转入其他外呼任务。

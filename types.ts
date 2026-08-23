@@ -1289,6 +1289,31 @@ export interface SafetyGuardrailConfig {
   businessRules: SafetyGuardrailRule[];
 }
 
+// 非真人接听识别及后续处理策略。
+export interface IntelligentAnsweringFollowUpConfig {
+  nextAction: 'none' | 'retry' | 'route_task';
+  retryDelayMinutes: number;
+  maxRetryAttempts: number;
+  targetTaskId?: string;
+  targetContactListId?: string;
+}
+
+export interface IntelligentAnsweringHandlingConfig {
+  ivr: {
+    enabled: boolean;
+  };
+  voicemail: IntelligentAnsweringFollowUpConfig & {
+    enabled: boolean;
+    callAction: 'leave_message' | 'hangup';
+    message: string;
+  };
+  aiAssistant: IntelligentAnsweringFollowUpConfig & {
+    enabled: boolean;
+    callAction: 'play_message' | 'hangup';
+    message: string;
+  };
+}
+
 // === 增强工具类型 (用于 Demo) ===
 export interface EnhancedAgentTool extends AgentTool {
   category: 'api_call' | 'knowledge' | 'pricing' | 'communication' | 'transfer' | 'other';
@@ -1327,6 +1352,7 @@ export interface BotConfiguration extends MarketingConfig, ProfileCollectionConf
   contextCompactionEnabled?: boolean;
   safetyGuardrailConfig?: SafetyGuardrailConfig;
   globalExceptionPolicy?: GlobalExceptionPolicy;
+  intelligentAnsweringHandling?: IntelligentAnsweringHandlingConfig;
   temperature: number;
   topP: number;
   

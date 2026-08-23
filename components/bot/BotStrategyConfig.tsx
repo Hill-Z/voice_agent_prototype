@@ -8,6 +8,7 @@ import {
 import { Switch, Label, TagInput, Select } from '../ui/FormComponents';
 import { BotConfiguration, FirstResponseFillerConfig } from '../../types';
 import SpeechListEditor from '../ui/SpeechListEditor';
+import IntelligentAnsweringHandlingConfig from './IntelligentAnsweringHandlingConfig';
 
 // --- Helper Components ---
 
@@ -1062,6 +1063,8 @@ const BotStrategyConfig: React.FC<BotStrategyConfigProps> = ({ config, updateFie
         </div>
       </StrategyCard>
       
+      <IntelligentAnsweringHandlingConfig config={config} updateField={updateField} />
+
       <div className="flex justify-start space-x-4 pt-4 border-t border-gray-100">
          <button onClick={onSave} className="px-6 py-2 bg-primary text-white rounded hover:bg-sky-600 text-sm font-medium shadow-sm transition-all">
            保存配置
