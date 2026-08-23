@@ -51,7 +51,7 @@ dist/docs/：与主系统一起部署的 /docs 子页面
 5. 流程模块分为两类：单次通话 Flow 使用 `FlowConfig / FlowDefinition / FlowNode / FlowEdge` 等类型描述；任务流程配置使用方案列表、流程画布、节点/连线配置和运行任务视图描述多 Agent、跨天等待和人工兜底。
 6. 服务层提供模拟接口、提示词生成、RAG 检索、向量库、函数目录和问答分类存取，供页面按需调用。
 7. 客户画像、营销活动和自动跟进共享模拟数据；机器人配置决定是否启用识别、推荐、跟进、触达保护和结果回写。
-8. `manual/` 保留操作手册源码，根项目构建时先生成 `public/docs/`，再由 Vite 一并输出到 `dist/docs/`；主系统侧边栏和文档导航负责双向跳转。
+8. `manual/` 保留操作手册源码；本地开发时由独立文档服务实时编译，并由 Vite 将 `/docs` 转发过去；正式构建时先生成 `public/docs/`，再一并输出到 `dist/docs/`。主系统侧边栏和文档导航负责双向跳转。
 
 ## 5. 根目录文件职责
 
@@ -234,7 +234,8 @@ dist/docs/：与主系统一起部署的 /docs 子页面
 | `components/files/FileManager.tsx` | 文件管理总入口。 |
 | `components/files/RecordingList.tsx` | 管理录音资源。 |
 | `components/files/BgmList.tsx` | 管理背景音乐资源。 |
-| `components/market/VoiceMarket.tsx` | 展示可选音色。 |
+| `components/market/VoiceMarket.tsx` | 音色市场主页面，以紧凑列表提供厂商/语种/性别筛选和逐行试听。 |
+| `components/market/voiceMarketData.ts` | 定义已接入音色、品牌、语种及多语言试听示例数据。 |
 | `components/market/TemplateMarket.tsx` | 展示机器人模板。 |
 | `components/settings/GeoGroupManager.tsx` | 管理地理分组。 |
 | `components/settings/BusinessHoursManager.tsx` | 管理工作时间规则。 |

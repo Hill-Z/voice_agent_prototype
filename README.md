@@ -24,7 +24,7 @@ View your app in AI Studio: https://ai.studio/apps/drive/1roavSagafxEJgVSbE9FoTx
 - 主系统：`http://localhost:8080/`
 - 操作手册：`http://localhost:8080/docs`
 
-根目录执行 `npm install` 会同时安装主系统与 `manual/` 文档子项目依赖；`npm run dev` 会先构建操作手册，再启动主系统。
+根目录执行 `npm install` 会同时安装主系统与 `manual/` 文档子项目依赖；`npm run dev` 会同时启动主系统与操作手册。编辑 `manual/docs/` 下的 Markdown 文件并保存后，操作手册页面会自动刷新，不需要执行构建命令。
 
 ## Build and deploy
 
@@ -52,6 +52,7 @@ View your app in AI Studio: https://ai.studio/apps/drive/1roavSagafxEJgVSbE9FoTx
 - 机器人配置支持单 Agent、Supervisor 和 Handoff 三种运行模式，并可在无限画布中组织 Flow、旧版意图流程、主题、静默任务、人工服务和挂机节点；Supervisor 与 Handoff 分别保存画布草稿。
 - 单个机器人的主题管理支持折叠式主题匹配设置，可配置最近历史消息条数及是否优先匹配上一轮主题，原主题列表管理保持不变。
 - 主系统内置独立操作手册，侧边栏进入后直接展示“快速开始”正文和完整文档目录；顶部支持中文全文搜索，文档页可返回主系统。
+- 音色市场以紧凑列表展示已接入音色，支持按厂商、语种、性别和关键词筛选，并可逐行播放试听。
 
 - 已整理所有静态 HTML 设计稿到 `docs/html-showcase/`，统一入口为 `docs/html-showcase/index.html`，包含 19 个展示页；Clinical Mint 和 Brex Risk 是当前正式展示候选。
 
@@ -68,3 +69,4 @@ View your app in AI Studio: https://ai.studio/apps/drive/1roavSagafxEJgVSbE9FoTx
 - 已新增 `DESIGN.md` 作为项目级 UI/UX 设计基线，后续报表和前端页面优先沿用其中的交互状态要求。
 - 客户运营增强基于已确认的语音机器人场景方案和现有页面结构实施，未新增外部方案依赖。
 - 任务流程配置基于本地 `DESIGN.md`、现有流程代码和项目内流程分析图设计，未新增外部搜索；实现时补齐了拖拽、连线、搜索、排序、分页和完整性校验。
+- 音色市场参考 ElevenLabs Voice Library 和 Google Cloud Text-to-Speech 音色目录后，最终按产品反馈收敛为厂商/语种/性别筛选、基础标签和逐行试听，不加入详情、购买或音色管理能力。

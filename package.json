@@ -7,8 +7,9 @@
     "manual"
   ],
   "scripts": {
-    "predev": "npm run build:docs",
-    "dev": "vite",
+    "dev": "node scripts/dev.mjs",
+    "dev:app": "vite",
+    "dev:docs": "npm run start --workspace=voice-agent-docs -- --host 127.0.0.1 --port 5174 --no-open",
     "build": "npm run build:docs && vite build",
     "build:app": "vite build",
     "build:docs": "npm run build --workspace=voice-agent-docs",

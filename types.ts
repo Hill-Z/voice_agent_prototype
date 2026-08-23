@@ -1813,10 +1813,15 @@ export interface Seat {
 export interface VoiceProduct {
   id: string;
   name: string;
-  provider: string;
-  gender: 'Male' | 'Female';
+  voiceId: string;
+  provider: '自研音色' | 'MiniMax' | '豆包' | 'Google' | 'ElevenLabs';
+  gender: 'Male' | 'Female' | 'Neutral';
   language: string;
+  languages: string[];
   tags: string[];
+  description: string;
+  scenario: string;
+  previewText: string;
   isVip: boolean;
 }
 

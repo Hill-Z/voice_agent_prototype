@@ -8,12 +8,15 @@ const docsSidebar = fs.readFileSync('manual/sidebars.ts', 'utf8');
 const docsStyles = fs.readFileSync('manual/src/css/custom.css', 'utf8');
 const layout = fs.readFileSync('components/ui/LayoutComponents.tsx', 'utf8');
 const viteConfig = fs.readFileSync('vite.config.ts', 'utf8');
+const devScript = fs.readFileSync('scripts/dev.mjs', 'utf8');
 const writingGuide = fs.readFileSync('manual/docs/doc-guide.md', 'utf8');
 
 const checks = [
   [rootPackage, '"workspaces"'],
   [rootPackage, '"manual"'],
   [rootPackage, '"build:docs"'],
+  [rootPackage, '"dev": "node scripts/dev.mjs"'],
+  [rootPackage, '"dev:docs"'],
   [docsPackage, 'docusaurus build --out-dir ../public/docs'],
   [docsConfig, "baseUrl: '/docs/'"],
   [docsConfig, "routeBasePath: '/'"],
@@ -30,6 +33,11 @@ const checks = [
   [viteConfig, "'/docs/getting-started/activation/'"],
   [viteConfig, "pathname.startsWith('/docs/')"],
   [viteConfig, 'const documentPath'],
+  [viteConfig, "target: 'http://127.0.0.1:5174'"],
+  [viteConfig, "target: 'ws://127.0.0.1:5174'"],
+  [viteConfig, 'ws: true'],
+  [devScript, "startService('dev:docs')"],
+  [devScript, "startService(\n  'dev:app'"],
   [writingGuide, 'manual/docs/'],
   [writingGuide, 'manual/sidebars.ts'],
   [writingGuide, 'manual/static/img/'],
