@@ -1,6 +1,6 @@
 /** 管理四类独立鉴权，并通过独立子页面完成新建和编辑。 */
 import React, { useMemo, useState } from 'react';
-import { ArrowLeft, KeyRound, Plus, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, KeyRound, Plus, Search, ShieldCheck } from 'lucide-react';
 import { AuthenticationConfig, AuthenticationType, ExtractionConfig } from '../../types';
 
 interface Props {
@@ -20,7 +20,17 @@ const createEmpty = (): AuthenticationConfig => ({ id: `auth_${Date.now()}`, nam
 
 export default function AuthenticationManager({ authentications, onUpdate, interfaces }: Props) {
   const [editing, setEditing] = useState<AuthenticationConfig | null>(null);
+  const [keyword, setKeyword] = useState('');
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
   const usage = useMemo(() => new Map(authentications.map((item) => [item.id, interfaces.filter((entry) => entry.authMode === 'reference' && entry.authConfigId === item.id).length])), [authentications, interfaces]);
+  const filtered = useMemo(() => {
+    const normalized = keyword.trim().toLowerCase();
+    return authentications.filter((item) => `${item.name} ${item.description} ${item.provider} ${TYPE_NAMES[item.type]}`.toLowerCase().includes(normalized));
+  }, [authentications, keyword]);
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, pageCount);
+  const visible = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const save = (item: AuthenticationConfig) => {
     const next = { ...item, lastUpdated: Date.now() };
@@ -37,9 +47,10 @@ export default function AuthenticationManager({ authentications, onUpdate, inter
 
   return <div className="p-8 max-w-7xl mx-auto w-full">
     <div className="flex items-start justify-between mb-6"><div><h1 className="text-2xl font-bold text-slate-900">鉴权管理</h1><p className="text-sm text-slate-500 mt-1">统一管理鉴权配置，供多个接口引用。</p></div><button onClick={() => setEditing(createEmpty())} className="button-primary"><Plus size={16} />新建鉴权</button></div>
+    <div className="mb-4 flex items-center justify-between"><div className="relative w-80"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input value={keyword} onChange={(event) => { setKeyword(event.target.value); setPage(1); }} className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-primary" placeholder="搜索名称、描述、提供方或鉴权类型" /></div><span className="text-xs text-slate-400">共 {filtered.length} 个鉴权</span></div>
     <div className="rounded-xl border border-slate-200 bg-white overflow-hidden"><table className="w-full text-left"><thead className="bg-slate-50 border-b"><tr><th className="px-6 py-4 text-xs text-slate-500">名称</th><th className="px-6 py-4 text-xs text-slate-500">鉴权类型</th><th className="px-6 py-4 text-xs text-slate-500">提供方</th><th className="px-6 py-4 text-xs text-slate-500">引用接口</th><th className="px-6 py-4 text-xs text-slate-500 text-right">操作</th></tr></thead>
-      <tbody className="divide-y divide-slate-100">{authentications.map((item) => <tr key={item.id} className="hover:bg-slate-50"><td className="px-6 py-4"><div className="flex items-center font-semibold text-slate-800"><KeyRound size={16} className="text-primary mr-2" />{item.name}</div><div className="mt-1 text-xs text-slate-400">{item.description || '敏感信息已隐藏'}</div></td><td className="px-6 py-4 text-sm text-slate-600">{TYPE_NAMES[item.type]}</td><td className="px-6 py-4 text-sm text-slate-600">{item.provider || '自定义 API'}</td><td className="px-6 py-4 text-sm text-slate-600">{usage.get(item.id) ?? 0} 个</td><td className="px-6 py-4"><div className="flex justify-end gap-4"><button onClick={() => setEditing(item)} className="text-sm text-primary hover:text-blue-700">编辑</button><button disabled={(usage.get(item.id) ?? 0) > 0} title={(usage.get(item.id) ?? 0) > 0 ? '正在被接口引用，不能删除' : '删除'} onClick={() => remove(item.id)} className="text-sm text-red-500 disabled:text-slate-300">删除</button></div></td></tr>)}</tbody>
-    </table></div>
+      <tbody className="divide-y divide-slate-100">{visible.length ? visible.map((item) => <tr key={item.id} className="hover:bg-slate-50"><td className="px-6 py-4"><div className="flex items-center font-semibold text-slate-800"><KeyRound size={16} className="text-primary mr-2" />{item.name}</div><div className="mt-1 text-xs text-slate-400">{item.description || '敏感信息已隐藏'}</div></td><td className="px-6 py-4 text-sm text-slate-600">{TYPE_NAMES[item.type]}</td><td className="px-6 py-4 text-sm text-slate-600">{item.provider || '自定义 API'}</td><td className="px-6 py-4 text-sm text-slate-600">{usage.get(item.id) ?? 0} 个</td><td className="px-6 py-4"><div className="flex justify-end gap-4"><button onClick={() => setEditing(item)} className="text-sm text-primary hover:text-blue-700">编辑</button><button disabled={(usage.get(item.id) ?? 0) > 0} title={(usage.get(item.id) ?? 0) > 0 ? '正在被接口引用，不能删除' : '删除'} onClick={() => remove(item.id)} className="text-sm text-red-500 disabled:text-slate-300">删除</button></div></td></tr>) : <tr><td colSpan={5} className="px-6 py-16 text-center text-sm text-slate-400">{keyword ? '没有找到匹配的鉴权配置' : '暂无鉴权配置'}</td></tr>}</tbody>
+    </table><div className="flex items-center justify-between border-t border-slate-100 px-6 py-3 text-sm"><span className="text-slate-400">第 {currentPage} / {pageCount} 页</span><div className="flex gap-2"><button disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)} className="rounded border border-slate-200 px-3 py-1.5 text-slate-600 disabled:opacity-40">上一页</button><button disabled={currentPage === pageCount} onClick={() => setPage(currentPage + 1)} className="rounded border border-slate-200 px-3 py-1.5 text-slate-600 disabled:opacity-40">下一页</button></div></div></div>
   </div>;
 }
 

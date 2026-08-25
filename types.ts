@@ -149,16 +149,6 @@ export interface WorkflowInputMapping {
   sourceStepId?: string;
 }
 
-export interface WorkflowPublication {
-  enabled: boolean;
-  method: 'POST';
-  version: string;
-  accessMode: 'platform_token' | 'none';
-  credentialName: string;
-  responseMode: 'sync' | 'async';
-  timeoutSeconds: number;
-}
-
 export interface WorkflowOutputMapping {
   id: string;
   outputKey: string;
@@ -195,7 +185,6 @@ export interface ExtractionWorkflow {
   inputs: WorkflowContractField[];
   outputs: WorkflowContractField[];
   steps: ExtractionWorkflowStep[];
-  publication?: WorkflowPublication;
 }
 
 export type PricingTableType = 'SERVICE' | 'PRODUCT';
