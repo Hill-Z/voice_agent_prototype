@@ -84,9 +84,118 @@ export interface ExtractionConfig {
   interfaceUrl: string;
   method: 'GET' | 'POST' | 'PUT' | 'DELETE';
   authType: 'basic' | 'url' | 'none';
+  /** 旧数据没有该字段时，继续按原有 authType 处理。 */
+  authMode?: 'legacy' | 'reference' | 'none';
+  authConfigId?: string;
+  legacyAuthConfig?: {
+    username?: string;
+    password?: string;
+  };
+  legacyUrlAuthConfig?: {
+    parameters: Array<{
+      id: string;
+      name: string;
+      type: 'constant' | 'variable' | 'timestamp' | 'random';
+      value: string;
+      encode: boolean;
+    }>;
+    algorithm: 'sha256';
+    signatureParameterName: string;
+  };
   bodyType: 'json' | 'form';
   bodyContent: string;
   responseMapping: { key: string; path: string }[];
+}
+
+export type AuthenticationType = 'basic' | 'bearer' | 'oauth2_client_credentials' | 'oauth2_jwt';
+
+export interface AuthenticationConfig {
+  id: string;
+  name: string;
+  description: string;
+  provider: string;
+  type: AuthenticationType;
+  status: 'available' | 'unchecked';
+  lastUpdated: number;
+  basic?: { username: string; password: string };
+  bearer?: { token: string };
+  oauth2ClientCredentials?: {
+    clientId: string;
+    clientSecret: string;
+    tokenUrl: string;
+    scopes: string;
+    clientAuthMethod: 'body' | 'basic';
+  };
+  oauth2Jwt?: {
+    signingKey: string;
+    tokenUrl: string;
+    scopes: string;
+    tokenType: 'access_token' | 'id_token';
+    algorithm: 'HS256' | 'HS384' | 'HS512' | 'RS256' | 'RS384' | 'RS512';
+    keyId: string;
+    expiresInSeconds: number;
+    issuer: string;
+    audience: string;
+    subject: string;
+    extraClaims: string;
+  };
+}
+
+export interface WorkflowInputMapping {
+  id: string;
+  targetKey: string;
+  source: 'workflow_input' | 'step_output' | 'constant';
+  sourceValue: string;
+  sourceStepId?: string;
+}
+
+export interface WorkflowPublication {
+  enabled: boolean;
+  method: 'POST';
+  version: string;
+  accessMode: 'platform_token' | 'none';
+  credentialName: string;
+  responseMode: 'sync' | 'async';
+  timeoutSeconds: number;
+}
+
+export interface WorkflowOutputMapping {
+  id: string;
+  outputKey: string;
+  sourcePath: string;
+}
+
+export interface ExtractionWorkflowStep {
+  id: string;
+  name: string;
+  interfaceId: string;
+  inputMappings: WorkflowInputMapping[];
+  outputMappings: WorkflowOutputMapping[];
+  failureAction: 'stop' | 'retry' | 'skip';
+  retryCount: 0 | 1 | 2 | 3;
+  timeoutSeconds: number;
+}
+
+export interface WorkflowContractField {
+  id: string;
+  key: string;
+  description: string;
+  required: boolean;
+  sourceStepId?: string;
+  sourceValue?: string;
+}
+
+export interface ExtractionWorkflow {
+  id: string;
+  name: string;
+  description: string;
+  serviceKey: string;
+  status: 'draft' | 'published';
+  lastUpdated: number;
+  inputs: WorkflowContractField[];
+  outputs: WorkflowContractField[];
+  steps: ExtractionWorkflowStep[];
+  publication?: WorkflowPublication;
 }
 
 export type PricingTableType = 'SERVICE' | 'PRODUCT';

@@ -54,6 +54,7 @@ View your app in AI Studio: https://ai.studio/apps/drive/1roavSagafxEJgVSbE9FoTx
 - 主系统内置独立操作手册，侧边栏进入后直接展示“快速开始”正文和完整文档目录；顶部支持中文全文搜索，文档页可返回主系统。
 - 音色市场以紧凑列表展示已接入音色，支持按厂商、语种、性别和关键词筛选，并可逐行播放试听。
 - 单个机器人的「对话策略」底部新增智能接听识别与处理；语音留言和 AI 助手共用无、有限次数延时重呼、加入指定外呼任务三种后续操作，并限制联系人跨任务流转次数。
+- 信息提取配置包含接口、鉴权和接口工作流：接口负责单次上游调用，工作流负责顺序编排并形成统一输入输出；已发布工作流可供机器人引用，也可通过独立开关、访问凭证和同步/异步响应方式开放给第三方。接口及工作流列表支持查询和分页，线上旧接口继续按原鉴权方式运行。
 
 - 已整理所有静态 HTML 设计稿到 `docs/html-showcase/`，统一入口为 `docs/html-showcase/index.html`，包含 19 个展示页；Clinical Mint 和 Brex Risk 是当前正式展示候选。
 
@@ -64,6 +65,7 @@ View your app in AI Studio: https://ai.studio/apps/drive/1roavSagafxEJgVSbE9FoTx
 
 ## 搜索记录
 
+- 信息提取鉴权与工作流参考 [n8n 数据映射](https://docs.n8n.io/data/data-mapping/data-mapping-ui/)、[Postman Flows HTTP Request](https://learning.postman.com/flows/reference/blocks/http-request)、[Postman 顺序工作流](https://learning.postman.com/docs/tests-and-scripts/running-collections/building-workflows/) 和 [Pipedream HTTP 触发器](https://pipedream.com/docs/workflows/building-workflows/triggers)：采用“鉴权独立复用、接口仅保存引用、服务输入—步骤输出—服务输出明确映射”的结构；工作流开放时生成稳定 HTTP 地址并单独配置访问控制和响应方式，首版使用线性步骤、最多重试 3 次且不引入回环。
 - 操作手册融合直接基于用户提供的 `Hill-Z/voice_agent_docs` 仓库，保留 Docusaurus 文档结构并以 `/docs` 子路径集成，未进行额外外部方案搜索。
 - 文档全文搜索使用 `@easyops-cn/docusaurus-search-local` 生成本地中文索引，不依赖外部搜索服务或账号。
 - 本轮未新增外部搜索；监控报表增强基于现有产品方案和本地代码结构实现。

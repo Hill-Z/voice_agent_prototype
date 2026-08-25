@@ -60,7 +60,7 @@ dist/docs/：与主系统一起部署的 /docs 子页面
 | `index.html` | Vite 应用的 HTML 入口，提供 React 挂载节点。 |
 | `index.tsx` | React 启动入口，把 `App` 渲染到页面中。 |
 | `App.tsx` | 应用总控制器，维护顶层状态并按菜单切换页面模块。 |
-| `InformationExtraction.tsx` | 信息提取配置页，切换接口配置和触发器设置两个子页。 |
+| `InformationExtraction.tsx` | 信息提取配置页，统一承载接口、鉴权和接口工作流三个子页。 |
 | `types.ts` | 全项目核心类型定义，覆盖机器人、流程、工具、知识库、外呼、报表等数据结构。 |
 | `src/index.css` | 全局样式与 Tailwind 基础样式入口。 |
 | `vite.config.ts` | Vite 构建配置。 |
@@ -190,8 +190,11 @@ dist/docs/：与主系统一起部署的 /docs 子页面
 
 | 文件 | 职责 |
 | --- | --- |
-| `InterfaceConfig.tsx` | 配置信息提取接口、参数、鉴权、请求体和响应映射。 |
-| `TriggerConfig.tsx` | 配置信息提取触发器规则。 |
+| `InterfaceConfig.tsx` | 配置信息提取接口、参数、鉴权引用、请求体和响应映射，并兼容旧版内嵌鉴权。 |
+| `AuthenticationManager.tsx` | 通过列表和独立子页面管理 Basic、Bearer、OAuth2 Client Credentials 和 OAuth2 JWT 鉴权。 |
+| `ExtractionWorkflowManager.tsx` | 将顺序接口步骤、输入输出契约和失败处理组织成调用服务，并管理第三方调用入口、校验、查询和分页。 |
+
+关键决定：旧 `ExtractionConfig.authType` 字段保留不变；没有 `authMode` 的线上数据一律按兼容模式读取。新接口通过 `authConfigId` 引用独立鉴权。接口是原子调用资源，工作流只引用接口编号，以服务输入、步骤输出和服务输出建立稳定的数据契约，不复制接口或密钥配置。已发布工作流可作为内部“调用服务”引用；第三方开放状态独立管理，使用平台入站凭证，不复用调用上游接口的鉴权配置。
 
 ### 6.5 知识库与 RAG：`components/knowledge`
 
