@@ -41,6 +41,8 @@ View your app in AI Studio: https://ai.studio/apps/drive/1roavSagafxEJgVSbE9FoTx
 
 ## 已完成功能列表
 
+- 预约回呼：平台内置工具只需配置执行机器人、执行时间和客户号码；默认使用当前机器人，也可选择其他已发布机器人。外呼模块独立负责计划的全生命周期、筛选、编辑、人工结束、重新安排、导出和审计。
+
 - 机器人配置、流程配置、主题管理、工具配置、坐席管理、通话记录和监控报表演示。
 - 流程配置已升级为任务流程配置，支持流程方案列表、空白新建、从模板创建、多 Agent 画布编排、节点拖拽、节点配置、连线配置、模拟运行和运行任务查看。
 - 监控报表已调整为一个综合运营报表页，按顶部日期筛选统一统计通话、Topic、Flow 和工具调用。
@@ -65,7 +67,10 @@ View your app in AI Studio: https://ai.studio/apps/drive/1roavSagafxEJgVSbE9FoTx
 
 ## 搜索记录
 
+- 预约回呼参考 [Vapi Outbound Calling](https://docs.vapi.ai/calls/outbound-calling)、[Retell Create Batch Call](https://docs.retellai.com/api-references/create-batch-call)、[Genesys Callbacks in Campaigns](https://help.genesys.cloud/articles/callbacks-in-campaigns/)、[Amazon Connect Queued Callback](https://docs.aws.amazon.com/connect/latest/adminguide/setup-queued-cb.html) 和 [ElevenLabs Batch Calling](https://elevenlabs.io/docs/eleven-agents/phone-numbers/batch-calls)：明确区分客户承诺的“回呼计划”和未接通触发的“自动重呼”；回呼作为单客户、定时、可改期和取消的计划记录管理，底层复用现有外呼执行资源，不生成大量批量任务。
+- 外呼联系人变量参考 [Retell AI Dynamic Variables](https://docs.retellai.com/build/dynamic-variables)、[Vapi Dynamic Variables](https://docs.vapi.ai/assistants/dynamic-variables)、[Vapi Outbound Campaigns](https://docs.vapi.ai/outbound-campaigns/overview)、[Genesys Contact List Editor](https://help.genesys.cloud/?p=334179) 和 [Amazon Connect 联系属性](https://docs.aws.amazon.com/connect/latest/adminguide/connect-attrib-list.html)：采用“联系单字段—任务映射—机器人输入变量—单次通话值”的分层，机器人不直接依赖联系单列名，任务启动前校验必填映射并固定机器人版本。
 - 信息提取鉴权与工作流参考 [n8n 数据映射](https://docs.n8n.io/data/data-mapping/data-mapping-ui/)、[Postman Flows HTTP Request](https://learning.postman.com/flows/reference/blocks/http-request) 和 [Postman 顺序工作流](https://learning.postman.com/docs/tests-and-scripts/running-collections/building-workflows/)：采用“鉴权独立复用、接口仅保存引用、服务输入—步骤输出—服务输出明确映射”的结构；首版使用线性步骤、最多重试 3 次且不引入回环。
+- Gemini TTS 接入需求以 Google Cloud 官方 Gemini TTS、配额和价格文档为准：语音机器人选择 Cloud Text-to-Speech API；明确语言代码不等同于自动检测、流式合成需等待 Half-Close、宿务语与菲律宾语为 Preview，并补齐真人盲听、电话链路、容量和降级验收标准。
 - 操作手册融合直接基于用户提供的 `Hill-Z/voice_agent_docs` 仓库，保留 Docusaurus 文档结构并以 `/docs` 子路径集成，未进行额外外部方案搜索。
 - 文档全文搜索使用 `@easyops-cn/docusaurus-search-local` 生成本地中文索引，不依赖外部搜索服务或账号。
 - 本轮未新增外部搜索；监控报表增强基于现有产品方案和本地代码结构实现。

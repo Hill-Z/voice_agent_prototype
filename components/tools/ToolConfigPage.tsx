@@ -8,6 +8,18 @@ import GeoLocationToolConfig from './GeoLocationToolConfig';
 import PricingConfigurationWorkspace from './PricingConfigurationWorkspace';
 
 const INITIAL_TOOLS: AgentTool[] = [
+  {
+    id: 'tool_callback_plan', name: 'create_callback_plan', displayName: '预约回呼',
+    description: '当客户明确约定再次联系时间时创建 AI 回呼计划。',
+    type: 'CALLBACK', enabled: true, category: 'other', icon: '📅',
+    parameters: [
+      { name: 'action', type: 'string', description: '必填：create 新建、update 改期、cancel 取消', required: true, source: 'llm', defaultValue: 'create', builtIn: true },
+      { name: 'execute_time', type: 'datetime', description: '创建或改期时必填：客户确认的回呼执行时间', required: false, source: 'llm', defaultValue: '', builtIn: true, validationRule: '必须晚于当前时间' },
+      { name: 'customer_phone', type: 'string', description: '创建时使用：回呼客户号码，默认当前号码', required: false, source: 'system', defaultValue: '{{system.customer_phone}}', builtIn: true, validationRule: '有效手机号码' },
+    ],
+    callbackConfig: { executionMode: 'current_bot', callbackBotMode: 'current', allowManageActivePlan: true, includeSourceSummary: true, includeVariableSnapshot: true, generateCallbackSummary: true },
+    executionLevel: 'auto', duplicateCallPolicy: 'reject', needReturn: true,
+  },
   { id: 'tool_api_call', name: 'query_api', description: '调用外部接口获取数据', type: 'API', enabled: true, category: 'api_call', parameters: [] },
   { id: 'tool_rag_search', name: 'search_knowledge', description: '检索知识库内容', type: 'RAG', enabled: true, category: 'knowledge', parameters: [], ragConfig: { knowledgeBaseId: '', topK: 3, similarityThreshold: 0.7 } },
   {
@@ -172,6 +184,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 const TYPE_LABELS: Partial<Record<AgentTool['type'], string>> = {
+  CALLBACK: '预约回呼',
   PRICING: '智能计价',
   QUOTE: '智能计价',
   CART_PRICING: '智能计价',
@@ -259,7 +272,7 @@ export default function ToolConfigPage({ bots = [], extractionConfigs = [] }: To
         )}
       </section>
 
-      {isToolModalOpen && <AgentToolModal tool={editingTool || undefined} onSave={handleSaveTool} onClose={() => setIsToolModalOpen(false)} extractionConfigs={extractionConfigs} pricingRules={pricingRules} availableVariables={availableVariables} />}
+      {isToolModalOpen && <AgentToolModal tool={editingTool || undefined} onSave={handleSaveTool} onClose={() => setIsToolModalOpen(false)} extractionConfigs={extractionConfigs} pricingRules={pricingRules} availableVariables={availableVariables} callbackBotOptions={bots.map((bot) => ({ id: bot.id, name: bot.name, version: bot.onlineVersion || bot.currentVersion || '当前版本' }))} />}
       {isMcpModalOpen && <McpServerModal onClose={() => setIsMcpModalOpen(false)} onSave={() => setIsMcpModalOpen(false)} />}
       {isGeoModalOpen && <GeoLocationToolConfig onClose={() => setIsGeoModalOpen(false)} />}
     </div>

@@ -1,5 +1,14 @@
 # AI 语音机器人前端架构文档
 
+## 预约回呼模块
+
+- `services/presetTools.ts`：定义平台内置预约回呼工具及模型调用参数。
+- `components/bot/agent/AgentToolModal.tsx`：定义 AI 回呼模型参数、默认值和自定义参数；联系单快照与回呼上下文由系统注入。
+- `components/bot/BotBusinessConfig.tsx`：配置通话小结，并允许通话结束后按条件调用当前机器人的任意工具。
+- `components/outbound/CallbackPlans.tsx`：集中管理回呼计划从预约、排队、拨号、接通到完成或失败的全生命周期、通话链路、重新安排和操作审计。
+- 回呼计划独立于批量外呼任务，但关联来源任务、来源通话和执行通话；重新安排生成新计划并关联父子记录，不覆盖历史，也不自动循环。
+- 回呼工具只负责创建计划，客户侧仅配置执行机器人、执行时间和客户号码；联系单快照、上下文和来源链路由系统内部处理，不在工具配置页面展示。
+
 更新时间：2026-08-18
 
 ## 1. 项目定位
@@ -337,7 +346,9 @@ App.tsx
   ├─ QAManager → RAGConfig / CategoryListView / qaTopicStore / ragService
   ├─ KnowledgeDiscovery → categoryExtractionService
   ├─ ToolConfigPage → AgentToolModal / McpServerModal / GeoLocationToolConfig
-  ├─ Outbound / Marketing / Call / Report 页面
+  ├─ OutboundTasks / ContactLists
+  │   └─ outboundContactData → ContactRecordTable / 任务输入变量映射
+  ├─ Marketing / Call / Report 页面
   └─ Integration / Gateway / Number / IVR / Settings / Market 页面
 ```
 
@@ -356,6 +367,7 @@ App.tsx
 10. **对话所有权与任务执行分离**：Flow/主题 Agent 可以接管对话；Supervisor 只路由，任务 Agent 只静默执行并回传结构化结果；机器人级 ASR/TTS、转人工和挂机策略保持全局生效。
 11. **模式语义隔离**：Supervisor 的边代表能力分派并允许配置硬性准入条件；Handoff 的边代表显式接力并按条件和优先级执行，两种画布通过独立快照保存。
 12. **智能接听采用两阶段处理并强制防循环**：IVR、语音信箱和 AI 助手的识别策略归入机器人对话策略；语音留言与 AI 助手共用“无、延时重呼、加入指定外呼任务”三种后续操作，延时重呼必须配置时间和次数上限，跨任务流转同一联系人最多一次。AI 助手不进入本平台 IVR，只支持播报说明或挂机；低置信度时继续按真人接听处理。
+13. **外呼数据与话术变量解耦**：联系单保存原始字段和联系人值，机器人声明稳定的输入变量契约，外呼任务负责逐联系单映射并在启动前校验；运行时按联系人生成单次通话变量快照，避免联系人之间串值或后续配置变更影响运行中的任务。
 
 ## 11. 测试覆盖
 

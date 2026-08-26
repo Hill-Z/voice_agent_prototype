@@ -5,6 +5,7 @@ import {
   Search, Download, Plus, MoreHorizontal, Phone, Clock, User
 } from 'lucide-react';
 import { OutboundTask, OutboundTemplate, ContactList, CallRecord } from '../../types';
+import ContactRecordTable from './ContactRecordTable';
 
 interface OutboundTaskDetailProps {
   task: OutboundTask;
@@ -23,7 +24,8 @@ const MOCK_CALL_RECORDS: CallRecord[] = [
 ];
 
 export default function OutboundTaskDetail({ task, template, contactLists, onBack, onUpdateStatus, onEdit }: OutboundTaskDetailProps) {
-  const [activeTab, setActiveTab] = useState<'CONTACTS' | 'RECORDS'>('CONTACTS');
+  const [activeTab, setActiveTab] = useState<'CONTACTS' | 'VARIABLES' | 'RECORDS'>('CONTACTS');
+  const [selectedContactList, setSelectedContactList] = useState<ContactList | null>(null);
   const [records, setRecords] = useState<CallRecord[]>(MOCK_CALL_RECORDS);
 
   const getStatusBadge = (status: string) => {
@@ -65,7 +67,7 @@ export default function OutboundTaskDetail({ task, template, contactLists, onBac
               </div>
               <div className="flex items-center space-x-3">
                  {/* Control Buttons */}
-                 <button 
+                 <button
                    onClick={() => onUpdateStatus('running')}
                    disabled={task.status === 'running'}
                    className={`p-2 rounded-full transition-colors ${task.status === 'running' ? 'bg-green-100 text-green-400 cursor-not-allowed' : 'bg-green-500 text-white hover:bg-green-600 shadow-sm'}`}
@@ -73,7 +75,7 @@ export default function OutboundTaskDetail({ task, template, contactLists, onBac
                  >
                     <Play size={18} className="fill-current" />
                  </button>
-                 <button 
+                 <button
                    onClick={() => onUpdateStatus('paused')}
                    disabled={task.status === 'paused' || task.status === 'stopped'}
                    className={`p-2 rounded-full transition-colors ${task.status === 'paused' ? 'bg-blue-100 text-blue-400 cursor-not-allowed' : 'bg-blue-500 text-white hover:bg-blue-600 shadow-sm'}`}
@@ -81,7 +83,7 @@ export default function OutboundTaskDetail({ task, template, contactLists, onBac
                  >
                     <Pause size={18} className="fill-current" />
                  </button>
-                 <button 
+                 <button
                    onClick={() => onUpdateStatus('stopped')}
                    disabled={task.status === 'stopped'}
                    className={`p-2 rounded-full transition-colors ${task.status === 'stopped' ? 'bg-red-100 text-red-400 cursor-not-allowed' : 'bg-red-500 text-white hover:bg-red-600 shadow-sm'}`}
@@ -108,7 +110,7 @@ export default function OutboundTaskDetail({ task, template, contactLists, onBac
               </div>
               <div className="flex">
                  <span className="text-slate-400 w-24">机器人话术：</span>
-                 <span className="font-medium text-blue-600">{template?.botConfigId ? '已配置 (ID:'+template.botConfigId+')' : '-'}</span>
+                 <span className="font-medium text-blue-600">{template?.botName ? `${template.botName} · ${template.botVersion || '当前版本'}` : '-'}</span>
               </div>
               <div className="flex">
                  <span className="text-slate-400 w-24">任务优先级：</span>
@@ -167,6 +169,12 @@ export default function OutboundTaskDetail({ task, template, contactLists, onBac
                     联系单列表
                  </button>
                  <button 
+                   onClick={() => { setActiveTab('VARIABLES'); setSelectedContactList(null); }}
+                   className={`pb-3 text-sm font-bold transition-all relative ${activeTab === 'VARIABLES' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}`}
+                 >
+                    输入变量
+                 </button>
+                 <button
                    onClick={() => setActiveTab('RECORDS')}
                    className={`pb-3 text-sm font-bold transition-all relative ${activeTab === 'RECORDS' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}`}
                  >
@@ -182,7 +190,16 @@ export default function OutboundTaskDetail({ task, template, contactLists, onBac
            </div>
 
            {/* Tab Content: CONTACTS */}
-           {activeTab === 'CONTACTS' && (
+           {activeTab === 'CONTACTS' && selectedContactList && (
+              <div className="flex min-h-[460px] flex-1 flex-col">
+                <div className="flex items-center border-b border-slate-100 px-4 py-3">
+                  <button onClick={() => setSelectedContactList(null)} className="flex items-center text-xs text-slate-500 hover:text-primary"><ArrowLeft size={13} className="mr-1" />返回联系单列表</button>
+                  <span className="mx-3 text-slate-300">|</span><span className="text-sm font-bold text-slate-700">{selectedContactList.name} · 联系人数据</span>
+                </div>
+                <ContactRecordTable contactList={selectedContactList} compact />
+              </div>
+           )}
+           {activeTab === 'CONTACTS' && !selectedContactList && (
               <div className="flex-1 flex flex-col">
                  <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-slate-50/50">
                     <div className="flex items-center space-x-2">
@@ -235,7 +252,7 @@ export default function OutboundTaskDetail({ task, template, contactLists, onBac
                                 <td className="px-6 py-3 text-sm text-slate-600">{list.successRate || '0%'}</td>
                                 <td className="px-6 py-3 text-right">
                                    <div className="flex justify-end space-x-2 text-xs">
-                                      <button className="text-blue-600 hover:underline">查看</button>
+                                      <button onClick={() => setSelectedContactList(list)} className="text-blue-600 hover:underline">查看联系人</button>
                                       <button className="text-blue-600 hover:underline">编辑</button>
                                       <button className="text-blue-600 hover:underline">暂停</button>
                                       <button className="text-blue-600 hover:underline">停止</button>
@@ -252,6 +269,24 @@ export default function OutboundTaskDetail({ task, template, contactLists, onBac
                     </table>
                  </div>
               </div>
+           )}
+
+           {activeTab === 'VARIABLES' && (
+             <div className="flex-1 p-5">
+               <div className="mb-4 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-xs text-slate-600">
+                 当前任务固定使用 <strong>{template?.botName || '-'}</strong> {template?.botVersion || ''}。联系单原始字段在每次呼叫开始时转换为机器人输入变量，仅对当前联系人通话生效。
+               </div>
+               <div className="overflow-hidden rounded-lg border border-slate-200">
+                 <table className="w-full text-left"><thead className="border-b border-slate-100 bg-slate-50"><tr><th className="px-4 py-3 text-xs font-bold text-slate-500">机器人输入变量</th><th className="px-4 py-3 text-xs font-bold text-slate-500">联系单</th><th className="px-4 py-3 text-xs font-bold text-slate-500">来源字段</th><th className="px-4 py-3 text-xs font-bold text-slate-500">话术引用</th><th className="px-4 py-3 text-xs font-bold text-slate-500">状态</th></tr></thead>
+                   <tbody className="divide-y divide-slate-100">{task.variableMappings?.map((mapping) => {
+                     const list = contactLists.find((item) => item.id === mapping.contactListId);
+                     const field = list?.fieldDefinitions?.find((item) => item.key === mapping.sourceFieldKey);
+                     const variable = template?.botInputVariables?.find((item) => item.name === mapping.variableName);
+                     return <tr key={`${mapping.contactListId}-${mapping.variableName}`}><td className="px-4 py-3"><div className="text-sm font-medium text-slate-700">{variable?.description?.split('，')[0] || mapping.variableName}</div><code className="text-xs text-slate-400">{mapping.variableName}</code></td><td className="px-4 py-3 text-sm text-slate-600">{list?.name || '-'}</td><td className="px-4 py-3 text-sm text-slate-600">{field?.name || '-'}</td><td className="px-4 py-3"><code className="rounded bg-slate-100 px-2 py-1 text-xs text-blue-600">{`{{${mapping.variableName}}}`}</code></td><td className="px-4 py-3"><span className="rounded bg-emerald-50 px-2 py-1 text-xs text-emerald-600">已映射</span></td></tr>;
+                   })}</tbody>
+                 </table>
+               </div>
+             </div>
            )}
 
            {/* Tab Content: RECORDS */}

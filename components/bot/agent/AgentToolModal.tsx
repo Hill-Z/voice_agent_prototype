@@ -11,6 +11,7 @@ interface AgentToolModalProps {
   extractionConfigs: ExtractionConfig[];
   pricingRules?: PricingRule[];
   availableVariables?: BotVariable[];
+  callbackBotOptions?: Array<{ id: string; name: string; version: string }>;
 }
 
 const DEFAULT_TOOL: AgentTool = {
@@ -61,6 +62,7 @@ const TOOL_CATEGORY_BY_TYPE: Record<AgentTool['type'], NonNullable<AgentTool['ca
   SMS: 'communication',
   TRANSFER: 'transfer',
   EMAIL: 'communication',
+  CALLBACK: 'other',
   CUSTOM: 'other',
 };
 
@@ -103,6 +105,12 @@ const VARIABLE_TYPE_LABELS: Record<BotVariable['type'], string> = {
   BOOLEAN: '布尔值',
 };
 
+const CALLBACK_TASK_OPTIONS = [
+  { id: 'TASK20260801', name: '8月会员续费', contactLists: [{ id: 'LIST_RENEW_GOLD', name: '黄金会员待续费名单' }, { id: 'LIST_RENEW_ALL', name: '全部待续费客户' }] },
+  { id: 'TASK20260728', name: '售后满意度回访', contactLists: [{ id: 'LIST_AFTERSALE_DONE', name: '已完成工单联系单' }, { id: 'LIST_AFTERSALE_DELAY', name: '维修延误联系单' }] },
+  { id: 'TASK20260810', name: '暑期课程线索', contactLists: [{ id: 'LIST_COURSE_LEADS', name: '课程咨询线索' }] },
+];
+
 const EXECUTION_LEVEL_OPTIONS = [
   { value: 'auto', label: '自动执行' },
   { value: 'user_confirm', label: '用户确认后执行' },
@@ -124,8 +132,26 @@ const mapVariableTypeToParameterType = (type: BotVariable['type']) => {
   return 'string';
 };
 
-export default function AgentToolModal({ tool, onSave, onClose, extractionConfigs, pricingRules = [], availableVariables = [] }: AgentToolModalProps) {
-  const [formData, setFormData] = useState<AgentTool>(() => normalizePricingTool(tool));
+const createCallbackParameters = (allowManage: boolean, existing: AgentToolParameter[] = []): AgentToolParameter[] => {
+  const current = new Map(existing.map((parameter) => [parameter.name, parameter]));
+  const base: AgentToolParameter[] = [
+    { name: 'execute_time', type: 'datetime', description: allowManage ? '创建或改期时必填：客户确认的回呼执行时间' : '必填：客户确认的回呼执行时间', required: !allowManage, source: 'llm', defaultValue: current.get('execute_time')?.defaultValue || '', builtIn: true, validationRule: '必须晚于当前时间' },
+    { name: 'customer_phone', type: 'string', description: allowManage ? '创建时使用：回呼客户号码，默认当前号码' : '必填：回呼客户号码，默认当前号码', required: !allowManage, source: 'system', defaultValue: current.get('customer_phone')?.defaultValue || '{{system.customer_phone}}', builtIn: true, validationRule: '有效手机号码' },
+  ];
+  if (!allowManage) return base;
+  return [
+    { name: 'action', type: 'string', description: '必填：create 新建、update 改期、cancel 取消', required: true, source: 'llm', defaultValue: 'create', builtIn: true, validationRule: 'create、update、cancel' },
+    ...base,
+  ];
+};
+
+export default function AgentToolModal({ tool, onSave, onClose, extractionConfigs, pricingRules = [], availableVariables = [], callbackBotOptions = [] }: AgentToolModalProps) {
+  const [formData, setFormData] = useState<AgentTool>(() => {
+    const normalized = normalizePricingTool(tool);
+    if (normalized.type !== 'CALLBACK' || normalized.callbackConfig?.executionMode === 'outbound_task') return normalized;
+    const allowManage = normalized.callbackConfig?.allowManageActivePlan ?? true;
+    return { ...normalized, parameters: createCallbackParameters(allowManage, normalized.parameters) };
+  });
   const isBuiltInPricing = formData.type === 'PRICING';
   const soundEffectConfig: ToolSoundEffectConfig = {
     ...DEFAULT_SOUND_EFFECT_CONFIG,
@@ -161,7 +187,7 @@ export default function AgentToolModal({ tool, onSave, onClose, extractionConfig
   const addParameter = () => {
     setFormData(prev => ({
       ...prev,
-      parameters: [...prev.parameters, { name: '', type: 'string', description: '', required: true, source: 'llm' }]
+      parameters: [...prev.parameters, { name: '', type: 'string', description: '', required: false, source: 'llm', defaultValue: '', builtIn: false }]
     }));
   };
 
@@ -241,6 +267,12 @@ export default function AgentToolModal({ tool, onSave, onClose, extractionConfig
     if (!formData.name) return alert("请输入工具/函数名称");
     if (isBuiltInPricing && !formData.displayName?.trim()) return alert("请输入工具显示名称");
     if (!formData.description) return alert("请输入工具描述，这对于LLM识别至关重要");
+    if (formData.type === 'CALLBACK' && formData.callbackConfig?.executionMode === 'specified_bot' && !formData.callbackConfig.callbackBotId) {
+      return alert('请选择执行回呼的语音机器人');
+    }
+    if (formData.type === 'CALLBACK' && formData.callbackConfig?.executionMode === 'outbound_task' && (!formData.callbackConfig.outboundTaskId || !formData.callbackConfig.contactListId)) {
+      return alert('请选择外呼任务和对应联系单');
+    }
     if (formData.parameters.some((parameter) => parameter.source === 'variable' && !parameter.variableId)) {
       return alert("请选择参数引用的变量");
     }
@@ -299,7 +331,20 @@ export default function AgentToolModal({ tool, onSave, onClose, extractionConfig
           resultSpeechMode: 'change_and_total',
         }
         : current.pricingConfig,
-      executionLevel: type === 'PRICING' ? 'auto' : current.executionLevel,
+      callbackConfig: type === 'CALLBACK'
+        ? current.callbackConfig || {
+          executionMode: 'current_bot',
+          callbackBotMode: 'current',
+          allowManageActivePlan: true,
+          includeSourceSummary: true,
+          includeVariableSnapshot: true,
+          generateCallbackSummary: true,
+        }
+        : current.callbackConfig,
+      parameters: type === 'CALLBACK' && current.type !== 'CALLBACK' ? [
+        ...createCallbackParameters(true),
+      ] : current.parameters,
+      executionLevel: type === 'PRICING' || type === 'CALLBACK' ? 'auto' : current.executionLevel,
       needReturn: type === 'PRICING' ? true : current.needReturn,
       directPlayOnReturn: type === 'PRICING' ? true : current.directPlayOnReturn,
     }));
@@ -343,6 +388,7 @@ export default function AgentToolModal({ tool, onSave, onClose, extractionConfig
                  <option value="SMS">短信</option>
                  <option value="TRANSFER">转接</option>
                  <option value="EMAIL">邮件</option>
+                 <option value="CALLBACK">预约回呼（系统内置）</option>
                  <option value="CUSTOM">自定义</option>
                </select>
             </div>
@@ -399,7 +445,7 @@ export default function AgentToolModal({ tool, onSave, onClose, extractionConfig
             </div>
 
             {/* 接口选择 */}
-            {formData.type !== 'RAG' && !isBuiltInPricing && <div className="mb-4">
+            {formData.type !== 'RAG' && formData.type !== 'CALLBACK' && !isBuiltInPricing && <div className="mb-4">
                <Label label="关联接口" tooltip="选择已配置好的接口方案，工具将调用此接口执行。" />
                <select 
                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded bg-white outline-none focus:border-primary"
@@ -471,6 +517,17 @@ export default function AgentToolModal({ tool, onSave, onClose, extractionConfig
               </div>
             )}
 
+            {formData.type === 'CALLBACK' && formData.callbackConfig && (
+              <div className="mb-4 rounded-lg border border-blue-100 bg-blue-50/40 p-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label label="回呼方式" required /><select value={formData.callbackConfig.executionMode || (formData.callbackConfig.callbackBotMode === 'specified' ? 'specified_bot' : 'current_bot')} onChange={(event) => { const mode = event.target.value as 'current_bot' | 'specified_bot' | 'outbound_task'; const allowManage = formData.callbackConfig?.allowManageActivePlan ?? true; setFormData({ ...formData, callbackConfig: { ...formData.callbackConfig!, executionMode: mode, callbackBotMode: mode === 'specified_bot' ? 'specified' : 'current', callbackBotId: mode === 'specified_bot' ? formData.callbackConfig?.callbackBotId : undefined, outboundTaskId: mode === 'outbound_task' ? formData.callbackConfig?.outboundTaskId : undefined, contactListId: mode === 'outbound_task' ? formData.callbackConfig?.contactListId : undefined }, parameters: mode === 'outbound_task' ? [] : createCallbackParameters(allowManage, formData.parameters) }); }} className="h-9 w-full rounded border border-slate-200 bg-white px-2 text-xs"><option value="current_bot">当前机器人（默认）</option><option value="specified_bot">选择其他机器人</option><option value="outbound_task">加入指定外呼任务</option></select></div>
+                  {(formData.callbackConfig.executionMode || (formData.callbackConfig.callbackBotMode === 'specified' ? 'specified_bot' : 'current_bot')) === 'specified_bot' && <div><Label label="语音机器人" required /><select value={formData.callbackConfig.callbackBotId || ''} onChange={(event) => setFormData({ ...formData, callbackConfig: { ...formData.callbackConfig!, callbackBotId: event.target.value } })} className="h-9 w-full rounded border border-slate-200 bg-white px-2 text-xs"><option value="">请选择已发布机器人</option>{callbackBotOptions.map((bot) => <option key={bot.id} value={bot.id}>{bot.name} · {bot.version}</option>)}</select></div>}
+                  {(formData.callbackConfig.executionMode || 'current_bot') === 'outbound_task' && <><div><Label label="外呼任务" required /><select value={formData.callbackConfig.outboundTaskId || ''} onChange={(event) => setFormData({ ...formData, callbackConfig: { ...formData.callbackConfig!, outboundTaskId: event.target.value, contactListId: undefined } })} className="h-9 w-full rounded border border-slate-200 bg-white px-2 text-xs"><option value="">请选择外呼任务</option>{CALLBACK_TASK_OPTIONS.map((task) => <option key={task.id} value={task.id}>{task.name}</option>)}</select></div><div><Label label="联系单" required /><select disabled={!formData.callbackConfig.outboundTaskId} value={formData.callbackConfig.contactListId || ''} onChange={(event) => setFormData({ ...formData, callbackConfig: { ...formData.callbackConfig!, contactListId: event.target.value } })} className="h-9 w-full rounded border border-slate-200 bg-white px-2 text-xs disabled:bg-slate-100"><option value="">请选择联系单</option>{CALLBACK_TASK_OPTIONS.find((task) => task.id === formData.callbackConfig?.outboundTaskId)?.contactLists.map((list) => <option key={list.id} value={list.id}>{list.name}</option>)}</select></div></>}
+                </div>
+                {(formData.callbackConfig.executionMode || 'current_bot') !== 'outbound_task' && <div className="mt-3 flex items-center justify-between border-t border-blue-100 pt-3"><div><div className="text-xs font-medium text-slate-700">允许修改或取消计划</div><div className="mt-0.5 text-[10px] text-slate-400">仅限本次通话关联且尚未执行的回呼计划</div></div><Switch label="" compact checked={formData.callbackConfig.allowManageActivePlan ?? true} onChange={(checked) => setFormData({ ...formData, callbackConfig: { ...formData.callbackConfig!, allowManageActivePlan: checked }, parameters: createCallbackParameters(checked, formData.parameters) })} /></div>}
+              </div>
+            )}
+
             {/* 模型使用指南 */}
             <div className="mb-4">
                <Label label="模型使用指南" tooltip="详细说明工具的使用方法、注意事项、示例等，帮助模型更好地理解和使用此工具。" />
@@ -483,8 +540,20 @@ export default function AgentToolModal({ tool, onSave, onClose, extractionConfig
             </div>
           </section>
 
+          {formData.type === 'CALLBACK' && formData.callbackConfig?.executionMode !== 'outbound_task' && <section>
+            <div className="mb-3 border-b border-slate-100 pb-2"><h4 className="text-sm font-bold text-slate-700">参数定义</h4></div>
+            <div className="overflow-hidden rounded-lg border border-slate-200">
+              <div className="space-y-2 p-3">{formData.parameters.filter((parameter) => parameter.builtIn).map((parameter) => <div key={parameter.name} className="grid grid-cols-[145px_1fr_110px_1.35fr] gap-2">
+                <select disabled className="h-8 rounded border border-slate-200 bg-slate-50 px-2 text-[11px] text-slate-600"><option>模型参数</option></select>
+                <input value={parameter.name} disabled className="h-8 rounded border border-slate-200 bg-slate-50 px-2 font-mono text-[11px] text-slate-600" />
+                <select disabled className="h-8 rounded border border-slate-200 bg-slate-50 px-2 text-[11px] text-slate-600"><option>{parameter.name === 'execute_time' ? '日期时间' : parameter.name === 'action' ? '选项' : '文本'}</option></select>
+                <input value={parameter.description} disabled className="h-8 rounded border border-slate-200 bg-slate-50 px-2 text-[11px] text-slate-500" />
+              </div>)}</div>
+            </div>
+          </section>}
+
           {/* 2. Parameters */}
-          {formData.type !== 'RAG' && <section>
+          {formData.type !== 'RAG' && formData.type !== 'CALLBACK' && <section>
              <div className="flex justify-between items-center mb-2 border-b border-slate-100 pb-2">
                 <h4 className="text-sm font-bold text-slate-700">参数定义</h4>
                 <button onClick={addParameter} className="text-xs text-primary flex items-center hover:underline">
@@ -590,7 +659,7 @@ export default function AgentToolModal({ tool, onSave, onClose, extractionConfig
              </div>
           </section>}
 
-          <section>
+          {formData.type !== 'CALLBACK' && <><section>
             <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-2">
               <h4 className="flex items-center gap-2 text-sm font-bold text-slate-700">
                 <ShieldCheck size={15} className="text-primary" /> 调用控制
@@ -789,7 +858,7 @@ export default function AgentToolModal({ tool, onSave, onClose, extractionConfig
                 })}
               />
             </div>
-          </section>
+          </section></>}
 
           {/* 3. 工具调用话术 */}
           <section className="bg-emerald-50/50 rounded-xl p-4 border border-emerald-100">

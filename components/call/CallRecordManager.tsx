@@ -1,10 +1,19 @@
-import React, { useState } from 'react';
+// 通话记录列表与详情的页面入口，支持从其他业务页面直接打开指定通话。
+import React, { useEffect, useState } from 'react';
 import CallRecordList from './CallRecordList';
 import CallRecordDetail from './CallRecordDetail';
 
-export default function CallRecordManager() {
-  const [viewMode, setViewMode] = useState<'list' | 'detail'>('list');
-  const [selectedCallId, setSelectedCallId] = useState<string | null>(null);
+export default function CallRecordManager({ initialCallId = null }: { initialCallId?: string | null }) {
+  const [viewMode, setViewMode] = useState<'list' | 'detail'>(initialCallId ? 'detail' : 'list');
+  const [selectedCallId, setSelectedCallId] = useState<string | null>(initialCallId);
+
+  // 从回呼计划等页面进入时，直接展示对应的通话详情。
+  useEffect(() => {
+    if (initialCallId) {
+      setSelectedCallId(initialCallId);
+      setViewMode('detail');
+    }
+  }, [initialCallId]);
 
   const handleViewDetail = (callId: string) => {
     setSelectedCallId(callId);

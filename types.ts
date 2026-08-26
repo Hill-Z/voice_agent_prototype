@@ -17,6 +17,7 @@ export enum TTSModel {
 export enum ASRModel {
   OPENAI_WHISPER = 'Whisper V3',
   AZURE_STT = 'Azure STT',
+  AWS_TRANSCRIBE = 'AWS Transcribe',
   GOOGLE_STT = 'Google STT',
   VOLC_ASR = 'Volcengine ASR'
 }
@@ -48,6 +49,8 @@ export interface BotVariable {
   isStateful?: boolean;
   defaultValue?: string;
   source?: 'system' | 'user_input' | 'extraction' | 'api' | 'flow';
+  required?: boolean;
+  usageScopes?: Array<'prompt' | 'opening' | 'flow' | 'tool'>;
 }
 
 // 实体类型定义
@@ -559,10 +562,13 @@ export interface AgentToolParameter {
   type: string;
   description: string;
   required: boolean;
-  source?: 'llm' | 'variable';
+  source?: 'llm' | 'system' | 'fixed' | 'variable';
   variableId?: string;
   variableName?: string;
   variableType?: BotVariable['type'];
+  defaultValue?: string;
+  builtIn?: boolean;
+  validationRule?: string;
 }
 
 export type ToolExecutionLevel = 'auto' | 'user_confirm' | 'human_approval' | 'human_only';
@@ -582,7 +588,7 @@ export interface AgentTool {
   name: string; // The function name for LLM (e.g. check_order)
   displayName?: string;
   description: string; // The function description
-  type: 'API' | 'RAG' | 'PRICING' | 'QUOTE' | 'CART_PRICING' | 'SMS' | 'TRANSFER' | 'EMAIL' | 'CUSTOM'; // QUOTE/CART_PRICING 保留用于兼容旧配置
+  type: 'API' | 'RAG' | 'PRICING' | 'QUOTE' | 'CART_PRICING' | 'SMS' | 'TRANSFER' | 'EMAIL' | 'CALLBACK' | 'CUSTOM'; // QUOTE/CART_PRICING 保留用于兼容旧配置
   enabled?: boolean;
   
   // Link to existing resources
@@ -600,6 +606,18 @@ export interface AgentTool {
     externalInterfaceId?: string;
     storeVariableId?: string;
     resultSpeechMode?: 'change_and_total' | 'total_only';
+  };
+  // 平台内置预约回呼能力，由系统负责时间校验、去重和后续拨号。
+  callbackConfig?: {
+    executionMode?: 'current_bot' | 'specified_bot' | 'outbound_task';
+    callbackBotMode: 'current' | 'specified';
+    callbackBotId?: string;
+    outboundTaskId?: string;
+    contactListId?: string;
+    allowManageActivePlan?: boolean;
+    includeSourceSummary: boolean;
+    includeVariableSnapshot: boolean;
+    generateCallbackSummary: boolean;
   };
   duplicateCallPolicy?: 'reuse_result' | 'wait_running' | 'reject';
   interruptionPolicy?: 'cancel' | 'continue' | 'continue_silent';
@@ -1426,8 +1444,8 @@ export interface PresetTool {
   name: string;
   icon: string;
   description: string;
-  category: 'api_call' | 'communication' | 'transfer';
-  defaultType: 'API' | 'SMS' | 'TRANSFER';
+  category: 'api_call' | 'communication' | 'transfer' | 'other';
+  defaultType: 'API' | 'SMS' | 'TRANSFER' | 'CALLBACK';
 }
 
 // ------------------------------
@@ -1483,6 +1501,8 @@ export interface BotConfiguration extends MarketingConfig, ProfileCollectionConf
   asrModel: ASRModel;
   asrInterruptible: boolean;
   asrSilenceDurationMs: number;
+  asrPrimaryLanguage?: string;
+  asrCandidateLanguages?: string[];
   
   // Logic
   systemPrompt: string;
@@ -1499,6 +1519,17 @@ export interface BotConfiguration extends MarketingConfig, ProfileCollectionConf
   // Extraction (Legacy field support)
   extractionConfigId?: string;
   extractionPrompt?: string;
+  // 通话结束后可由模型按条件调用的工具；旧信息提取字段继续保留。
+  postCallToolIds?: string[];
+  postCallToolRules?: Array<{
+    toolId: string;
+    enabled: boolean;
+    triggerCondition: string;
+  }>;
+  callSummaryEnabled?: boolean;
+  callSummaryPrompt?: string;
+  callbackContextEnabled?: boolean;
+  callbackSummaryEnabled?: boolean;
   
   // *** ORCHESTRATION SWITCH ***
   orchestrationType?: 'WORKFLOW' | 'AGENT'; // Default 'WORKFLOW'
@@ -2110,6 +2141,33 @@ export interface BackgroundMusic {
 
 // --- Outbound Types ---
 
+export type ContactFieldType = 'TEXT' | 'NUMBER' | 'DATE' | 'BOOLEAN' | 'PHONE';
+
+export interface ContactFieldDefinition {
+  id: string;
+  key: string;
+  name: string;
+  type: ContactFieldType;
+  required?: boolean;
+  system?: boolean;
+}
+
+export interface ContactRecord {
+  id: string;
+  contactListId: string;
+  customerName: string;
+  phoneNumber: string;
+  status: 'pending' | 'calling' | 'completed' | 'invalid';
+  values: Record<string, string | number | boolean | null>;
+}
+
+export interface TaskVariableMapping {
+  contactListId: string;
+  variableName: string;
+  sourceFieldKey: string;
+  defaultValue?: string;
+}
+
 export interface ContactList {
   id: string;
   name: string;
@@ -2125,6 +2183,8 @@ export interface ContactList {
   retryCount?: number;
   successRate?: string;
   priority?: number;
+  fieldDefinitions?: ContactFieldDefinition[];
+  records?: ContactRecord[];
 }
 
 export interface OutboundTemplate {
@@ -2136,6 +2196,9 @@ export interface OutboundTemplate {
   ivrMode: boolean; // IVR模式开关
   outboundMode: 'ai_bot' | 'predictive' | 'preview'; // 外呼模式
   botConfigId?: string; // 关联机器人
+  botName?: string;
+  botVersion?: string;
+  botInputVariables?: BotVariable[];
   
   callerIdType: 'number' | 'pool';
   callerIdValue: string; // ID of trunk or pool
@@ -2173,6 +2236,7 @@ export interface OutboundTask {
   stopOnEmpty: boolean;
   
   contactListIds: string[]; // Associated contact lists
+  variableMappings?: TaskVariableMapping[];
   
   remark?: string;
   

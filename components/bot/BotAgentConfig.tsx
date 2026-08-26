@@ -475,9 +475,10 @@ export default function BotAgentConfig({ config, updateField, extractionConfigs 
             tool={editingTool || undefined}
             onSave={handleSaveTool}
             onClose={() => setIsToolModalOpen(false)}
-            extractionConfigs={extractionConfigs}
-            availableVariables={config.variables || []}
-         />
+             extractionConfigs={extractionConfigs}
+             availableVariables={config.variables || []}
+             callbackBotOptions={[{ id: config.id, name: config.name, version: config.onlineVersion || config.currentVersion || '当前版本' }]}
+          />
       )}
 
       {/* MCP Server Modal */}

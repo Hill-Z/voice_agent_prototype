@@ -47,7 +47,7 @@ const SYSTEM_VARIABLES: BotVariable[] = [
 
 const VARIABLE_SOURCES = [
   { label: '系统', value: 'system' },
-  { label: '用户输入', value: 'user_input' },
+  { label: '通话开始传入', value: 'user_input' },
   { label: '模型提取', value: 'extraction' },
   { label: 'API 调用', value: 'api' },
   { label: '流程写入', value: 'flow' },
@@ -80,6 +80,7 @@ const BotVariableConfig: React.FC<BotVariableConfigProps> = ({
     isStateful: false,
     source: 'user_input',
     defaultValue: '',
+    required: false,
   });
   const [entityFormData, setEntityFormData] = useState<Partial<BotEntity>>({
     name: '',
@@ -111,7 +112,7 @@ const BotVariableConfig: React.FC<BotVariableConfigProps> = ({
     if (variable) {
       setEditingVar(variable);
       setFormData({ ...variable });
-      setShowAdvancedFields(Boolean(variable.source || variable.defaultValue));
+      setShowAdvancedFields(Boolean(variable.source || variable.defaultValue || variable.required));
     } else {
       setEditingVar(null);
       setFormData({
@@ -121,6 +122,7 @@ const BotVariableConfig: React.FC<BotVariableConfigProps> = ({
         isStateful: isStateTab,
         source: isStateTab ? 'flow' : activeTab === 'EXTRACTION' ? 'extraction' : 'user_input',
         defaultValue: '',
+        required: false,
       });
       setShowAdvancedFields(false);
     }
@@ -203,6 +205,8 @@ const BotVariableConfig: React.FC<BotVariableConfigProps> = ({
             source: (formData.source || (isStateTab ? 'flow' : 'user_input')) as BotVariable['source'],
             isStateful: formData.isStateful ?? isStateTab,
             defaultValue: formData.defaultValue || '',
+            required: formData.required ?? false,
+            usageScopes: activeTab === 'INPUT' ? ['prompt', 'opening', 'flow', 'tool'] : undefined,
           },
         ]);
       }
@@ -261,8 +265,8 @@ const BotVariableConfig: React.FC<BotVariableConfigProps> = ({
               <td className="px-6 py-4 text-sm text-slate-500">{item.description || '-'}</td>
               <td className="px-6 py-4 text-sm text-slate-600">{getSourceName(item.source)}</td>
               <td className="px-6 py-4">
-                <span className={`text-[10px] px-2 py-1 rounded ${item.isStateful ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
-                  {item.isStateful ? '跨轮保留' : '当前会话'}
+                <span className={`text-[10px] px-2 py-1 rounded ${activeTab === 'INPUT' && item.required ? 'bg-amber-50 text-amber-600' : item.isStateful ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
+                  {activeTab === 'INPUT' ? (item.required ? '必填' : '可选') : item.isStateful ? '跨轮保留' : '当前会话'}
                 </span>
               </td>
               <td className="px-6 py-4 text-right">
@@ -345,7 +349,7 @@ const BotVariableConfig: React.FC<BotVariableConfigProps> = ({
     <div className="space-y-6">
       <div className="flex border-b border-gray-200 space-x-8 bg-white/50 px-4 -mx-4">
         {[
-          { id: 'INPUT', label: '输入变量', icon: Server },
+          { id: 'INPUT', label: '话术输入变量', icon: Server },
           { id: 'CONVERSATION', label: '通话变量', icon: MessageSquare },
           { id: 'EXTRACTION', label: '提取变量', icon: Database },
           { id: 'ENTITY', label: '实体', icon: Box },
@@ -363,16 +367,22 @@ const BotVariableConfig: React.FC<BotVariableConfigProps> = ({
         ))}
       </div>
 
+      {activeTab === 'INPUT' && (
+        <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-xs leading-5 text-slate-600">
+          在这里声明话术可使用的外部输入，例如 <code className="rounded bg-white px-1 text-blue-600">{'{{customer_nickname}}'}</code>。外呼任务负责把联系单字段映射进来；变量值只在当前联系人通话中有效。
+        </div>
+      )}
+
       <div className="flex justify-between items-center">
         <div className="text-sm font-bold text-slate-800">
-          {isEntityTab ? '实体列表' : isStateTab ? '通话变量列表' : activeTab === 'INPUT' ? '输入变量列表' : '提取变量列表'}
+          {isEntityTab ? '实体列表' : isStateTab ? '通话变量列表' : activeTab === 'INPUT' ? '话术输入变量列表' : '提取变量列表'}
         </div>
         <button 
           onClick={() => isEntityTab ? openEntityModal() : openModal()} 
           className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-sky-600 transition-all flex items-center shadow-sm"
         >
           <Plus size={16} className="mr-2" />
-          {isEntityTab ? '添加实体' : isStateTab ? '添加通话变量' : activeTab === 'INPUT' ? '添加输入变量' : '添加提取变量'}
+          {isEntityTab ? '添加实体' : isStateTab ? '添加通话变量' : activeTab === 'INPUT' ? '添加话术输入变量' : '添加提取变量'}
         </button>
       </div>
 
@@ -394,7 +404,7 @@ const BotVariableConfig: React.FC<BotVariableConfigProps> = ({
               <h3 className="text-lg font-bold text-slate-800">
                 {isEntityTab 
                   ? (editingEntity ? '编辑实体' : '添加实体')
-                  : (editingVar ? '编辑变量' : isStateTab ? '添加通话变量' : activeTab === 'INPUT' ? '添加输入变量' : '添加提取变量')}
+                  : (editingVar ? '编辑变量' : isStateTab ? '添加通话变量' : activeTab === 'INPUT' ? '添加话术输入变量' : '添加提取变量')}
               </h3>
               <button onClick={closeModal} className="text-slate-400 hover:text-slate-600">
                 <X size={20} />
@@ -548,6 +558,12 @@ const BotVariableConfig: React.FC<BotVariableConfigProps> = ({
                           onChange={(e) => setFormData({ ...formData, defaultValue: e.target.value })} 
                         />
                       </div>
+                      {activeTab === 'INPUT' && (
+                        <label className="col-span-2 flex items-center justify-between rounded-lg border border-gray-200 bg-slate-50 px-3 py-2">
+                          <div><div className="text-sm text-slate-700">必填变量</div><div className="text-xs text-slate-400">外呼任务未完成映射时不能启动</div></div>
+                          <input type="checkbox" checked={formData.required ?? false} onChange={(event) => setFormData({ ...formData, required: event.target.checked })} className="rounded border-slate-300" />
+                        </label>
+                      )}
                     </div>
                   )}
                 </>

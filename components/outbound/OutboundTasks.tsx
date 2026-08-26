@@ -1,9 +1,10 @@
 
 import React, { useState } from 'react';
 import { Search, Plus, Edit3, Trash2, X, Play, Pause, AlertCircle, FileSpreadsheet } from 'lucide-react';
-import { OutboundTask, OutboundTemplate, ContactList } from '../../types';
+import { OutboundTask, OutboundTemplate, ContactList, TaskVariableMapping } from '../../types';
 import { Input, Label, Select, Switch } from '../ui/FormComponents';
 import OutboundTaskDetail from './OutboundTaskDetail';
+import { BOT_INPUT_VARIABLES, createDefaultMappings, OUTBOUND_CONTACT_LISTS } from './outboundContactData';
 
 // Mock Data for demonstration
 const MOCK_TASKS: OutboundTask[] = [
@@ -25,7 +26,8 @@ const MOCK_TASKS: OutboundTask[] = [
     creator: 'Admin',
     createTime: '2026-01-29 10:55:27',
     currentConcurrency: 5,
-    startTime: '2026-01-29 11:00:00'
+    startTime: '2026-01-29 11:00:00',
+    variableMappings: createDefaultMappings(['1']),
   },
   {
     id: '83957',
@@ -45,19 +47,17 @@ const MOCK_TASKS: OutboundTask[] = [
     creator: '张三',
     createTime: '2026-01-28 09:30:00',
     currentConcurrency: 0,
-    startTime: '2026-01-28 10:00:00'
+    startTime: '2026-01-28 10:00:00',
+    variableMappings: createDefaultMappings(['2']),
   }
 ];
 
 const MOCK_TEMPLATES: OutboundTemplate[] = [
-  { id: '967', name: '【官网勿动】-金融贷款受理-崔艳', remark: '', ivrMode: false, outboundMode: 'ai_bot', taskConcurrency: 5, botConcurrency: 5, callerIdType: 'number', callerIdValue: '02160592249', executionTimeId: '1888', blacklistId: 'default', maxRingDuration: 60, retryStrategy: 'retry_priority' },
-  { id: '968', name: '【官网勿动】-金融拓客营销-孙琳', remark: '', ivrMode: false, outboundMode: 'ai_bot', taskConcurrency: 10, botConcurrency: 10, callerIdType: 'pool', callerIdValue: 'pool_shanghai', executionTimeId: '1888', blacklistId: 'default', maxRingDuration: 45, retryStrategy: 'first_priority' }
+  { id: '967', name: '【官网勿动】-金融贷款受理-崔艳', remark: '', ivrMode: false, outboundMode: 'ai_bot', botConfigId: 'bot-finance-01', botName: '金融贷款机器人', botVersion: 'V12', botInputVariables: BOT_INPUT_VARIABLES, taskConcurrency: 5, botConcurrency: 5, callerIdType: 'number', callerIdValue: '02160592249', executionTimeId: '1888', blacklistId: 'default', maxRingDuration: 60, retryStrategy: 'retry_priority' },
+  { id: '968', name: '【官网勿动】-金融拓客营销-孙琳', remark: '', ivrMode: false, outboundMode: 'ai_bot', botConfigId: 'bot-marketing-02', botName: '金融营销机器人', botVersion: 'V8', botInputVariables: BOT_INPUT_VARIABLES, taskConcurrency: 10, botConcurrency: 10, callerIdType: 'pool', callerIdValue: 'pool_shanghai', executionTimeId: '1888', blacklistId: 'default', maxRingDuration: 45, retryStrategy: 'first_priority' }
 ];
 
-const MOCK_CONTACT_LISTS: ContactList[] = [
-  { id: '1', name: '高崇联系单', totalCount: 1, validCount: 1, status: 'running', createdAt: 1716182400000, priority: 1, executedCount: 0, connectedCount: 0, seatAnsweredCount: 0, retryCount: 0, successRate: '0%' },
-  { id: '2', name: '北京车展留资名单', totalCount: 500, validCount: 485, status: 'ready', createdAt: 1716096000000, priority: 1 },
-];
+const MOCK_CONTACT_LISTS: ContactList[] = OUTBOUND_CONTACT_LISTS;
 
 export default function OutboundTasks() {
   const [view, setView] = useState<'LIST' | 'DETAIL'>('LIST');
@@ -74,7 +74,7 @@ export default function OutboundTasks() {
     startType: 'manual',
     priority: 1,
     stopOnEmpty: false,
-    contactListIds: []
+      contactListIds: []
   });
 
   const handleOpenModal = (task?: OutboundTask) => {
@@ -98,6 +98,10 @@ export default function OutboundTasks() {
   const handleSave = () => {
     if (!formData.name) return alert("请输入任务名称");
     if (!formData.templateId) return alert("请选择外呼模版");
+    if (!formData.contactListIds?.length) return alert('请添加联系单');
+    const template = MOCK_TEMPLATES.find((item) => item.id === formData.templateId);
+    const missingRequired = (template?.botInputVariables || []).some((variable) => variable.required && formData.contactListIds?.some((listId) => !formData.variableMappings?.find((mapping) => mapping.contactListId === listId && mapping.variableName === variable.name && mapping.sourceFieldKey)));
+    if (missingRequired) return alert('请完成机器人必填输入变量的映射');
 
     const newTask: OutboundTask = {
       ...formData as OutboundTask,
@@ -144,12 +148,24 @@ export default function OutboundTasks() {
     // Simple mock to add the first list if not present
     if (formData.contactListIds && formData.contactListIds.length < MOCK_CONTACT_LISTS.length) {
        const nextId = MOCK_CONTACT_LISTS[formData.contactListIds.length].id;
-       setFormData({ ...formData, contactListIds: [...(formData.contactListIds || []), nextId] });
+       setFormData({
+         ...formData,
+         contactListIds: [...(formData.contactListIds || []), nextId],
+         variableMappings: [...(formData.variableMappings || []), ...createDefaultMappings([nextId])],
+       });
     }
   };
 
   const removeContactList = (id: string) => {
-    setFormData({ ...formData, contactListIds: formData.contactListIds?.filter(lid => lid !== id) });
+    setFormData({ ...formData, contactListIds: formData.contactListIds?.filter(lid => lid !== id), variableMappings: formData.variableMappings?.filter((mapping) => mapping.contactListId !== id) });
+  };
+
+  const updateMapping = (contactListId: string, variableName: string, sourceFieldKey: string) => {
+    const current = formData.variableMappings || [];
+    const next: TaskVariableMapping[] = current.some((item) => item.contactListId === contactListId && item.variableName === variableName)
+      ? current.map((item) => item.contactListId === contactListId && item.variableName === variableName ? { ...item, sourceFieldKey } : item)
+      : [...current, { contactListId, variableName, sourceFieldKey }];
+    setFormData({ ...formData, variableMappings: next });
   };
 
   const getContactListById = (id: string) => MOCK_CONTACT_LISTS.find(l => l.id === id);
@@ -158,6 +174,8 @@ export default function OutboundTasks() {
      setSelectedTask(task);
      setView('DETAIL');
   };
+
+  const selectedTemplate = MOCK_TEMPLATES.find((item) => item.id === formData.templateId);
 
   if (view === 'DETAIL' && selectedTask) {
      const template = MOCK_TEMPLATES.find(t => t.id === selectedTask.templateId);
@@ -290,6 +308,12 @@ export default function OutboundTasks() {
                            value={formData.templateId}
                            onChange={(e) => setFormData({...formData, templateId: e.target.value})}
                         />
+                        {selectedTemplate?.botConfigId && (
+                          <div className="flex items-center justify-between rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm">
+                            <div><span className="text-slate-500">绑定机器人：</span><span className="font-bold text-slate-800">{selectedTemplate.botName}</span><span className="ml-2 rounded bg-white px-2 py-0.5 text-xs text-blue-600">{selectedTemplate.botVersion}</span></div>
+                            <span className="text-xs text-slate-500">任务保存时固定当前版本</span>
+                          </div>
+                        )}
                         <Input 
                            label="任务名称"
                            required
@@ -375,6 +399,35 @@ export default function OutboundTasks() {
                         + 添加联系单
                      </button>
                   </section>
+
+                  {selectedTemplate && Boolean(formData.contactListIds?.length) && (
+                    <section>
+                      <div className="mb-3 flex items-end justify-between border-b border-slate-100 pb-2">
+                        <div><h4 className="text-sm font-bold text-slate-800">机器人输入变量</h4><p className="mt-1 text-xs text-slate-500">将每个联系单字段映射为话术中的标准变量，带 * 的变量必须完成绑定。</p></div>
+                        <span className="text-xs text-emerald-600">启动前自动校验</span>
+                      </div>
+                      <div className="space-y-4">
+                        {formData.contactListIds?.map((listId) => {
+                          const list = getContactListById(listId);
+                          if (!list) return null;
+                          return (
+                            <div key={listId} className="overflow-hidden rounded-lg border border-slate-200">
+                              <div className="border-b border-slate-100 bg-slate-50 px-4 py-2 text-xs font-bold text-slate-700">{list.name}</div>
+                              <table className="w-full text-left"><thead><tr className="border-b border-slate-100"><th className="px-4 py-2 text-xs text-slate-500">机器人输入</th><th className="px-4 py-2 text-xs text-slate-500">联系单字段</th><th className="px-4 py-2 text-xs text-slate-500">示例值</th><th className="px-4 py-2 text-xs text-slate-500">状态</th></tr></thead>
+                                <tbody className="divide-y divide-slate-100">{(selectedTemplate.botInputVariables || []).map((variable) => {
+                                  const mapping = formData.variableMappings?.find((item) => item.contactListId === listId && item.variableName === variable.name);
+                                  const sourceField = list.fieldDefinitions?.find((field) => field.key === mapping?.sourceFieldKey);
+                                  const sample = list.records?.[0];
+                                  const sampleValue = sourceField?.key === 'customer_name' ? sample?.customerName : sourceField?.key === 'phone_number' ? sample?.phoneNumber : sourceField ? sample?.values[sourceField.key] : null;
+                                  return <tr key={variable.name}><td className="px-4 py-3"><div className="text-sm font-medium text-slate-700">{variable.description?.split('，')[0]}{variable.required && <span className="ml-1 text-red-500">*</span>}</div><code className="text-xs text-slate-400">{`{{${variable.name}}}`}</code></td><td className="px-4 py-3"><select value={mapping?.sourceFieldKey || ''} onChange={(event) => updateMapping(listId, variable.name, event.target.value)} className="w-full rounded border border-slate-200 px-2 py-1.5 text-sm outline-none focus:border-primary"><option value="">请选择字段</option>{list.fieldDefinitions?.map((field) => <option key={field.key} value={field.key}>{field.name}（{field.type}）</option>)}</select></td><td className="px-4 py-3 text-sm text-slate-500">{sampleValue === null || sampleValue === undefined ? variable.defaultValue || '-' : String(sampleValue)}</td><td className="px-4 py-3"><span className={`rounded px-2 py-1 text-xs ${mapping?.sourceFieldKey ? 'bg-emerald-50 text-emerald-600' : variable.required ? 'bg-red-50 text-red-600' : 'bg-slate-100 text-slate-500'}`}>{mapping?.sourceFieldKey ? '已映射' : variable.required ? '待配置' : '可选'}</span></td></tr>;
+                                })}</tbody>
+                              </table>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  )}
                </div>
 
                <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end space-x-3">

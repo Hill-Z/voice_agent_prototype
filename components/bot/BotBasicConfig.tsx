@@ -28,6 +28,32 @@ const AVAILABLE_VOICES = [
   { label: 'Volc-Sichuan (四川话)', value: 'Volc-Sichuan' },
 ];
 
+// ASR 语言统一使用标准语言代码；AWS 与微软支持主语言加最多三个候选语言。
+const ASR_LANGUAGE_OPTIONS = [
+  { value: 'zh-CN', label: '中文（普通话）· zh-CN' },
+  { value: 'en-US', label: '英语（美国）· en-US' },
+  { value: 'en-GB', label: '英语（英国）· en-GB' },
+  { value: 'ar-SA', label: '阿拉伯语 · ar-SA' },
+  { value: 'id-ID', label: '印尼语 · id-ID' },
+  { value: 'th-TH', label: '泰语 · th-TH' },
+  { value: 'ms-MY', label: '马来语 · ms-MY' },
+  { value: 'fil-PH', label: '菲律宾语 · fil-PH' },
+  { value: 'ja-JP', label: '日语 · ja-JP' },
+  { value: 'ko-KR', label: '韩语 · ko-KR' },
+];
+
+const ASR_MODEL_OPTIONS = [
+  { value: ASRModel.OPENAI_WHISPER, label: 'Whisper V3' },
+  { value: ASRModel.AZURE_STT, label: 'Microsoft Azure ASR' },
+  { value: ASRModel.AWS_TRANSCRIBE, label: 'AWS Transcribe' },
+  { value: ASRModel.GOOGLE_STT, label: 'Google STT' },
+  { value: ASRModel.VOLC_ASR, label: 'Volcengine ASR' },
+];
+
+const supportsAsrCandidateLanguages = (model: ASRModel) => (
+  model === ASRModel.AWS_TRANSCRIBE || model === ASRModel.AZURE_STT
+);
+
 const CODE_SWITCHING_PROMPT = `
 # Multi-Language Code-Switching Strategy
 You are a smart assistant capable of fluent code-switching between languages (Mandarin, Cantonese, English, etc.).
@@ -446,16 +472,39 @@ const BotBasicConfig: React.FC<BotBasicConfigProps> = ({
             </div>
             <span className="text-xs font-bold text-slate-700">ASR 识别配置</span>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            <div className="lg:col-span-4 space-y-4">
-              <Select label="ASR模型" options={Object.values(ASRModel) as string[]} value={config.asrModel} onChange={(e) => updateField('asrModel', e.target.value as ASRModel)} />
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:items-end">
+            <div className="lg:col-span-4">
+              <Select
+                label="ASR 模型"
+                options={ASR_MODEL_OPTIONS}
+                value={config.asrModel}
+                onChange={(event) => {
+                  const nextModel = event.target.value as ASRModel;
+                  updateField('asrModel', nextModel);
+                  if (!supportsAsrCandidateLanguages(nextModel)) updateField('asrCandidateLanguages', []);
+                }}
+              />
             </div>
-            <div className="lg:col-span-4 space-y-4">
-               <Input label="静音时长 (ms)" tooltip="检测到静音多长时间后切断识别" value={config.asrSilenceDurationMs} onChange={(e) => updateField('asrSilenceDurationMs', parseInt(e.target.value) || 0)} />
+
+            <div className="lg:col-span-5">
+              <Label label="主语言" required />
+              <select value={config.asrPrimaryLanguage || 'zh-CN'} onChange={(event) => { updateField('asrPrimaryLanguage', event.target.value); updateField('asrCandidateLanguages', (config.asrCandidateLanguages || []).filter((item) => item !== event.target.value)); }} className="h-10 w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-primary">
+                {ASR_LANGUAGE_OPTIONS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+              </select>
             </div>
-            <div className="lg:col-span-4 space-y-6 pt-2">
-              <Switch label="允许被打断" checked={config.asrInterruptible} onChange={(v) => updateField('asrInterruptible', v)} tooltip="客户说话时是否立刻停止机器人播报" />
+
+            <div className="pb-2 lg:col-span-3">
+              <Switch label="允许被打断" checked={config.asrInterruptible} onChange={(value) => updateField('asrInterruptible', value)} tooltip="客户说话时是否立刻停止机器人播报" />
             </div>
+
+            <div className="lg:col-span-4"><Input label="静音时长 (ms)" tooltip="检测到静音多长时间后切断识别" value={config.asrSilenceDurationMs} onChange={(event) => updateField('asrSilenceDurationMs', parseInt(event.target.value) || 0)} /></div>
+
+            {supportsAsrCandidateLanguages(config.asrModel) && <div className="lg:col-span-8">
+              <div className="mb-1 flex items-center justify-between"><Label label="候选语言（最多 3 个）" /><button type="button" disabled={(config.asrCandidateLanguages || []).length >= 3} onClick={() => { const used = new Set([config.asrPrimaryLanguage || 'zh-CN', ...(config.asrCandidateLanguages || [])]); const next = ASR_LANGUAGE_OPTIONS.find((item) => !used.has(item.value)); if (next) updateField('asrCandidateLanguages', [...(config.asrCandidateLanguages || []), next.value]); }} className="flex items-center text-[11px] font-medium text-primary disabled:text-slate-300"><Plus size={12} className="mr-1" />添加</button></div>
+              <div className="flex flex-wrap gap-2">
+                {(config.asrCandidateLanguages || []).map((language, index) => <div key={`${language}_${index}`} className="flex min-w-[190px] flex-1 items-center gap-1"><select value={language} onChange={(event) => updateField('asrCandidateLanguages', (config.asrCandidateLanguages || []).map((item, itemIndex) => itemIndex === index ? event.target.value : item))} className="h-10 min-w-0 flex-1 rounded border border-gray-200 bg-white px-2 text-xs outline-none focus:border-primary">{ASR_LANGUAGE_OPTIONS.map((item) => { const usedByOther = item.value === (config.asrPrimaryLanguage || 'zh-CN') || (config.asrCandidateLanguages || []).some((selected, selectedIndex) => selectedIndex !== index && selected === item.value); return <option key={item.value} value={item.value} disabled={usedByOther}>{item.label}</option>; })}</select><button type="button" onClick={() => updateField('asrCandidateLanguages', (config.asrCandidateLanguages || []).filter((_, itemIndex) => itemIndex !== index))} className="flex h-10 w-8 items-center justify-center text-slate-400 hover:text-red-500" title="删除候选语言"><Trash2 size={13} /></button></div>)}
+              </div>
+            </div>}
           </div>
 
           {/* ASR 文本修正 */}

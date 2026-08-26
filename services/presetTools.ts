@@ -51,6 +51,14 @@ export const PRESET_TOOLS_LIST: PresetTool[] = [
     description: '添加用户企业微信',
     category: 'api_call',
     defaultType: 'API'
+  },
+  {
+    id: 'callback_plan',
+    name: '预约回呼',
+    icon: '📅',
+    description: '根据通话约定创建 AI 回呼计划',
+    category: 'other',
+    defaultType: 'CALLBACK'
   }
 ];
 
@@ -58,6 +66,34 @@ export const PRESET_TOOLS_LIST: PresetTool[] = [
  * 完整的 9 个预设工具配置 - 用于 Demo 机器人
  */
 export const PRESET_TOOLS_CONFIG: AgentTool[] = [
+  {
+    id: 'tool_callback_plan',
+    name: 'create_callback_plan',
+    displayName: '预约回呼',
+    description: '仅当客户明确要求或双方承诺后续回电时使用，用于创建 AI 回呼计划。',
+    type: 'CALLBACK',
+    category: 'other',
+    icon: '📅',
+    enabled: true,
+    parameters: [
+      { name: 'action', type: 'string', description: '必填：create 新建、update 改期、cancel 取消', required: true, source: 'llm', defaultValue: 'create', builtIn: true },
+      { name: 'execute_time', type: 'datetime', description: '创建或改期时必填：客户确认的回呼执行时间', required: false, source: 'llm', defaultValue: '', builtIn: true },
+      { name: 'customer_phone', type: 'string', description: '创建时使用：回呼客户号码，默认当前号码', required: false, source: 'system', defaultValue: '{{system.customer_phone}}', builtIn: true, validationRule: '有效手机号码' },
+    ],
+    callbackConfig: {
+      executionMode: 'current_bot',
+      callbackBotMode: 'current',
+      allowManageActivePlan: true,
+      includeSourceSummary: true,
+      includeVariableSnapshot: true,
+      generateCallbackSummary: true,
+    },
+    modelReadme: '时间含糊时先追问，不得自行猜测。创建或改期成功后必须复述系统返回的准确时间。没有明确承诺时不要创建回呼。',
+    responseInstruction: '向客户复述计划状态、实际回呼时间和执行方式；失败时说明原因并重新确认。',
+    executionLevel: 'auto',
+    duplicateCallPolicy: 'reject',
+    needReturn: true,
+  },
   {
     id: 'tool_query_order',
     name: 'query_order',
@@ -261,7 +297,7 @@ export function getPresetToolConfig(presetId: string): AgentTool | null {
   const preset = PRESET_TOOLS_LIST.find(p => p.id === presetId);
   if (!preset) return null;
   
-  const config = PRESET_TOOLS_CONFIG.find(c => c.name === presetId);
+  const config = PRESET_TOOLS_CONFIG.find(c => c.name === presetId || c.id === `tool_${presetId}`);
   if (config) {
     return { ...config, id: `tool_${presetId}_${Date.now()}` };
   }

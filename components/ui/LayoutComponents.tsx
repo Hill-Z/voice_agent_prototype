@@ -92,6 +92,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeSubItem, onNavigate }) =
       id: '外呼任务',
       subItems: [
         { label: '外呼任务', id: '外呼任务列表', icon: ClipboardList },
+        { label: '回呼计划', id: '回呼计划', icon: CalendarClock },
         { label: '外呼模版', id: '外呼模版', icon: FileText },
         { label: '外呼联系单', id: '外呼联系单', icon: Contact }
       ]

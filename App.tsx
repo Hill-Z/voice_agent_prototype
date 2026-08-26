@@ -24,6 +24,7 @@ import FileManager from './components/files/FileManager';
 import OutboundTemplates from './components/outbound/OutboundTemplates';
 import OutboundTasks from './components/outbound/OutboundTasks';
 import ContactLists from './components/outbound/ContactLists';
+import CallbackPlans from './components/outbound/CallbackPlans';
 import CampaignManager, { MOCK_CAMPAIGNS as INITIAL_CAMPAIGNS } from './components/marketing/CampaignManager';
 import CustomerProfileManager from './components/marketing/CustomerProfileManager';
 import CustomerMemoryManager from './components/memory/CustomerMemoryManager';
@@ -461,6 +462,7 @@ const INITIAL_EXTRACTION_CONFIGS: ExtractionConfig[] = [
 
 export default function App() {
   const [activeMenu, setActiveMenu] = useState('机器人配置');
+  const [selectedCallRecordId, setSelectedCallRecordId] = useState<string | null>(null);
   const [bots, setBots] = useState<BotConfiguration[]>([
     { ...DIDI_BOT, currentVersion: '草稿', currentVersionType: 'draft', onlineVersion: 'V1.8', versionChangeSummary: ['提示词', '流程', '对话策略'] },
     { ...AGENT_DEMO_BOT, currentVersion: 'V2.3', currentVersionType: 'published', onlineVersion: 'V2.3', versionChangeSummary: ['提示词', '工具配置'] },
@@ -509,6 +511,7 @@ export default function App() {
 
   const handleNavigate = (menu: string) => {
     setActiveMenu(menu);
+    if (menu === '通话记录') setSelectedCallRecordId(null);
     if (menu === '机器人配置') {
       setView('LIST');
       setEditingBot(null);
@@ -536,6 +539,8 @@ export default function App() {
         return <OutboundTemplates bots={bots} />;
       case '外呼任务列表':
         return <OutboundTasks />;
+      case '回呼计划':
+        return <CallbackPlans onOpenCallRecord={(callId) => { setSelectedCallRecordId(callId); setActiveMenu('通话记录'); }} />;
       case '外呼联系单':
         return <ContactLists />;
       // --- Marketing Route ---
@@ -596,7 +601,7 @@ export default function App() {
       case '事件配置':
         return <BusinessEventConfigurationPage />;
       case '通话记录':
-        return <CallRecordManager />;
+        return <CallRecordManager initialCallId={selectedCallRecordId} />;
       case '工具配置':
         return <ToolConfigPage bots={bots} extractionConfigs={extractionConfigs} />;
       default:

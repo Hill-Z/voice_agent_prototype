@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Edit3, ChevronDown, ArrowUpDown, LayoutList, X, Plus, Database, HelpCircle, Trash2, UserCircle2, BookOpen } from 'lucide-react';
+import { Edit3, ChevronDown, ArrowUpDown, LayoutList, X, Plus, Database, Trash2, UserCircle2, BookOpen, Wrench, FileText } from 'lucide-react';
 import { Switch, Select, TagInput } from '../ui/FormComponents';
 import { LabelGroup, BotConfiguration, ExtractionConfig, ModelType, TagItem, Parameter, ProfileExtractionRule } from '../../types';
 
@@ -349,164 +349,42 @@ const BotBusinessConfig: React.FC<BotBusinessConfigProps> = ({ config, updateFie
       )}
 
       {activeSubTab === 'SUMMARY' && (
-        <div className="bg-white rounded border border-gray-200 shadow-sm p-12 text-center text-slate-400">
-          通话小结模块开发中...
+        <div className="space-y-4 rounded border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="flex items-start justify-between gap-6">
+            <div><h3 className="flex items-center text-sm font-bold text-slate-800"><FileText size={18} className="mr-2 text-primary" />通话小结</h3><p className="mt-1 text-xs text-slate-500">通话结束后自动生成，供通话记录查看，也可作为后续回呼的上下文。</p></div>
+            <Switch label="" checked={config.callSummaryEnabled ?? true} onChange={(value) => updateField('callSummaryEnabled', value)} />
+          </div>
+          {(config.callSummaryEnabled ?? true) && <>
+            <textarea value={config.callSummaryPrompt || '总结客户诉求、双方承诺、待办事项、回呼原因和已确认时间。'} onChange={(event) => updateField('callSummaryPrompt', event.target.value)} className="h-20 w-full resize-none rounded border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary" />
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="flex items-center justify-between rounded border border-gray-200 px-4 py-3"><div><div className="text-xs font-bold text-slate-700">作为回呼上下文</div><div className="mt-1 text-[11px] text-slate-400">将来源通话小结和变量快照带入新对话</div></div><Switch label="" checked={config.callbackContextEnabled ?? true} onChange={(value) => updateField('callbackContextEnabled', value)} /></div>
+              <div className="flex items-center justify-between rounded border border-gray-200 px-4 py-3"><div><div className="text-xs font-bold text-slate-700">回呼后生成新小结</div><div className="mt-1 text-[11px] text-slate-400">每次回呼均形成独立记录，不覆盖来源小结</div></div><Switch label="" checked={config.callbackSummaryEnabled ?? true} onChange={(value) => updateField('callbackSummaryEnabled', value)} /></div>
+            </div>
+          </>}
         </div>
       )}
 
       {activeSubTab === 'INFO_EXTRACTION' && (
-        <div className="space-y-6">
-          {/* Main Config Selection */}
-          <div className="bg-white rounded border border-gray-200 shadow-sm p-8">
-            <div className="max-w-2xl">
-               <div className="flex items-center mb-6 text-slate-800 font-bold">
-                 <div className="p-2 bg-blue-50 text-primary rounded-lg mr-3">
-                   <Database size={20} />
-                 </div>
-                 配置信息提取方案
-               </div>
-               
-               <Select 
-                 label="选择接口配置方案" 
-                 tooltip="选择在对话过程中使用的信息提取配置方案（API定义等）。"
-                 value={config.extractionConfigId || ''}
-                 onChange={(e) => updateField('extractionConfigId', e.target.value)}
-                 options={[
-                   { label: '请选择...', value: '' },
-                   ...extractionConfigs.map(c => ({ label: c.name, value: c.id }))
-                 ]}
-               />
-               
-               {config.extractionConfigId && (
-                 <div className="mt-4 p-4 bg-slate-50 border border-slate-100 rounded-lg text-sm text-slate-600 mb-6">
-                    <div className="font-bold mb-2 text-xs uppercase text-slate-500">关联方案详情</div>
-                    {extractionConfigs.find(c => c.id === config.extractionConfigId)?.description || '暂无描述'}
-                 </div>
-               )}
+        <div className="space-y-4">
+          <div className="rounded border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="flex items-start justify-between gap-6"><div><h3 className="flex items-center text-sm font-bold text-slate-800"><Wrench size={18} className="mr-2 text-primary" />通话后分析与执行</h3><p className="mt-1 text-xs text-slate-500">分析通话全文和小结，满足条件时调用已加入该机器人的工具。</p></div></div>
+            <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+              <Select label="兼容旧信息提取方案" tooltip="已有客户配置继续生效，可与新工具同时使用。" value={config.extractionConfigId || ''} onChange={(event) => updateField('extractionConfigId', event.target.value)} options={[{ label: '不使用', value: '' }, ...extractionConfigs.map((item) => ({ label: item.name, value: item.id }))]} />
+              <div><label className="mb-1 block text-xs font-medium text-slate-600">分析说明</label><input value={config.extractionPrompt || ''} onChange={(event) => updateField('extractionPrompt', event.target.value)} placeholder="例如：识别双方明确承诺的回呼时间和待办事项" className="h-10 w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-primary" /></div>
             </div>
           </div>
 
-          {/* Model & Prompt Configuration (Moved Here) */}
-          {config.extractionConfigId && (
-            <div className="bg-white rounded border border-gray-200 shadow-sm p-8 animate-in fade-in slide-in-from-bottom-2">
-              <div className="max-w-7xl">
-                 <div className="flex items-center mb-6 text-slate-800 font-bold">
-                   <div className="p-2 bg-purple-50 text-purple-600 rounded-lg mr-3">
-                     <HelpCircle size={20} />
-                   </div>
-                   提取逻辑配置 (LLM)
-                 </div>
-                 
-                 {/* Extraction Model Selection Removed */}
-
-                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                   <div className="lg:col-span-7">
-                      <div className="flex items-center mb-2">
-                        <label className="text-sm font-medium text-slate-700">提取提示词 (Prompt)</label>
-                      </div>
-                      <textarea 
-                        className="w-full h-80 px-4 py-3 text-sm border border-gray-200 rounded focus:border-primary outline-none transition-all font-mono leading-relaxed bg-slate-50/30 resize-none"
-                        value={config.extractionPrompt}
-                        onChange={(e) => updateField('extractionPrompt', e.target.value)}
-                        placeholder="例如：请从用户的回答中提取订单号和手机号码..."
-                      />
-                      <p className="text-xs text-slate-400 mt-2">指导模型如何从对话中提取所需信息，并映射到接口参数。</p>
-                   </div>
-                   
-                   <div className="lg:col-span-5">
-                      <div className="bg-slate-50/50 border border-slate-100 rounded p-4 h-full">
-                        <div className="flex justify-between items-center mb-4">
-                          <span className="text-xs font-bold text-slate-700">提取变量参数</span>
-                          <button onClick={addParameter} className="text-[10px] px-2 py-0.5 border border-primary text-primary rounded hover:bg-primary/5 flex items-center">
-                             <Plus size={10} className="mr-1" /> 添加
-                          </button>
-                        </div>
-                        <div className="space-y-3 max-h-80 overflow-y-auto">
-                          {config.parameters.map((param) => (
-                            <div key={param.id} className="p-3 bg-white rounded border border-gray-200 space-y-2">
-                              {/* 第一行：参数名和来源选择 */}
-                              <div className="flex space-x-2 items-center">
-                                <div className="flex-1 min-w-0 relative">
-                                   <select 
-                                     className="w-full px-2 py-1 text-[11px] border border-gray-200 rounded bg-white outline-none appearance-none"
-                                     value={param.key}
-                                     onChange={(e) => updateParameter(param.id, 'key', e.target.value)}
-                                   >
-                                     <option value="">选择接口参数</option>
-                                     {config.variables?.map(v => (
-                                       <option key={v.id} value={v.name}>{v.name}</option>
-                                     ))}
-                                   </select>
-                                   <ChevronDown size={10} className="absolute right-1 top-2 text-gray-400 pointer-events-none" />
-                                </div>
-                                
-                                <select
-                                  className="w-24 px-2 py-1 text-[11px] border border-gray-200 rounded bg-white outline-none appearance-none"
-                                  value={param.source || 'llm'}
-                                  onChange={(e) => {
-                                    const newSource = e.target.value as 'llm' | 'variable';
-                                    const updates: any = { source: newSource };
-                                    if (newSource === 'variable') {
-                                      updates.variableName = config.variables?.[0]?.name || '';
-                                      updates.description = '';
-                                    } else {
-                                      updates.variableName = undefined;
-                                    }
-                                    updateParameter(param.id, 'source', newSource);
-                                    if (updates.variableName !== undefined) {
-                                      updateParameter(param.id, 'variableName', updates.variableName);
-                                    }
-                                  }}
-                                >
-                                  <option value="llm">LLM提取</option>
-                                  <option value="variable">变量映射</option>
-                                </select>
-
-                                <button onClick={() => removeParameter(param.id)} className="text-slate-300 hover:text-red-500 shrink-0">
-                                   <Trash2 size={12} />
-                                </button>
-                              </div>
-                              
-                              {/* 第二行：根据来源显示不同输入 */}
-                              {param.source === 'variable' ? (
-                                <div className="flex items-center space-x-2">
-                                  <span className="text-[10px] text-slate-500">映射变量：</span>
-                                  <select
-                                    className="flex-1 px-2 py-1 text-[11px] border border-gray-200 rounded bg-white outline-none appearance-none"
-                                    value={param.variableName || ''}
-                                    onChange={(e) => updateParameter(param.id, 'variableName', e.target.value)}
-                                  >
-                                    <option value="">选择已有变量</option>
-                                    {config.variables?.map(v => (
-                                      <option key={v.id} value={v.name}>{v.name} ({v.description || '无描述'})</option>
-                                    ))}
-                                  </select>
-                                </div>
-                              ) : (
-                                <div className="flex-[2] min-w-0">
-                                  <input
-                                    type="text"
-                                    className="w-full px-2 py-1 text-[11px] border border-gray-200 rounded bg-white outline-none focus:border-primary placeholder:text-slate-300"
-                                    placeholder="输入提取指令/描述，指导LLM如何提取此参数"
-                                    value={param.description || ''}
-                                    onChange={(e) => updateParameter(param.id, 'description', e.target.value)}
-                                  />
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                          {config.parameters.length === 0 && <div className="text-[10px] text-slate-400 text-center py-4">暂无变量</div>}
-                        </div>
-                        
-                        <div className="mt-3 p-2 bg-blue-50 rounded text-[10px] text-blue-600">
-                          <span className="font-bold">提示：</span>LLM提取会分析对话内容自动提取信息；变量映射会直接使用已配置的变量值，不经过LLM提取。
-                        </div>
-                      </div>
-                   </div>
-                 </div>
-              </div>
+          <div className="overflow-hidden rounded border border-gray-200 bg-white shadow-sm">
+            <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4"><div><div className="text-sm font-bold text-slate-800">可调用工具</div><div className="mt-1 text-xs text-slate-400">来源于当前机器人的工具列表，不再限定为信息提取接口。</div></div></div>
+            <div className="divide-y divide-gray-100">
+              {(config.agentConfig?.tools || []).map((tool) => {
+                const selected = (config.postCallToolIds || []).includes(tool.id);
+                const rule = (config.postCallToolRules || []).find((item) => item.toolId === tool.id);
+                return <div key={tool.id} className="px-5 py-4"><div className="flex items-center justify-between gap-4"><div className="flex min-w-0 items-center gap-3"><span className="flex h-9 w-9 items-center justify-center rounded bg-slate-50 text-base">{tool.icon || (tool.type === 'CALLBACK' ? '📅' : '🔧')}</span><div><div className="flex items-center gap-2 text-sm font-bold text-slate-700">{tool.displayName || tool.name}<span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">{tool.type === 'CALLBACK' ? '系统内置' : tool.type}</span></div><div className="mt-1 text-xs text-slate-400">{tool.description}</div></div></div><Switch label="" checked={selected} onChange={(value) => { const ids = config.postCallToolIds || []; updateField('postCallToolIds', value ? [...ids, tool.id] : ids.filter((id) => id !== tool.id)); const rules = config.postCallToolRules || []; updateField('postCallToolRules', value ? [...rules.filter((item) => item.toolId !== tool.id), { toolId: tool.id, enabled: true, triggerCondition: tool.type === 'CALLBACK' ? '通话中未创建回呼，且双方已明确确认回呼日期、时间和原因' : '模型判断通话结果满足工具使用条件' }] : rules.filter((item) => item.toolId !== tool.id)); }} /></div>{selected && <div className="ml-12 mt-3"><label className="mb-1 block text-[11px] font-medium text-slate-500">执行条件</label><input value={rule?.triggerCondition || ''} onChange={(event) => updateField('postCallToolRules', (config.postCallToolRules || []).map((item) => item.toolId === tool.id ? { ...item, triggerCondition: event.target.value } : item))} className="h-9 w-full rounded border border-gray-200 px-3 text-xs outline-none focus:border-primary" /><p className="mt-1 text-[10px] text-slate-400">输入范围：通话全文、小结和本次变量快照；工具仍受自身确认与安全规则限制。</p></div>}</div>;
+              })}
+              {(config.agentConfig?.tools || []).length === 0 && <div className="py-10 text-center text-xs text-slate-400">请先在「工具配置」中创建工具，并在当前机器人中加入工具。</div>}
             </div>
-          )}
+          </div>
         </div>
       )}
 
