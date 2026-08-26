@@ -7,7 +7,7 @@ import McpServerModal from '../bot/agent/McpServerModal';
 import GeoLocationToolConfig from './GeoLocationToolConfig';
 import PricingConfigurationWorkspace from './PricingConfigurationWorkspace';
 
-const INITIAL_TOOLS: AgentTool[] = [
+export const INITIAL_TOOLS: AgentTool[] = [
   {
     id: 'tool_callback_plan', name: 'create_callback_plan', displayName: '预约回呼',
     description: '当客户明确约定再次联系时间时创建 AI 回呼计划。',
@@ -193,12 +193,16 @@ const TYPE_LABELS: Partial<Record<AgentTool['type'], string>> = {
 interface ToolConfigPageProps {
   bots?: BotConfiguration[];
   extractionConfigs?: ExtractionConfig[];
+  tools?: AgentTool[];
+  onToolsChange?: React.Dispatch<React.SetStateAction<AgentTool[]>>;
 }
 
 const isPricingTool = (tool: AgentTool) => tool.type === 'PRICING' || tool.type === 'QUOTE' || tool.type === 'CART_PRICING';
 
-export default function ToolConfigPage({ bots = [], extractionConfigs = [] }: ToolConfigPageProps) {
-  const [tools, setTools] = useState<AgentTool[]>(INITIAL_TOOLS);
+export default function ToolConfigPage({ bots = [], extractionConfigs = [], tools: controlledTools, onToolsChange }: ToolConfigPageProps) {
+  const [localTools, setLocalTools] = useState<AgentTool[]>(INITIAL_TOOLS);
+  const tools = controlledTools ?? localTools;
+  const setTools = onToolsChange ?? setLocalTools;
   const [pricingTables, setPricingTables] = useState<PricingTable[]>(INITIAL_PRICING_TABLES);
   const [pricingRules, setPricingRules] = useState<PricingRule[]>(INITIAL_PRICING_RULES);
   const [editingTool, setEditingTool] = useState<AgentTool | null>(null);
@@ -265,7 +269,12 @@ export default function ToolConfigPage({ bots = [], extractionConfigs = [] }: To
                 <button onClick={() => toggleToolEnabled(tool.id)} className={`flex h-8 items-center rounded-[var(--radius-md)] border px-3 text-xs font-semibold ${tool.enabled ? 'border-[var(--color-green-100)] bg-[var(--color-semantic-success-soft)] text-[var(--color-semantic-success)]' : 'border-[var(--color-semantic-border-default)] bg-white text-[var(--color-semantic-text-tertiary)]'}`}><Power size={12} className="mr-1" />{tool.enabled ? '停用' : '启用'}</button>
                 <button onClick={() => { if (tool.id === 'tool_geo_location') setIsGeoModalOpen(true); else { setEditingTool(tool); setIsToolModalOpen(true); } }} className="flex h-8 items-center rounded-[var(--radius-md)] border border-[var(--color-semantic-border-default)] px-3 text-xs font-semibold text-[var(--color-semantic-text-secondary)] hover:bg-[var(--state-hover-bg)]"><Edit3 size={12} className="mr-1" />编辑</button>
                 {isPricingTool(tool) && <button onClick={() => setActivePricingToolId(tool.id)} className="flex h-8 items-center rounded-[var(--radius-md)] border border-[var(--color-blue-100)] bg-[var(--color-semantic-primary-soft)] px-3 text-xs font-semibold text-[var(--color-semantic-primary-text)] hover:bg-[var(--color-blue-100)]"><Settings2 size={12} className="mr-1" />配置计价</button>}
-                <button onClick={() => handleDeleteTool(tool.id)} className="flex h-8 items-center rounded-[var(--radius-md)] border border-[var(--color-red-100)] px-3 text-xs font-semibold text-[var(--color-semantic-danger)] hover:bg-[var(--color-semantic-danger-soft)]"><Trash2 size={12} className="mr-1" />删除</button>
+                <button
+                  onClick={() => handleDeleteTool(tool.id)}
+                  disabled={bots.some(bot => (bot.postCallToolIds || []).includes(tool.id))}
+                  title={bots.some(bot => (bot.postCallToolIds || []).includes(tool.id)) ? '该工具已被机器人信息提取方案引用，请先解除引用' : '删除工具'}
+                  className="flex h-8 items-center rounded-[var(--radius-md)] border border-[var(--color-red-100)] px-3 text-xs font-semibold text-[var(--color-semantic-danger)] hover:bg-[var(--color-semantic-danger-soft)] disabled:cursor-not-allowed disabled:border-[var(--color-semantic-border-subtle)] disabled:text-[var(--color-semantic-text-placeholder)] disabled:hover:bg-white"
+                ><Trash2 size={12} className="mr-1" />删除</button>
               </div>
             </div>
           ))}</div>

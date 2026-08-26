@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Edit3, ChevronDown, ArrowUpDown, LayoutList, X, Plus, Database, Trash2, UserCircle2, BookOpen, Wrench, FileText } from 'lucide-react';
 import { Switch, Select, TagInput } from '../ui/FormComponents';
-import { LabelGroup, BotConfiguration, ExtractionConfig, ModelType, TagItem, Parameter, ProfileExtractionRule } from '../../types';
+import { AgentTool, LabelGroup, BotConfiguration, ExtractionConfig, ModelType, TagItem, Parameter, ProfileExtractionRule } from '../../types';
 
 // --- Mock Data for Knowledge Base Categories ---
 // 这些分类通常来自 QAManager 和 LexiconManager
@@ -117,11 +117,13 @@ interface BotBusinessConfigProps {
   onSave: () => void;
   onCancel: () => void;
   extractionConfigs: ExtractionConfig[];
+  availableTools: AgentTool[];
 }
 
-const BotBusinessConfig: React.FC<BotBusinessConfigProps> = ({ config, updateField, onSave, onCancel, extractionConfigs }) => {
+const BotBusinessConfig: React.FC<BotBusinessConfigProps> = ({ config, updateField, onSave, onCancel, extractionConfigs, availableTools }) => {
   const [activeSubTab, setActiveSubTab] = useState<'TAG' | 'SATISFACTION' | 'SUMMARY' | 'INFO_EXTRACTION' | 'USER_PROFILE' | 'KNOWLEDGE'>('TAG');
   const [tagModal, setTagModal] = useState<{ isOpen: boolean, groupId: string, name: string, description: string } | null>(null);
+  const [isToolSelectOpen, setIsToolSelectOpen] = useState(false);
 
   const groups = config.labelGroups;
 
@@ -204,6 +206,54 @@ const BotBusinessConfig: React.FC<BotBusinessConfigProps> = ({ config, updateFie
 
   const removeProfileRule = (id: string) => {
     updateField('profileExtractionRules', (config.profileExtractionRules || []).filter(r => r.id !== id));
+  };
+
+  // 旧配置只有接口方案编号时仍按接口类型展示，保证线上配置无需迁移。
+  const postCallProcessType = config.postCallProcessType
+    || (config.extractionConfigId ? 'interface' : (config.postCallToolIds || []).length > 0 ? 'tool' : 'none');
+  const selectedExtractionConfig = extractionConfigs.find(item => item.id === config.extractionConfigId);
+  const legacyParameterMappings: NonNullable<BotConfiguration['postCallParameterMappings']> = (selectedExtractionConfig?.params || []).map(param => ({
+    id: `legacy-${param.id}`,
+    source: param.source,
+    targetKey: param.key,
+    extractionInstruction: param.desc,
+    variableName: param.variableName,
+  }));
+  const postCallParameterMappings = config.postCallParameterMappings?.length
+    ? config.postCallParameterMappings
+    : legacyParameterMappings;
+
+  // 首次编辑旧方案参数时先转成机器人级映射，后续修改不会影响原接口方案。
+  const updatePostCallParameter = (
+    id: string,
+    updates: Partial<NonNullable<BotConfiguration['postCallParameterMappings']>[number]>,
+  ) => {
+    updateField('postCallParameterMappings', postCallParameterMappings.map(item => item.id === id ? { ...item, ...updates } : item));
+  };
+
+  const addPostCallParameter = () => {
+    updateField('postCallParameterMappings', [
+      ...postCallParameterMappings,
+      {
+        id: `post-call-${Date.now()}`,
+        source: 'llm',
+        toolId: postCallProcessType === 'tool' ? (config.postCallToolIds || [])[0] : undefined,
+        targetKey: '',
+        extractionInstruction: '',
+      },
+    ]);
+  };
+
+  const removePostCallParameter = (id: string) => {
+    updateField('postCallParameterMappings', postCallParameterMappings.filter(item => item.id !== id));
+  };
+
+  const togglePostCallTool = (toolId: string, selected: boolean) => {
+    const ids = config.postCallToolIds || [];
+    updateField('postCallToolIds', selected ? [...ids, toolId] : ids.filter(id => id !== toolId));
+    if (!selected && config.postCallParameterMappings?.some(item => item.toolId === toolId)) {
+      updateField('postCallParameterMappings', config.postCallParameterMappings.filter(item => item.toolId !== toolId));
+    }
   };
 
   return (
@@ -366,23 +416,213 @@ const BotBusinessConfig: React.FC<BotBusinessConfigProps> = ({ config, updateFie
 
       {activeSubTab === 'INFO_EXTRACTION' && (
         <div className="space-y-4">
-          <div className="rounded border border-gray-200 bg-white p-6 shadow-sm">
-            <div className="flex items-start justify-between gap-6"><div><h3 className="flex items-center text-sm font-bold text-slate-800"><Wrench size={18} className="mr-2 text-primary" />通话后分析与执行</h3><p className="mt-1 text-xs text-slate-500">分析通话全文和小结，满足条件时调用已加入该机器人的工具。</p></div></div>
-            <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
-              <Select label="兼容旧信息提取方案" tooltip="已有客户配置继续生效，可与新工具同时使用。" value={config.extractionConfigId || ''} onChange={(event) => updateField('extractionConfigId', event.target.value)} options={[{ label: '不使用', value: '' }, ...extractionConfigs.map((item) => ({ label: item.name, value: item.id }))]} />
-              <div><label className="mb-1 block text-xs font-medium text-slate-600">分析说明</label><input value={config.extractionPrompt || ''} onChange={(event) => updateField('extractionPrompt', event.target.value)} placeholder="例如：识别双方明确承诺的回呼时间和待办事项" className="h-10 w-full rounded border border-gray-200 px-3 text-sm outline-none focus:border-primary" /></div>
+          <div className="rounded border border-gray-200 bg-white p-5 shadow-sm">
+            <div>
+              <h3 className="flex items-center text-sm font-bold text-slate-800"><Wrench size={18} className="mr-2 text-primary" />配置信息提取方案</h3>
+              <p className="mt-1 text-xs text-slate-500">通话结束后，按所选方案提取信息并执行接口或工具。</p>
+            </div>
+
+            <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
+              <Select
+                label="方案类型"
+                value={postCallProcessType}
+                onChange={(event) => {
+                  const nextType = event.target.value as 'none' | 'interface' | 'tool';
+                  updateField('postCallProcessType', nextType);
+                  if (nextType === 'none' && config.postCallParameterMappings?.length) {
+                    updateField('postCallParameterMappings', config.postCallParameterMappings.map(parameter => ({
+                      ...parameter,
+                      source: 'llm' as const,
+                      toolId: undefined,
+                      variableName: undefined,
+                      extractionInstruction: parameter.extractionInstruction || '从完整通话中提取该字段',
+                    })));
+                  }
+                }}
+                options={[
+                  { label: '无（仅提取字段）', value: 'none' },
+                  { label: '接口类型', value: 'interface' },
+                  { label: '工具类型', value: 'tool' },
+                ]}
+              />
+
+              {postCallProcessType === 'interface' ? (
+                <Select
+                  label="接口配置方案"
+                  tooltip="原有接口方案和参数继续生效。"
+                  value={config.extractionConfigId || ''}
+                  onChange={(event) => {
+                    updateField('extractionConfigId', event.target.value);
+                    if (!config.postCallParameterMappings?.length) {
+                      const nextConfig = extractionConfigs.find(item => item.id === event.target.value);
+                      updateField('postCallParameterMappings', (nextConfig?.params || []).map(param => ({
+                        id: `interface-${param.id}`,
+                        source: param.source,
+                        targetKey: param.key,
+                        extractionInstruction: param.desc,
+                        variableName: param.variableName,
+                      })));
+                    }
+                  }}
+                  options={[{ label: '请选择接口配置方案', value: '' }, ...extractionConfigs.map(item => ({ label: item.name, value: item.id }))]}
+                />
+              ) : postCallProcessType === 'tool' ? (
+                <div className="relative">
+                  <div className="mb-1 text-xs font-medium text-slate-600">选择工具</div>
+                  <button
+                    type="button"
+                    onClick={() => setIsToolSelectOpen(value => !value)}
+                    className="flex min-h-10 w-full items-center justify-between gap-3 rounded border border-gray-200 bg-white px-3 py-2 text-left outline-none hover:border-primary/50 focus:border-primary"
+                  >
+                    <span className="flex min-w-0 flex-wrap gap-1">
+                      {(config.postCallToolIds || []).length === 0 ? (
+                        <span className="text-sm text-slate-400">请选择工具，可多选</span>
+                      ) : (
+                        (config.postCallToolIds || []).map(toolId => {
+                          const tool = availableTools.find(item => item.id === toolId);
+                          return <span key={toolId} className="rounded bg-blue-50 px-2 py-0.5 text-xs text-primary">{tool?.displayName || tool?.name || '已删除工具'}</span>;
+                        })
+                      )}
+                    </span>
+                    <ChevronDown size={15} className={`shrink-0 text-slate-400 transition-transform ${isToolSelectOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  {isToolSelectOpen && (
+                    <>
+                      <button type="button" aria-label="关闭工具选择" className="fixed inset-0 z-10 cursor-default" onClick={() => setIsToolSelectOpen(false)} />
+                      <div className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded border border-gray-200 bg-white py-1 shadow-lg">
+                        {availableTools.map(tool => {
+                          const selected = (config.postCallToolIds || []).includes(tool.id);
+                          return (
+                            <label key={tool.id} className={`flex items-center justify-between gap-4 px-3 py-2.5 ${tool.enabled || selected ? 'cursor-pointer hover:bg-slate-50' : 'cursor-not-allowed opacity-55'}`}>
+                              <span className="min-w-0">
+                                <span className="flex items-center gap-2 truncate text-xs font-medium text-slate-700">
+                                  {tool.displayName || tool.name}
+                                  <span className={`rounded px-1.5 py-0.5 text-[10px] ${tool.enabled ? 'bg-green-50 text-green-600' : 'bg-slate-100 text-slate-400'}`}>{tool.enabled ? '已启用' : '已停用'}</span>
+                                </span>
+                                <span className="mt-0.5 block truncate text-[11px] text-slate-400">{tool.description}</span>
+                              </span>
+                              <input
+                                type="checkbox"
+                                checked={selected}
+                                onChange={(event) => togglePostCallTool(tool.id, event.target.checked)}
+                                disabled={!tool.enabled && !selected}
+                                className="h-4 w-4 shrink-0 rounded border-gray-300 text-primary focus:ring-primary"
+                              />
+                            </label>
+                          );
+                        })}
+                        {availableTools.length === 0 && (
+                          <div className="px-3 py-6 text-center text-xs text-slate-400">请先在左侧「工具配置」中创建工具</div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                  <p className="mt-1 text-[11px] text-amber-600">大模型将根据通话内容和提示词，判断是否调用所选工具。</p>
+                </div>
+              ) : (
+                <div className="flex h-10 items-center rounded border border-dashed border-gray-200 bg-slate-50 px-3 text-xs text-slate-500">
+                  不调用接口或工具，仅保存大模型从通话中提取的字段。
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="overflow-hidden rounded border border-gray-200 bg-white shadow-sm">
-            <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4"><div><div className="text-sm font-bold text-slate-800">可调用工具</div><div className="mt-1 text-xs text-slate-400">来源于当前机器人的工具列表，不再限定为信息提取接口。</div></div></div>
-            <div className="divide-y divide-gray-100">
-              {(config.agentConfig?.tools || []).map((tool) => {
-                const selected = (config.postCallToolIds || []).includes(tool.id);
-                const rule = (config.postCallToolRules || []).find((item) => item.toolId === tool.id);
-                return <div key={tool.id} className="px-5 py-4"><div className="flex items-center justify-between gap-4"><div className="flex min-w-0 items-center gap-3"><span className="flex h-9 w-9 items-center justify-center rounded bg-slate-50 text-base">{tool.icon || (tool.type === 'CALLBACK' ? '📅' : '🔧')}</span><div><div className="flex items-center gap-2 text-sm font-bold text-slate-700">{tool.displayName || tool.name}<span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">{tool.type === 'CALLBACK' ? '系统内置' : tool.type}</span></div><div className="mt-1 text-xs text-slate-400">{tool.description}</div></div></div><Switch label="" checked={selected} onChange={(value) => { const ids = config.postCallToolIds || []; updateField('postCallToolIds', value ? [...ids, tool.id] : ids.filter((id) => id !== tool.id)); const rules = config.postCallToolRules || []; updateField('postCallToolRules', value ? [...rules.filter((item) => item.toolId !== tool.id), { toolId: tool.id, enabled: true, triggerCondition: tool.type === 'CALLBACK' ? '通话中未创建回呼，且双方已明确确认回呼日期、时间和原因' : '模型判断通话结果满足工具使用条件' }] : rules.filter((item) => item.toolId !== tool.id)); }} /></div>{selected && <div className="ml-12 mt-3"><label className="mb-1 block text-[11px] font-medium text-slate-500">执行条件</label><input value={rule?.triggerCondition || ''} onChange={(event) => updateField('postCallToolRules', (config.postCallToolRules || []).map((item) => item.toolId === tool.id ? { ...item, triggerCondition: event.target.value } : item))} className="h-9 w-full rounded border border-gray-200 px-3 text-xs outline-none focus:border-primary" /><p className="mt-1 text-[10px] text-slate-400">输入范围：通话全文、小结和本次变量快照；工具仍受自身确认与安全规则限制。</p></div>}</div>;
-              })}
-              {(config.agentConfig?.tools || []).length === 0 && <div className="py-10 text-center text-xs text-slate-400">请先在「工具配置」中创建工具，并在当前机器人中加入工具。</div>}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+            <div className="rounded border border-gray-200 bg-white p-5 shadow-sm">
+              <div className="text-sm font-bold text-slate-800">
+                {postCallProcessType === 'tool' ? '工具调用判断提示词' : '信息提取提示词'}
+              </div>
+              <p className="mt-1 text-xs text-slate-400">
+                {postCallProcessType === 'tool'
+                  ? '说明哪些通话情况需要调用工具，以及需要从对话中取得哪些参数。'
+                  : postCallProcessType === 'interface'
+                    ? '说明需要从完整通话中提取哪些信息，并传给接口方案。'
+                    : '说明需要从完整通话中提取并保存哪些字段。'}
+              </p>
+              <textarea
+                value={config.extractionPrompt || ''}
+                onChange={(event) => updateField('extractionPrompt', event.target.value)}
+                placeholder={postCallProcessType === 'tool'
+                  ? '例如：仅当客户明确提出回呼需求并确认时间时，调用预约回呼工具。'
+                  : postCallProcessType === 'interface'
+                    ? '例如：从完整对话中提取客户诉求、处理结果和预约时间，并传给接口。'
+                    : '例如：从完整对话中提取客户诉求、处理结果和预约时间。'}
+                className="mt-4 h-48 w-full resize-none rounded border border-gray-200 px-3 py-2 text-sm leading-6 outline-none focus:border-primary"
+              />
+            </div>
+
+            <div className="rounded border border-gray-200 bg-white p-5 shadow-sm">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <div className="text-sm font-bold text-slate-800">提取变量参数</div>
+                  <p className="mt-1 text-xs text-slate-400">大模型抽取支持自定义参数；变量映射直接使用已有业务变量。</p>
+                </div>
+                <button type="button" onClick={addPostCallParameter} className="flex shrink-0 items-center text-xs font-medium text-primary hover:underline">
+                  <Plus size={14} className="mr-1" />添加
+                </button>
+              </div>
+
+              <div className="mt-4 space-y-2">
+                {postCallParameterMappings.map(parameter => (
+                  <div key={parameter.id} className={`grid grid-cols-1 gap-2 rounded border border-gray-100 bg-slate-50/60 p-2 ${postCallProcessType === 'tool' ? 'md:grid-cols-[110px_130px_140px_minmax(0,1fr)_28px]' : 'md:grid-cols-[120px_150px_minmax(0,1fr)_28px]'}`}>
+                    <select
+                      value={parameter.source}
+                      onChange={(event) => updatePostCallParameter(parameter.id, {
+                        source: event.target.value as 'llm' | 'variable',
+                        extractionInstruction: event.target.value === 'llm' ? parameter.extractionInstruction : undefined,
+                        variableName: event.target.value === 'variable' ? parameter.variableName : undefined,
+                      })}
+                      className="h-9 rounded border border-gray-200 bg-white px-2 text-xs text-slate-700 outline-none focus:border-primary"
+                    >
+                      <option value="llm">大模型抽取</option>
+                      {postCallProcessType !== 'none' && <option value="variable">变量映射</option>}
+                    </select>
+                    {postCallProcessType === 'tool' && (
+                      <select
+                        value={parameter.toolId || ''}
+                        onChange={(event) => updatePostCallParameter(parameter.id, { toolId: event.target.value })}
+                        className="h-9 rounded border border-gray-200 bg-white px-2 text-xs text-slate-700 outline-none focus:border-primary"
+                      >
+                        <option value="">选择目标工具</option>
+                        {availableTools.filter(tool => (config.postCallToolIds || []).includes(tool.id)).map(tool => (
+                          <option key={tool.id} value={tool.id}>{tool.displayName || tool.name}</option>
+                        ))}
+                      </select>
+                    )}
+                    <input
+                      value={parameter.targetKey}
+                      onChange={(event) => updatePostCallParameter(parameter.id, { targetKey: event.target.value })}
+                      placeholder="调用参数名"
+                      className="h-9 rounded border border-gray-200 bg-white px-2 text-xs outline-none focus:border-primary"
+                    />
+                    {parameter.source === 'llm' ? (
+                      <input
+                        value={parameter.extractionInstruction || ''}
+                        onChange={(event) => updatePostCallParameter(parameter.id, { extractionInstruction: event.target.value })}
+                        placeholder="填写提取要求，例如：客户明确确认的回呼时间"
+                        className="h-9 rounded border border-gray-200 bg-white px-2 text-xs outline-none focus:border-primary"
+                      />
+                    ) : (
+                      <select
+                        value={parameter.variableName || ''}
+                        onChange={(event) => updatePostCallParameter(parameter.id, { variableName: event.target.value })}
+                        className="h-9 rounded border border-gray-200 bg-white px-2 text-xs text-slate-700 outline-none focus:border-primary"
+                      >
+                        <option value="">选择业务变量</option>
+                        {(config.variables || []).map(variable => (
+                          <option key={variable.id} value={variable.name}>{variable.name}（{variable.isSystem ? '系统变量' : '业务变量'}）</option>
+                        ))}
+                      </select>
+                    )}
+                    <button type="button" onClick={() => removePostCallParameter(parameter.id)} className="flex h-9 items-center justify-center text-slate-300 hover:text-red-500" aria-label="删除参数">
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                ))}
+                {postCallParameterMappings.length === 0 && (
+                  <div className="rounded border border-dashed border-gray-200 py-8 text-center text-xs text-slate-400">暂未配置参数</div>
+                )}
+              </div>
             </div>
           </div>
         </div>

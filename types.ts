@@ -1519,6 +1519,16 @@ export interface BotConfiguration extends MarketingConfig, ProfileCollectionConf
   // Extraction (Legacy field support)
   extractionConfigId?: string;
   extractionPrompt?: string;
+  // 通话后处理方式；旧数据没有该字段时继续按 extractionConfigId 读取接口方案。
+  postCallProcessType?: 'none' | 'interface' | 'tool';
+  postCallParameterMappings?: Array<{
+    id: string;
+    source: 'llm' | 'variable';
+    toolId?: string;
+    targetKey: string;
+    extractionInstruction?: string;
+    variableName?: string;
+  }>;
   // 通话结束后可由模型按条件调用的工具；旧信息提取字段继续保留。
   postCallToolIds?: string[];
   postCallToolRules?: Array<{

@@ -112,7 +112,7 @@ dist/docs/：与主系统一起部署的 /docs 子页面
 | `BotBasicConfig.tsx` | 配置机器人名称、模型、语音、识别等基础信息。 |
 | `BotStrategyConfig.tsx` | 配置欢迎语、转人工、挂机、静默、安全护栏、全局异常兜底和语音优化策略。 |
 | `IntelligentAnsweringHandlingConfig.tsx` | 在对话策略底部配置 IVR、语音留言和 AI 助手接听后的当前通话及后续动作。 |
-| `BotBusinessConfig.tsx` | 配置业务参数、标签和上下文等业务相关信息。 |
+| `BotBusinessConfig.tsx` | 配置标签、通话小结与通话后信息提取；信息提取兼容旧接口方案，并支持选择工具及配置模型抽取/业务变量映射参数。 |
 | `BotVariableConfig.tsx` | 管理机器人变量、实体和状态变量。 |
 | `BotAgentConfig.tsx` | 管理 Agent 工具、MCP 服务和函数调用相关配置。 |
 | `BotKnowledgeConfig.tsx` | 配置知识空间、问答能力和 RAG 相关绑定。 |
@@ -220,7 +220,7 @@ dist/docs/：与主系统一起部署的 /docs 子页面
 
 | 文件 | 职责 |
 | --- | --- |
-| `ToolConfigPage.tsx` | 工具配置中心，管理工具列表、工具类别、MCP 和地理位置工具入口。 |
+| `ToolConfigPage.tsx` | 工具配置中心，管理全局共享工具目录、工具类别、MCP 和地理位置工具入口；共享目录同时供机器人信息提取方案选择。 |
 | `ToolEditPage.tsx` | 编辑单个工具的参数和能力配置。 |
 | `GeoLocationToolConfig.tsx` | 配置地理位置查询工具。 |
 

@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Sidebar, Header } from './components/ui/LayoutComponents';
-import { BotConfiguration, ModelType, TTSModel, ASRModel, EMOTIONS, LabelGroup, BotVariable, ExtractionConfig, BotIntent, MarketingCampaign } from './types';
+import { BotConfiguration, ModelType, TTSModel, ASRModel, EMOTIONS, LabelGroup, BotVariable, ExtractionConfig, BotIntent, MarketingCampaign, AgentTool } from './types';
 import InformationExtraction from './InformationExtraction';
 import BotConfigForm from './components/bot/BotConfigForm';
 import BotListView from './components/bot/BotListView';
@@ -32,7 +32,7 @@ import FollowUpManager from './components/followup/FollowUpManager';
 import MonitoringReport from './components/report/MonitoringReport';
 import { BusinessEventConfigurationPage, FunnelConfigurationPage } from './components/report/FunnelConfigurationPages';
 import CallRecordManager from './components/call/CallRecordManager';
-import ToolConfigPage from './components/tools/ToolConfigPage';
+import ToolConfigPage, { INITIAL_TOOLS } from './components/tools/ToolConfigPage';
 import { AGENT_DEMO_BOT } from './services/agentDemoBot';
 
 // --- CONSTANTS & DEFAULTS ---
@@ -474,6 +474,8 @@ export default function App() {
 
   // Lifted state for Extraction Configs
   const [extractionConfigs, setExtractionConfigs] = useState<ExtractionConfig[]>(INITIAL_EXTRACTION_CONFIGS);
+  // 工具配置与机器人业务分析共用同一份目录，避免两处列表不一致。
+  const [toolCatalog, setToolCatalog] = useState<AgentTool[]>(INITIAL_TOOLS);
   
   // Lifted state for Campaigns
   const [campaigns, setCampaigns] = useState<MarketingCampaign[]>(INITIAL_CAMPAIGNS);
@@ -570,6 +572,7 @@ export default function App() {
               onSave={handleSave} 
               onCancel={() => { setView('LIST'); setEditingBot(null); }} 
               extractionConfigs={extractionConfigs}
+              availableTools={toolCatalog}
               campaigns={campaigns}
             />
           )
@@ -603,7 +606,7 @@ export default function App() {
       case '通话记录':
         return <CallRecordManager initialCallId={selectedCallRecordId} />;
       case '工具配置':
-        return <ToolConfigPage bots={bots} extractionConfigs={extractionConfigs} />;
+        return <ToolConfigPage bots={bots} extractionConfigs={extractionConfigs} tools={toolCatalog} onToolsChange={setToolCatalog} />;
       default:
         return (
           <div className="flex flex-col items-center justify-center h-full text-slate-400">
