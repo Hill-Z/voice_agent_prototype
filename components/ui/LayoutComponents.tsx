@@ -36,6 +36,7 @@ import {
   MessageSquare,
   FolderOpen,
   Megaphone,
+  Activity,
   CalendarClock,
   UserSquare,
   Code,
@@ -105,6 +106,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeSubItem, onNavigate }) =
       id: '监控报表',
       subItems: [
         { label: '综合报表', id: '监控报表', icon: BarChart3 },
+        { label: '实时监控', id: '实时监控', icon: Activity },
         { label: '漏斗配置', id: '漏斗配置', icon: Route },
         { label: '事件配置', id: '事件配置', icon: Disc },
       ],

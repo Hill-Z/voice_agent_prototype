@@ -275,6 +275,8 @@ dist/docs/：与主系统一起部署的 /docs 子页面
 | `components/satisfaction/SatisfactionSurveyReport.tsx` | 按机器人和问卷分析完成率、CSAT、NPS、开放反馈主题及明细。 |
 | `components/satisfaction/satisfactionData.ts` | 提供满意度问卷与调查结果演示数据。 |
 | `components/report/MonitoringReport.tsx` | 综合运营报表入口，组织顶部筛选、刷新状态、通话统计、业务与流程分析、工具调用区块。 |
+| `components/report/RealtimeMonitoringPage.tsx` | 实时监控与预警入口，展示运行指标、机器人健康、实时通话、告警规则和告警记录。 |
+| `components/report/realtimeMonitoringData.ts` | 实时监控原型的指标、通话、机器人、规则和告警记录数据。 |
 | `components/report/reportUi.tsx` | 提供增强报表共享的指标卡、状态标签、排序表头、分页、空状态、加载骨架和格式化工具。 |
 | `components/report/RealtimeReportTab.tsx` | 历史实时看板组件，当前综合报表入口不再渲染。 |
 | `components/report/AlertCenterPanel.tsx` | 历史告警摘要组件，当前综合报表入口不再渲染。 |

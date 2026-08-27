@@ -30,6 +30,7 @@ import CustomerProfileManager from './components/marketing/CustomerProfileManage
 import CustomerMemoryManager from './components/memory/CustomerMemoryManager';
 import FollowUpManager from './components/followup/FollowUpManager';
 import MonitoringReport from './components/report/MonitoringReport';
+import RealtimeMonitoringPage from './components/report/RealtimeMonitoringPage';
 import { BusinessEventConfigurationPage, FunnelConfigurationPage } from './components/report/FunnelConfigurationPages';
 import CallRecordManager from './components/call/CallRecordManager';
 import ToolConfigPage, { INITIAL_TOOLS } from './components/tools/ToolConfigPage';
@@ -606,6 +607,8 @@ export default function App() {
         return <GatewayCenter />;
       case '监控报表':
         return <MonitoringReport />;
+      case '实时监控':
+        return <RealtimeMonitoringPage />;
       case '漏斗配置':
         return <FunnelConfigurationPage />;
       case '事件配置':
