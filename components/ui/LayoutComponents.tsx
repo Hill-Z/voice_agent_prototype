@@ -98,6 +98,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeSubItem, onNavigate }) =
       ]
     },
     { icon: History, label: '通话记录', id: '通话记录' },
+    { icon: ClipboardList, label: '满意度调查', id: '满意度调查' },
     {
       icon: BarChart3,
       label: '监控报表',

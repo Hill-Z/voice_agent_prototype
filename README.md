@@ -38,9 +38,11 @@ View your app in AI Studio: https://ai.studio/apps/drive/1roavSagafxEJgVSbE9FoTx
 
 - 整站构建检查：`npm run build`
 - 操作手册融合检查：`node tests/docsIntegration.static.mjs`
+- 满意度调查链路检查：`node tests/satisfactionSurvey.static.mjs`
 
 ## 已完成功能列表
 
+- 满意度调查：支持全局问卷管理、IVR 按键与语音智能体采集、CSAT/NPS/自定义问题、机器人绑定、通话结果留痕及跨机器人报表和开放反馈主题聚合。
 - 预约回呼：平台内置工具只需配置执行机器人、执行时间和客户号码；默认使用当前机器人，也可选择其他已发布机器人。外呼模块独立负责计划的全生命周期、筛选、编辑、人工结束、重新安排、导出和审计。
 
 - 机器人配置、流程配置、主题管理、工具配置、坐席管理、通话记录和监控报表演示。
@@ -68,6 +70,7 @@ View your app in AI Studio: https://ai.studio/apps/drive/1roavSagafxEJgVSbE9FoTx
 
 ## 搜索记录
 
+- 满意度调查参考 [PolyAI CSAT surveys](https://docs.poly.ai/analytics/csat/introduction)、[Kore.ai Feedback Survey](https://docs.kore.ai/ai-for-service/manage-assistant/feedback-survey)、[Kore.ai Feedback Dashboard](https://docs.kore.ai/ai-for-service/analytics/overview/feedback-dashboard)、[Genesys Customer Surveys](https://help.genesys.cloud/articles/about-customer-surveys-2/)、[ElevenLabs Topic Discovery](https://elevenlabs.io/docs/eleven-agents/dashboard/spotlight/topic-discovery) 和 [ElevenLabs Analytics](https://elevenlabs.io/docs/eleven-agents/dashboard)：采用“全局问卷—机器人绑定—通话留痕—独立报表”的结构，首版支持 IVR 按键、语音智能体、CSAT、NPS、自定义问题、低分追问和开放回答主题聚合。
 - 预约回呼参考 [Vapi Outbound Calling](https://docs.vapi.ai/calls/outbound-calling)、[Retell Create Batch Call](https://docs.retellai.com/api-references/create-batch-call)、[Genesys Callbacks in Campaigns](https://help.genesys.cloud/articles/callbacks-in-campaigns/)、[Amazon Connect Queued Callback](https://docs.aws.amazon.com/connect/latest/adminguide/setup-queued-cb.html) 和 [ElevenLabs Batch Calling](https://elevenlabs.io/docs/eleven-agents/phone-numbers/batch-calls)：明确区分客户承诺的“回呼计划”和未接通触发的“自动重呼”；回呼作为单客户、定时、可改期和取消的计划记录管理，底层复用现有外呼执行资源，不生成大量批量任务。
 - 外呼联系人变量参考 [Retell AI Dynamic Variables](https://docs.retellai.com/build/dynamic-variables)、[Vapi Dynamic Variables](https://docs.vapi.ai/assistants/dynamic-variables)、[Vapi Outbound Campaigns](https://docs.vapi.ai/outbound-campaigns/overview)、[Genesys Contact List Editor](https://help.genesys.cloud/?p=334179) 和 [Amazon Connect 联系属性](https://docs.aws.amazon.com/connect/latest/adminguide/connect-attrib-list.html)：采用“联系单字段—任务映射—机器人输入变量—单次通话值”的分层，机器人不直接依赖联系单列名，任务启动前校验必填映射并固定机器人版本。
 - 信息提取鉴权与工作流参考 [n8n 数据映射](https://docs.n8n.io/data/data-mapping/data-mapping-ui/)、[Postman Flows HTTP Request](https://learning.postman.com/flows/reference/blocks/http-request) 和 [Postman 顺序工作流](https://learning.postman.com/docs/tests-and-scripts/running-collections/building-workflows/)：采用“鉴权独立复用、接口仅保存引用、服务输入—步骤输出—服务输出明确映射”的结构；首版使用线性步骤、最多重试 3 次且不引入回环。

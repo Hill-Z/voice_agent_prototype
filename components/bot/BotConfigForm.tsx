@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { ArrowRight, Workflow, Bot, Plus, Edit2, Trash2, History, X } from 'lucide-react';
-import { AgentTool, BotConfiguration, ExtractionConfig, MarketingCampaign, FlowConfig, FlowDefinition, FlowNodeType, ExitNodeType } from '../../types';
+import { AgentTool, BotConfiguration, ExtractionConfig, MarketingCampaign, FlowConfig, FlowDefinition, FlowNodeType, ExitNodeType, SatisfactionSurvey } from '../../types';
 import { generateBotPrompt } from '../../services/geminiService';
 import BotBasicConfig from './BotBasicConfig';
 import BotStrategyConfig from './BotStrategyConfig';
@@ -24,6 +24,7 @@ interface BotConfigFormProps {
   onCancel: () => void;
   extractionConfigs: ExtractionConfig[];
   availableTools: AgentTool[];
+  satisfactionSurveys: SatisfactionSurvey[];
   campaigns: MarketingCampaign[]; 
 }
 
@@ -362,7 +363,7 @@ const DEMO_FLOW_CONFIG: FlowConfig = {
   }
 };
 
-const BotConfigForm: React.FC<BotConfigFormProps> = ({ initialData, onSave, onCancel, extractionConfigs, availableTools, campaigns }) => {
+const BotConfigForm: React.FC<BotConfigFormProps> = ({ initialData, onSave, onCancel, extractionConfigs, availableTools, satisfactionSurveys, campaigns }) => {
   const [config, setConfig] = useState<BotConfiguration>({ 
     ...initialData,
     orchestrationType: initialData.orchestrationType || 'WORKFLOW' 
@@ -953,6 +954,7 @@ const BotConfigForm: React.FC<BotConfigFormProps> = ({ initialData, onSave, onCa
             <BotTriggerManager
               config={config}
               updateField={updateField}
+              satisfactionSurveys={satisfactionSurveys}
             />
           </div>
         )}

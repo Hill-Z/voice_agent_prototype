@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Plus, Trash2, Edit2, X, Check, Power, Zap } from 'lucide-react';
-import { BotConfiguration, BotTrigger } from '../../types';
+import { BotConfiguration, BotTrigger, SatisfactionSurvey } from '../../types';
 
 interface BotTriggerManagerProps {
   config: BotConfiguration;
   updateField: <K extends keyof BotConfiguration>(key: K, value: BotConfiguration[K]) => void;
+  satisfactionSurveys: SatisfactionSurvey[];
 }
 
 const TRIGGER_TIME_OPTIONS = [
@@ -19,7 +20,7 @@ const ACTION_OPTIONS = [
   { value: 'call_api', label: '调用接口' },
 ];
 
-const BotTriggerManager: React.FC<BotTriggerManagerProps> = ({ config, updateField }) => {
+const BotTriggerManager: React.FC<BotTriggerManagerProps> = ({ config, updateField, satisfactionSurveys }) => {
   const [editingTrigger, setEditingTrigger] = useState<BotTrigger | null>(null);
   const [isCreating, setIsCreating] = useState(false);
 
@@ -65,6 +66,10 @@ const BotTriggerManager: React.FC<BotTriggerManagerProps> = ({ config, updateFie
     if (!editingTrigger) return;
     if (!editingTrigger.name.trim()) {
       alert('请输入触发器名称');
+      return;
+    }
+    if (editingTrigger.action === 'satisfaction_survey' && !editingTrigger.actionConfig?.surveyId) {
+      alert('请选择满意度调查');
       return;
     }
 
@@ -439,17 +444,16 @@ const BotTriggerManager: React.FC<BotTriggerManagerProps> = ({ config, updateFie
             <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-4">
               <h4 className="text-xs font-bold text-slate-700">满意度调查配置</h4>
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">调查问题（逗号分隔）</label>
-                <input
-                  type="text"
+                <label className="block text-xs font-medium text-slate-600 mb-1">满意度调查 *</label>
+                <select
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded focus:border-primary outline-none"
-                  placeholder="如：您对本次服务满意吗？,问题是否得到解决？"
-                  value={editingTrigger.actionConfig?.surveyQuestions?.join(', ') || ''}
+                  value={editingTrigger.actionConfig?.surveyId || ''}
                   onChange={(e) => updateEditingTrigger('actionConfig', {
                     ...editingTrigger.actionConfig,
-                    surveyQuestions: e.target.value.split(',').map(q => q.trim()).filter(q => q)
+                    surveyId: e.target.value
                   })}
-                />
+                ><option value="">请选择已发布调查</option>{satisfactionSurveys.filter(item => item.status === 'published').map(item => <option key={item.id} value={item.id}>{item.name} · {item.mode === 'ivr' ? 'IVR' : '语音智能体'}</option>)}</select>
+                <p className="mt-1.5 text-xs text-slate-400">列表来自「满意度调查」模块，请将触发时机设置为“通话结束”。</p>
               </div>
             </div>
           )}

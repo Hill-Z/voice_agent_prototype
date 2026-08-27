@@ -112,7 +112,7 @@ dist/docs/：与主系统一起部署的 /docs 子页面
 | `BotBasicConfig.tsx` | 配置机器人名称、模型、语音、识别等基础信息。 |
 | `BotStrategyConfig.tsx` | 配置欢迎语、转人工、挂机、静默、安全护栏、全局异常兜底和语音优化策略。 |
 | `IntelligentAnsweringHandlingConfig.tsx` | 在对话策略底部配置 IVR、语音留言和 AI 助手接听后的当前通话及后续动作。 |
-| `BotBusinessConfig.tsx` | 配置标签、通话小结与通话后信息提取；信息提取兼容旧接口方案，并支持选择工具及配置模型抽取/业务变量映射参数。 |
+| `BotBusinessConfig.tsx` | 配置标签、满意度问卷绑定、通话小结与通话后信息提取；信息提取兼容旧接口方案，并支持选择工具及配置模型抽取/业务变量映射参数。 |
 | `BotVariableConfig.tsx` | 管理机器人变量、实体和状态变量。 |
 | `BotAgentConfig.tsx` | 管理 Agent 工具、MCP 服务和函数调用相关配置。 |
 | `BotKnowledgeConfig.tsx` | 配置知识空间、问答能力和 RAG 相关绑定。 |
@@ -269,7 +269,11 @@ dist/docs/：与主系统一起部署的 /docs 子页面
 | `components/followup/FollowUpManager.tsx` | 管理自动跟进任务、规则画布、节点配置和跟进报表。 |
 | `components/call/CallRecordManager.tsx` | 通话记录模块入口。 |
 | `components/call/CallRecordList.tsx` | 展示通话记录列表。 |
-| `components/call/CallRecordDetail.tsx` | 展示单通电话的详情。 |
+| `components/call/CallRecordDetail.tsx` | 展示单通电话详情，并记录满意度调查是否发生、问卷版本和逐题结果。 |
+| `components/satisfaction/SatisfactionSurveyManager.tsx` | 满意度调查模块入口，组织问卷列表、详情和报表。 |
+| `components/satisfaction/SatisfactionSurveyEditor.tsx` | 配置 IVR 或语音智能体问卷、标准量表、话术与问题。 |
+| `components/satisfaction/SatisfactionSurveyReport.tsx` | 按机器人和问卷分析完成率、CSAT、NPS、开放反馈主题及明细。 |
+| `components/satisfaction/satisfactionData.ts` | 提供满意度问卷与调查结果演示数据。 |
 | `components/report/MonitoringReport.tsx` | 综合运营报表入口，组织顶部筛选、刷新状态、通话统计、业务与流程分析、工具调用区块。 |
 | `components/report/reportUi.tsx` | 提供增强报表共享的指标卡、状态标签、排序表头、分页、空状态、加载骨架和格式化工具。 |
 | `components/report/RealtimeReportTab.tsx` | 历史实时看板组件，当前综合报表入口不再渲染。 |

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Play, Volume2, Download, Edit, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Plus, FileSearch, CheckCircle2 } from 'lucide-react';
 import AiReplyLogModal, { AiReplyLogData, AiReplyLogScenario } from './AiReplyLogModal';
+import { SatisfactionSurveyResult } from '../../types';
 
 interface CallDetail {
   callId: string;
@@ -24,6 +25,7 @@ interface CallDetail {
     duration: string;
     url: string;
   }[];
+  satisfactionSurveyResult?: SatisfactionSurveyResult;
 }
 
 const MOCK_CALL_DETAIL: CallDetail = {
@@ -103,7 +105,24 @@ const MOCK_CALL_DETAIL: CallDetail = {
       duration: '03:50',
       url: 'ai_call2.mp3'
     }
-  ]
+  ],
+  satisfactionSurveyResult: {
+    surveyId: 'survey_after_sales_csat',
+    surveyName: '售后服务满意度调查',
+    surveyVersion: 3,
+    mode: 'voice_agent',
+    metricType: 'csat',
+    status: 'completed',
+    offeredAt: '2026-03-20 14:33:02',
+    completedAt: '2026-03-20 14:33:18',
+    score: 2,
+    feedbackTheme: '语音识别问题',
+    sentiment: 'negative',
+    answers: [
+      { questionId: 'csat_score', question: '请问您对本次服务满意吗？', value: 2, inputMode: 'speech' },
+      { questionId: 'csat_reason', question: '方便告诉我本次服务哪里没有做好吗？', value: '机器人一直没听懂我的车牌号，重复问了好几次。', inputMode: 'speech' },
+    ],
+  },
 };
 
 interface CallRecordDetailProps {
@@ -451,6 +470,28 @@ export default function CallRecordDetail({ callId }: CallRecordDetailProps) {
               ))}
             </div>
           </div>
+
+          {/* 满意度调查是原通话的一段后续流程，结果与当前 Call ID 保持关联。 */}
+          {callDetail.satisfactionSurveyResult && (
+            <div className="mb-4 rounded-lg border border-blue-100 bg-white p-4 shadow-sm">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-primary"><CheckCircle2 size={17} /></div>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2"><h3 className="text-sm font-bold text-slate-800">满意度调查</h3><span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-600">已完成</span></div>
+                    <div className="mt-1 text-xs text-slate-500">{callDetail.satisfactionSurveyResult.offeredAt} 发起 · {callDetail.satisfactionSurveyResult.surveyName} · V{callDetail.satisfactionSurveyResult.surveyVersion}</div>
+                  </div>
+                </div>
+                <div className="text-right"><div className="text-2xl font-bold text-slate-900">{callDetail.satisfactionSurveyResult.score}<span className="ml-1 text-sm font-normal text-slate-400">/ 5</span></div><div className="mt-1 text-xs text-slate-500">{callDetail.satisfactionSurveyResult.mode === 'ivr' ? 'IVR 按键' : '语音智能体'}采集</div></div>
+              </div>
+              <div className="mt-4 overflow-hidden rounded border border-slate-100">
+                {callDetail.satisfactionSurveyResult.answers.map((answer, index) => (
+                  <div key={answer.questionId} className={`grid grid-cols-1 gap-1 px-4 py-3 text-sm md:grid-cols-[260px_minmax(0,1fr)_80px] ${index > 0 ? 'border-t border-slate-100' : ''}`}><span className="text-slate-500">{answer.question}</span><span className="font-medium text-slate-700">{typeof answer.value === 'number' ? `${answer.value} 分` : answer.value}</span><span className="text-xs text-slate-400 md:text-right">{answer.inputMode === 'dtmf' ? '按键输入' : '语音回答'}</span></div>
+                ))}
+              </div>
+              {callDetail.satisfactionSurveyResult.feedbackTheme && <div className="mt-3 text-xs text-slate-500">开放回答归类：<span className="font-semibold text-slate-700">{callDetail.satisfactionSurveyResult.feedbackTheme}</span></div>}
+            </div>
+          )}
 
           {/* 通话详情 */}
           <div className="bg-white border border-slate-200 rounded-lg p-4">

@@ -121,7 +121,7 @@ interface BotBusinessConfigProps {
 }
 
 const BotBusinessConfig: React.FC<BotBusinessConfigProps> = ({ config, updateField, onSave, onCancel, extractionConfigs, availableTools }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'TAG' | 'SATISFACTION' | 'SUMMARY' | 'INFO_EXTRACTION' | 'USER_PROFILE' | 'KNOWLEDGE'>('TAG');
+  const [activeSubTab, setActiveSubTab] = useState<'TAG' | 'SUMMARY' | 'INFO_EXTRACTION' | 'USER_PROFILE' | 'KNOWLEDGE'>('TAG');
   const [tagModal, setTagModal] = useState<{ isOpen: boolean, groupId: string, name: string, description: string } | null>(null);
   const [isToolSelectOpen, setIsToolSelectOpen] = useState(false);
 
@@ -263,7 +263,6 @@ const BotBusinessConfig: React.FC<BotBusinessConfigProps> = ({ config, updateFie
         {[
           { id: 'TAG', label: '标签管理' },
           { id: 'KNOWLEDGE', label: '知识库设置' },
-          { id: 'SATISFACTION', label: '满意度分析' },
           { id: 'SUMMARY', label: '通话小结' },
           { id: 'INFO_EXTRACTION', label: '信息提取' },
           { id: 'USER_PROFILE', label: '用户画像 (CDP)' },
@@ -389,12 +388,6 @@ const BotBusinessConfig: React.FC<BotBusinessConfigProps> = ({ config, updateFie
             <p className="text-sm">知识库设置已转移到「知识检索配置」页面</p>
             <p className="text-xs text-slate-400 mt-2">请前往知识检索配置进行问答库和知识库的设置</p>
           </div>
-        </div>
-      )}
-
-      {activeSubTab === 'SATISFACTION' && (
-        <div className="bg-white rounded border border-gray-200 shadow-sm p-12 text-center text-slate-400">
-          满意度分析模块开发中...
         </div>
       )}
 

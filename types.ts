@@ -1405,6 +1405,82 @@ export interface SafetyGuardrailConfig {
   businessRules: SafetyGuardrailRule[];
 }
 
+// 满意度调查是全局资产，机器人仅保存绑定关系。
+export type SatisfactionSurveyMode = 'ivr' | 'voice_agent';
+export type SatisfactionMetricType = 'csat' | 'nps' | 'custom';
+export type SatisfactionQuestionType = 'rating' | 'single_choice' | 'open_text';
+export type SatisfactionSurveyStatus = 'draft' | 'published' | 'disabled';
+
+export interface SatisfactionSurveyOption {
+  value: string;
+  label: string;
+}
+
+export interface SatisfactionSurveyQuestion {
+  id: string;
+  title: string;
+  prompt: string;
+  type: SatisfactionQuestionType;
+  required: boolean;
+  scaleMin?: number;
+  scaleMax?: number;
+  options?: SatisfactionSurveyOption[];
+  lowScoreFollowUpEnabled?: boolean;
+  lowScoreThreshold?: number;
+  lowScoreFollowUpPrompt?: string;
+}
+
+export interface SatisfactionSurvey {
+  id: string;
+  name: string;
+  description: string;
+  mode: SatisfactionSurveyMode;
+  // IVR 类型引用现有已发布流程；旧问卷没有该字段时仍可读取和补选。
+  ivrFlowId?: string;
+  ivrFlowName?: string;
+  metricType: SatisfactionMetricType;
+  language: string;
+  status: SatisfactionSurveyStatus;
+  version: number;
+  openingPrompt: string;
+  closingPrompt: string;
+  noInputPrompt: string;
+  maxNoInputRetries: number;
+  reasonTraceEnabled?: boolean;
+  reasonTracePrompt?: string;
+  includeUnmatchedAsValid?: boolean;
+  questions: SatisfactionSurveyQuestion[];
+  responseCount: number;
+  updatedAt: number;
+}
+
+export interface SatisfactionSurveyBinding {
+  enabled: boolean;
+  surveyId?: string;
+}
+
+export interface SatisfactionSurveyAnswer {
+  questionId: string;
+  question: string;
+  value: string | number;
+  inputMode: 'dtmf' | 'speech';
+}
+
+export interface SatisfactionSurveyResult {
+  surveyId: string;
+  surveyName: string;
+  surveyVersion: number;
+  mode: SatisfactionSurveyMode;
+  metricType: SatisfactionMetricType;
+  status: 'offered' | 'in_progress' | 'completed' | 'skipped' | 'abandoned' | 'failed';
+  offeredAt: string;
+  completedAt?: string;
+  score?: number;
+  answers: SatisfactionSurveyAnswer[];
+  feedbackTheme?: string;
+  sentiment?: 'positive' | 'neutral' | 'negative';
+}
+
 // 非真人接听识别及后续处理策略。
 export interface IntelligentAnsweringFollowUpConfig {
   nextAction: 'none' | 'retry' | 'route_task';
@@ -1540,6 +1616,7 @@ export interface BotConfiguration extends MarketingConfig, ProfileCollectionConf
   callSummaryPrompt?: string;
   callbackContextEnabled?: boolean;
   callbackSummaryEnabled?: boolean;
+  satisfactionSurvey?: SatisfactionSurveyBinding;
   
   // *** ORCHESTRATION SWITCH ***
   orchestrationType?: 'WORKFLOW' | 'AGENT'; // Default 'WORKFLOW'
@@ -1712,6 +1789,7 @@ export interface BotTrigger {
     apiParams?: Record<string, string>;
     extractionFields?: string[];
     surveyQuestions?: string[];
+    surveyId?: string;
     waitAudioId?: string;
     timeoutSeconds?: number;
     failureAction?: 'continue' | 'hangup' | 'transfer';
