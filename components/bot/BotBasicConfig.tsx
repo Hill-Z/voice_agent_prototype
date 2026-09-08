@@ -54,6 +54,9 @@ const supportsAsrCandidateLanguages = (model: ASRModel) => (
   model === ASRModel.AWS_TRANSCRIBE || model === ASRModel.AZURE_STT
 );
 
+// 长编号分段播报依赖自研 TTS，第三方模型暂不开放。
+const supportsIdentifierSlowReading = (model: TTSModel) => model === TTSModel.SELF_DEVELOPED_TTS;
+
 const CODE_SWITCHING_PROMPT = `
 # Multi-Language Code-Switching Strategy
 You are a smart assistant capable of fluent code-switching between languages (Mandarin, Cantonese, English, etc.).
@@ -374,37 +377,48 @@ const BotBasicConfig: React.FC<BotBasicConfigProps> = ({
 
           {/* TTS 朗读优化 */}
           <div className="mt-8 border-t border-gray-100 pt-8">
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center mb-6">
               <div className="flex items-center space-x-2">
                 <div className="p-1.5 bg-sky-100 text-sky-600 rounded">
                   <Volume2 size={14} />
                 </div>
                 <span className="text-xs font-bold text-slate-700">TTS 朗读优化</span>
               </div>
-              <Switch 
-                label="" 
-                checked={config.ttsOptimizationEnabled || false}
-                onChange={(v) => updateField('ttsOptimizationEnabled', v)} 
-              />
             </div>
 
-            {config.ttsOptimizationEnabled && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between mb-4">
-                  <Label label="词汇列表" tooltip="添加需要替换的词汇" />
-                  <button 
-                    onClick={() => {
-                      const newRule = {
-                        id: Date.now().toString(),
-                        matchText: '',
-                        replaceText: ''
-                      };
-                      updateField('ttsOptimizationRules', [...(config.ttsOptimizationRules || []), newRule]);
+            <div className="space-y-4">
+                <div
+                  className={`flex items-center justify-between rounded border px-3 py-2 ${supportsIdentifierSlowReading(config.ttsModel) ? 'border-sky-100 bg-sky-50' : 'border-gray-200 bg-slate-50 opacity-60'}`}
+                  title={supportsIdentifierSlowReading(config.ttsModel) ? '自动优化手机号、订单号、快递单号等连续数字或字母数字组合的播报节奏，使内容更容易听清。' : '仅自研 TTS 音色支持该功能'}
+                >
+                  <Label label="号码与编号清晰播报" tooltip="自动优化手机号、订单号、快递单号等连续数字或字母数字组合的播报节奏，使内容更容易听清。仅支持自研 TTS 音色。" />
+                  <Switch
+                    label=""
+                    compact
+                    checked={supportsIdentifierSlowReading(config.ttsModel) && Boolean(config.ttsIdentifierSlowReadingEnabled)}
+                    onChange={(value) => {
+                      if (supportsIdentifierSlowReading(config.ttsModel)) updateField('ttsIdentifierSlowReadingEnabled', value);
                     }}
+                  />
+                </div>
+
+                <div className="rounded border border-gray-200 p-3">
+                  <div className="flex items-center justify-between">
+                    <Label label="文本替换" tooltip="将指定文字替换为更适合朗读的内容，例如将“-”替换为“杠”。" />
+                    <Switch label="" compact checked={Boolean(config.ttsOptimizationEnabled)} onChange={(value) => updateField('ttsOptimizationEnabled', value)} />
+                  </div>
+
+                {config.ttsOptimizationEnabled && <div className="mt-4 border-t border-gray-100 pt-4">
+                <div className="flex items-center justify-between mb-4">
+                  <Label label="文本替换规则" tooltip="设置需要查找的原文及其朗读替换内容" />
+                  <button 
+                    onClick={() => updateField('ttsOptimizationRules', [...(config.ttsOptimizationRules || []), {
+                      id: Date.now().toString(), matchText: '', replaceText: ''
+                    }])}
                     className="text-primary text-xs flex items-center hover:underline bg-sky-50 px-2 py-0.5 rounded-full border border-sky-100 transition-colors font-bold"
                   >
                     <Plus size={12} className="mr-1" />
-                    添加优化规则
+                    添加替换规则
                   </button>
                 </div>
                 
@@ -456,12 +470,13 @@ const BotBasicConfig: React.FC<BotBasicConfigProps> = ({
                   ))}
                   {(!config.ttsOptimizationRules || config.ttsOptimizationRules.length === 0) && (
                     <div className="text-[10px] text-slate-400 text-center py-4">
-                      暂无优化规则，请点击上方"添加优化规则"按钮添加
+                      暂无文本替换规则
                     </div>
                   )}
                 </div>
+                </div>}
+                </div>
               </div>
-            )}
           </div>
         </div>
 

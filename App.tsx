@@ -142,6 +142,7 @@ const DEFAULT_STRATEGY_DEFAULTS = {
 
   // TTS朗读优化
   ttsOptimizationEnabled: false,
+  ttsIdentifierSlowReadingEnabled: false,
   ttsOptimizationRules: [],
 
   // ASR文本修正

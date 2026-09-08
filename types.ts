@@ -8,6 +8,7 @@ export enum ModelType {
 }
 
 export enum TTSModel {
+  SELF_DEVELOPED_TTS = '自研 TTS',
   GEMINI_TTS = 'Gemini TTS',
   AZURE_TTS = 'Azure TTS',
   OPENAI_TTS = 'OpenAI TTS',
@@ -1559,6 +1560,7 @@ export interface BotConfiguration extends MarketingConfig, ProfileCollectionConf
   
   // TTS Optimization
   ttsOptimizationEnabled?: boolean;
+  ttsIdentifierSlowReadingEnabled?: boolean;
   ttsOptimizationRules?: Array<{
     id: string;
     matchText: string;
