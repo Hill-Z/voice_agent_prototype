@@ -57,6 +57,13 @@ const supportsAsrCandidateLanguages = (model: ASRModel) => (
 // 长编号分段播报依赖自研 TTS，第三方模型暂不开放。
 const supportsIdentifierSlowReading = (model: TTSModel) => model === TTSModel.SELF_DEVELOPED_TTS;
 
+// 思考强度使用中文展示，底层仍保存稳定的枚举值。
+const THINKING_LEVELS = [
+  { value: 'low', label: '轻度' },
+  { value: 'high', label: '深度' },
+  { value: 'max', label: '最大' },
+] as const;
+
 const CODE_SWITCHING_PROMPT = `
 # Multi-Language Code-Switching Strategy
 You are a smart assistant capable of fluent code-switching between languages (Mandarin, Cantonese, English, etc.).
@@ -113,6 +120,14 @@ const BotBasicConfig: React.FC<BotBasicConfigProps> = ({
     updateField('description', desc);
     updateField('systemPrompt', prompt);
     setShowGenerator(false);
+  };
+
+  // 开启时为旧配置补齐默认强度，关闭时保留原选择便于再次启用。
+  const handleThinkingToggle = (value: boolean) => {
+    if (value && !config.thinkingLevel) {
+      updateField('thinkingLevel', 'low');
+    }
+    updateField('thinkingEnabled', value);
   };
 
   // --- Voice Mapping Handlers ---
@@ -205,38 +220,16 @@ const BotBasicConfig: React.FC<BotBasicConfigProps> = ({
       <div className="bg-white rounded border border-gray-200 shadow-sm p-6">
         <h3 className="text-sm font-bold text-slate-800 mb-5">核心模型配置</h3>
         <div className="bg-slate-50/50 rounded p-6 border border-slate-100">
-          <div className="mb-6 flex items-center justify-between gap-4">
+          <div className="mb-6 flex items-center gap-2">
             <div className="flex items-center space-x-2">
               <div className="rounded bg-blue-100 p-1.5 text-primary">
                 <Cpu size={14} />
               </div>
               <span className="text-xs font-bold text-slate-700">大模型配置</span>
             </div>
-            <div className="flex items-center gap-5">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-700">上下文压缩</span>
-                <Switch
-                  label=""
-                  ariaLabel="上下文压缩"
-                  compact
-                  checked={config.contextCompactionEnabled ?? false}
-                  onChange={(value) => updateField('contextCompactionEnabled', value)}
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-700">开启思考</span>
-                <Switch
-                  label=""
-                  ariaLabel="开启思考"
-                  compact
-                  checked={config.thinkingEnabled ?? false}
-                  onChange={(value) => updateField('thinkingEnabled', value)}
-                />
-              </div>
-            </div>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-            <div className="lg:col-span-4">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:items-start">
+            <div>
               <Select 
                 label="大模型类型" 
                 tooltip="选择用于生成对话内容的基础大语言模型。"
@@ -245,11 +238,41 @@ const BotBasicConfig: React.FC<BotBasicConfigProps> = ({
                 onChange={(e) => updateField('llmType', e.target.value as ModelType)} 
               />
             </div>
-            <div className="lg:col-span-4">
-              <Slider label="温度 (Temperature)" min={0} max={1} step={0.1} value={config.temperature} onChange={(v) => updateField('temperature', v)} tooltip="控制生成文本的随机性" />
-            </div>
-            <div className="lg:col-span-4">
-              <Slider label="核采样 (Top-P)" min={0} max={1} step={0.1} value={config.topP} onChange={(v) => updateField('topP', v)} tooltip="另一种控制生成多样性的采样方式" />
+            <div>
+              <Label
+                label="思考模式"
+                tooltip="开启后模型会进行更深入的推理；强度越高，回答通常更充分，响应时间也可能增加。"
+              />
+              <div className="mt-1 flex h-10 items-center gap-3 rounded-md border border-slate-200 bg-white px-3">
+                <Switch
+                  label=""
+                  ariaLabel="思考模式"
+                  compact
+                  checked={config.thinkingEnabled ?? false}
+                  onChange={handleThinkingToggle}
+                />
+                {config.thinkingEnabled ? (
+                  <div className="flex flex-1 items-center rounded bg-slate-100 p-0.5" role="radiogroup" aria-label="思考强度">
+                    {THINKING_LEVELS.map((level) => {
+                      const selected = (config.thinkingLevel ?? 'low') === level.value;
+                      return (
+                        <button
+                          key={level.value}
+                          type="button"
+                          role="radio"
+                          aria-checked={selected}
+                          onClick={() => updateField('thinkingLevel', level.value)}
+                          className={`h-7 flex-1 rounded text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${selected ? 'bg-white text-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                          {level.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <span className="text-xs text-slate-400">关闭</span>
+                )}
+              </div>
             </div>
           </div>
         </div>

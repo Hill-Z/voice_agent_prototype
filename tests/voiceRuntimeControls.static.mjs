@@ -21,7 +21,7 @@ for (const text of ['调用接口', '请求参数映射', '返回值映射', '�
   if (!trigger.includes(text)) throw new Error(`触发器缺少：${text}`);
 }
 if (trigger.includes("value: 'pre_call_fetch'")) throw new Error('触发器仍展示独立的前置数据拉取动作');
-if (!basic.includes('上下文压缩')) throw new Error('模型配置缺少上下文压缩');
+if (basic.includes('上下文压缩')) throw new Error('模型配置仍展示已移除的上下文压缩');
 if (!callDetail.includes('role="progressbar"') || !callDetail.includes('playingAudioIndex') || !callDetail.includes('CheckCircle2')) throw new Error('通话详情缺少播放自动跟随');
 
 for (const text of ['duplicateCallPolicy?', 'interruptionPolicy?', 'pauseSilenceTimer?', 'firstProgressFeedbackSeconds?', 'progressSpeeches?', 'contextCompactionEnabled?', 'interruptionSensitivity?', 'validShortReplyWords?', 'forceInterruptWords?', 'forceInterruptReply?: string | string[];', 'requestMappings?', 'responseMappings?']) {

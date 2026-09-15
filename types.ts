@@ -1542,6 +1542,7 @@ export interface BotConfiguration extends MarketingConfig, ProfileCollectionConf
   // Model Config
   llmType: ModelType;
   thinkingEnabled?: boolean;
+  thinkingLevel?: 'low' | 'high' | 'max';
   contextCompactionEnabled?: boolean;
   safetyGuardrailConfig?: SafetyGuardrailConfig;
   globalExceptionPolicy?: GlobalExceptionPolicy;
