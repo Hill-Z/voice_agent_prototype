@@ -297,7 +297,7 @@ const BotTopicManager: React.FC<BotTopicManagerProps> = ({ config, updateField }
   );
 
   const flowOptions = useMemo(
-    () => (config.flowConfig?.flows || []).map((flow) => ({ id: flow.id, name: flow.name, description: flow.metadata?.description })),
+    () => (config.flowConfig?.flows || []).map((flow) => ({ id: flow.id, name: flow.name })),
     [config.flowConfig?.flows],
   );
 

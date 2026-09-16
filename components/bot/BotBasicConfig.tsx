@@ -765,7 +765,7 @@ const BotBasicConfig: React.FC<BotBasicConfigProps> = ({
               variables={config.variables || []}
               availableTools={config.agentConfig?.tools || []}
               availableFunctions={BUILT_IN_FUNCTIONS}
-              availableFlows={(config.flowConfig?.flows || []).map(f => ({ id: f.id, name: f.name, description: f.metadata?.description }))}
+              availableFlows={(config.flowConfig?.flows || []).map(f => ({ id: f.id, name: f.name }))}
               height="h-80"
             />
           </div>

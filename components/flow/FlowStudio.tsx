@@ -49,9 +49,7 @@ function createSubFlow(index: number): FlowDefinition {
   return {
     id: `flow_${stamp}_${index}`,
     name: `新建 Flow ${index}`,
-    metadata: {
-      description: '补充这个 Flow 的职责、输入和出口。',
-    },
+    metadata: {},
     nodes: [
       {
         id: `start_${stamp}_${index}`,
@@ -332,10 +330,6 @@ export default function FlowStudio({
     }));
   };
 
-  const handleFlowChange = (updatedFlow: FlowDefinition) => {
-    updateActiveFlow(() => updatedFlow);
-  };
-
   const handleAddFlow = () => {
     const newFlow = createSubFlow(draftFlow.flows.length + 1);
     updateDraftFlow((currentFlow) => ({
@@ -454,8 +448,11 @@ export default function FlowStudio({
       }`}
     >
       <FlowStudioToolbar
+        flowName={activeFlow.name}
+        readOnly={readOnly}
         drawerMode={drawerMode}
         zoom={zoom}
+        onFlowNameChange={(name) => updateActiveFlow((flow) => ({ ...flow, name }))}
         onCloseDrawer={closeDrawer}
         onOpenDebug={runDebugScenario}
         onOpenVersion={openVersionManager}
@@ -512,7 +509,6 @@ export default function FlowStudio({
                 flow={activeFlow}
                 canDelete={!activeFlow.isEntry && draftFlow.flows.length > 1}
                 readOnly={readOnly}
-                onChange={handleFlowChange}
                 onClose={closeDrawer}
                 onDelete={handleDeleteActiveFlow}
                 onMakeEntry={handleMakeEntryFlow}
@@ -526,7 +522,7 @@ export default function FlowStudio({
                 availableVariables={availableVariables}
                 availableTools={availableTools}
                 availableDelayProfiles={availableDelayProfiles}
-                availableFlows={draftFlow.flows.filter(f => f.id !== activeFlow.id).map(f => ({ id: f.id, name: f.name, description: f.metadata?.description }))}
+                availableFlows={draftFlow.flows.filter(f => f.id !== activeFlow.id).map(f => ({ id: f.id, name: f.name }))}
                 availableNodes={activeFlow.nodes}
                 onChange={handleNodeChange}
                 onClose={closeDrawer}

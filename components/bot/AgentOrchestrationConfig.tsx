@@ -112,7 +112,7 @@ function cloneContextPolicy(policy: AgentOrchestrationContextPolicy): AgentOrche
 // 返回当前节点可以选择的业务资源。
 function resourceOptions(type: AgentOrchestrationNodeType, bot: BotConfiguration): ResourceOption[] {
   if (type === 'flow_agent') {
-    const flows = (bot.flowConfig?.flows || []).map((item) => ({ id: item.id, name: item.name, type: 'Flow', description: item.metadata?.description }));
+    const flows = (bot.flowConfig?.flows || []).map((item) => ({ id: item.id, name: item.name, type: 'Flow' }));
     const legacyIntents = (bot.intents || []).map((item) => ({ id: `intent:${item.id}`, name: item.name, type: '旧版流程', description: item.description }));
     return [...flows, ...legacyIntents];
   }
@@ -123,7 +123,7 @@ function resourceOptions(type: AgentOrchestrationNodeType, bot: BotConfiguration
 // 使用机器人已有的 Flow、主题或工具创建首个业务 Agent。
 function createFirstBusinessAgent(bot: BotConfiguration, position: { x: number; y: number }): AgentOrchestrationNode {
   const entryFlow = bot.flowConfig?.flows?.find((flow) => flow.id === bot.flowConfig?.entryFlowId) || bot.flowConfig?.flows?.[0];
-  if (entryFlow) return { ...createAgentNode('agent_default', 'flow_agent', entryFlow.name, position, entryFlow.id, entryFlow.name), description: entryFlow.metadata?.description };
+  if (entryFlow) return createAgentNode('agent_default', 'flow_agent', entryFlow.name, position, entryFlow.id, entryFlow.name);
   const legacyIntent = bot.intents?.[0];
   if (legacyIntent) return { ...createAgentNode('agent_default', 'flow_agent', legacyIntent.name, position, `intent:${legacyIntent.id}`, legacyIntent.name), description: legacyIntent.description };
   const topic = bot.topicSkillLibraryConfig?.skills?.find((skill) => skill.isEnabled) || bot.topicSkillLibraryConfig?.skills?.[0];

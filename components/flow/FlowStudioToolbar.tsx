@@ -1,11 +1,14 @@
 import React from 'react';
-import { Bug, History, RotateCcw, Workflow, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { Bug, History, PencilLine, RotateCcw, Workflow, X, ZoomIn, ZoomOut } from 'lucide-react';
 
 type DrawerMode = 'flow' | 'node' | 'edge' | 'debug' | 'version' | null;
 
 interface FlowStudioToolbarProps {
+  flowName: string;
+  readOnly: boolean;
   drawerMode: DrawerMode;
   zoom: number;
+  onFlowNameChange: (name: string) => void;
   onCloseDrawer: () => void;
   onOpenDebug: () => void;
   onOpenVersion: () => void;
@@ -15,8 +18,11 @@ interface FlowStudioToolbarProps {
 }
 
 export default function FlowStudioToolbar({
+  flowName,
+  readOnly,
   drawerMode,
   zoom,
+  onFlowNameChange,
   onCloseDrawer,
   onOpenDebug,
   onOpenVersion,
@@ -42,9 +48,18 @@ export default function FlowStudioToolbar({
           <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-50 text-primary">
             <Workflow size={18} />
           </div>
-          <div>
-            <div className="text-sm font-semibold text-slate-800">流程配置</div>
-            <div className="text-xs text-slate-400">节点详情通过右侧抽屉编辑，调试通过独立面板查看。</div>
+          <div className="min-w-0">
+            <label className="mb-1 block text-[11px] font-medium text-slate-500">当前 Flow 名称</label>
+            <div className="flex h-10 min-w-[320px] items-center gap-2 rounded-lg border border-sky-200 bg-sky-50/70 px-3 transition-colors focus-within:border-primary focus-within:bg-white focus-within:ring-2 focus-within:ring-primary/10">
+              <input
+                value={flowName}
+                disabled={readOnly}
+                onChange={(event) => onFlowNameChange(event.target.value)}
+                className="min-w-0 flex-1 border-0 bg-transparent p-0 text-base font-semibold text-slate-900 outline-none placeholder:text-slate-300 disabled:cursor-not-allowed"
+                placeholder="请输入 Flow 名称"
+              />
+              {!readOnly ? <PencilLine size={15} className="shrink-0 text-primary" /> : null}
+            </div>
           </div>
         </div>
 

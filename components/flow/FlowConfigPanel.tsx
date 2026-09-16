@@ -1,13 +1,11 @@
 import React from 'react';
 import { Crown, Settings2, Trash2, Workflow, X } from 'lucide-react';
 import { FlowDefinition } from '../../types';
-import { Label } from '../ui/FormComponents';
 
 interface FlowConfigPanelProps {
   flow: FlowDefinition | null;
   canDelete?: boolean;
   readOnly?: boolean;
-  onChange?: (flow: FlowDefinition) => void;
   onClose?: () => void;
   onDelete?: () => void;
   onMakeEntry?: () => void;
@@ -17,7 +15,6 @@ export default function FlowConfigPanel({
   flow,
   canDelete = false,
   readOnly = false,
-  onChange,
   onClose,
   onDelete,
   onMakeEntry,
@@ -28,7 +25,7 @@ export default function FlowConfigPanel({
         <div>
           <Workflow size={40} className="mx-auto mb-3 text-slate-200" />
           <div className="text-sm font-medium text-slate-500">选择一个 Flow</div>
-          <div className="mt-1 text-xs leading-6 text-slate-400">Flow 名称、入口设置和说明会显示在这里。</div>
+          <div className="mt-1 text-xs leading-6 text-slate-400">Flow 名称和入口设置会显示在这里。</div>
         </div>
       </div>
     );
@@ -68,38 +65,6 @@ export default function FlowConfigPanel({
 
         <section className="rounded-2xl border border-slate-200 bg-white p-4">
           <div className="space-y-4">
-            <div>
-              <Label label="Flow 名称" />
-              <input
-                type="text"
-                value={flow.name}
-                disabled={readOnly}
-                onChange={(event) => onChange?.({ ...flow, name: event.target.value })}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:bg-slate-100"
-                placeholder="例如：身份验证 Flow"
-              />
-            </div>
-
-            <div>
-              <Label label="Flow 说明" />
-              <textarea
-                rows={4}
-                value={flow.metadata?.description || ''}
-                disabled={readOnly}
-                onChange={(event) =>
-                  onChange?.({
-                    ...flow,
-                    metadata: {
-                      ...flow.metadata,
-                      description: event.target.value,
-                    },
-                  })
-                }
-                className="w-full resize-none rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:bg-slate-100"
-                placeholder="描述这个 Flow 负责的业务阶段、输入和输出。"
-              />
-            </div>
-
             <div className="flex gap-2">
               <button
                 onClick={onMakeEntry}
