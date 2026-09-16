@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { 
-  Sparkles, Loader2, Cpu, Volume2, Mic, MessageSquare, Plus, Trash2, ChevronDown, Languages, FileText, Edit3
+  Sparkles, Loader2, Cpu, Volume2, Mic, MessageSquare, Plus, Trash2, ChevronDown, Languages, FileText, Edit3, HelpCircle
 } from 'lucide-react';
 import { Input, Select, Slider, Switch, TagInput, Label } from '../ui/FormComponents';
 import { BotConfiguration, ModelType, TTSModel, ASRModel, EMOTIONS, Parameter, BUILT_IN_FUNCTIONS } from '../../types';
@@ -43,17 +43,78 @@ const ASR_LANGUAGE_OPTIONS = [
   { value: 'ko-KR', label: '韩语 · ko-KR' },
 ];
 
-const ASR_MODEL_OPTIONS = [
-  { value: ASRModel.OPENAI_WHISPER, label: 'Whisper V3' },
-  { value: ASRModel.AZURE_STT, label: 'Microsoft Azure ASR' },
-  { value: ASRModel.AWS_TRANSCRIBE, label: 'AWS Transcribe' },
-  { value: ASRModel.GOOGLE_STT, label: 'Google STT' },
-  { value: ASRModel.VOLC_ASR, label: 'Volcengine ASR' },
+type AsrProvider = 'tencent' | 'azure' | 'aws' | 'google' | 'volc' | 'openai';
+
+interface AsrModelOption {
+  value: ASRModel;
+  label: string;
+  languages: string[];
+  languageCodes: string[];
+}
+
+interface AsrProviderOption {
+  value: AsrProvider;
+  label: string;
+  models: AsrModelOption[];
+}
+
+const TENCENT_DIALECTS = '普通话、上海话、四川话、武汉话、贵阳话、昆明话、西安话、郑州话、太原话、兰州话、银川话、西宁话、南京话、合肥话、南昌话、长沙话、苏州话、杭州话、济南话、天津话、石家庄话、黑龙江话、吉林话、辽宁话、闽南语、客家话、粤语、南宁话';
+const TENCENT_MULTI_LANGUAGES = '英语、日语、韩语、阿拉伯语、菲律宾语、法语、印地语、印尼语、马来语、葡萄牙语、西班牙语、泰语、土耳其语、越南语、德语';
+
+// 前台仅展示客户能理解的模型名称；稳定的型号值仅用于保存和后端映射。
+const ASR_PROVIDER_OPTIONS: AsrProviderOption[] = [
+  {
+    value: 'tencent', label: '腾讯', models: [
+      { value: ASRModel.TENCENT_CHINESE, label: '中文', languages: ['中文'], languageCodes: ['zh-CN'] },
+      { value: ASRModel.TENCENT_CHINESE_LARGE, label: '中文大模型', languages: [TENCENT_DIALECTS], languageCodes: ['zh-CN', 'yue-HK'] },
+      { value: ASRModel.TENCENT_ENGLISH, label: '英文', languages: ['英语'], languageCodes: ['en-US', 'en-GB'] },
+      { value: ASRModel.TENCENT_ENGLISH_LARGE, label: '英文大模型', languages: ['英语'], languageCodes: ['en-US', 'en-GB'] },
+      { value: ASRModel.TENCENT_CANTONESE, label: '粤语', languages: ['粤语'], languageCodes: ['yue-HK'] },
+      { value: ASRModel.TENCENT_ZH_EN_YUE, label: '中英粤方言大模型', languages: ['中文、英语、粤语、四川话、陕西话、河南话、上海话、湖南话、湖北话、安徽话、闽南语和潮汕方言'], languageCodes: ['zh-CN', 'en-US', 'yue-HK'] },
+      { value: ASRModel.TENCENT_PUTONGHUA_ENGLISH, label: '普方英大模型', languages: ['中文、英语、' + TENCENT_DIALECTS], languageCodes: ['zh-CN', 'en-US', 'en-GB'] },
+      { value: ASRModel.TENCENT_MULTILINGUAL, label: '多语种大模型', languages: [TENCENT_MULTI_LANGUAGES], languageCodes: ['en-US', 'ja-JP', 'ko-KR', 'ar-SA', 'fil-PH', 'id-ID', 'ms-MY', 'th-TH'] },
+      { value: ASRModel.TENCENT_ZH_EN_YUE_V2, label: '中英粤方言大模型 2.0', languages: ['普通话、英语、' + TENCENT_DIALECTS + '、潮汕话、宁波话、无锡话、吴语'], languageCodes: ['zh-CN', 'en-US', 'en-GB', 'yue-HK'] },
+      { value: ASRModel.TENCENT_ZH_EN_YUE_SPEAKER, label: '中英粤方言大模型 2.0（说话人分离）', languages: ['普通话、英语、' + TENCENT_DIALECTS], languageCodes: ['zh-CN', 'en-US', 'yue-HK'] },
+      { value: ASRModel.TENCENT_HUNYUAN, label: '中英方言混元大模型 3.0', languages: ['中文普通话、英语，以及粤语、东北话、河南话、陕西话、成都话、重庆话、武汉话、贵阳话、青岛话、济南话、长沙话、合肥话、河北话、昆明话、兰州话、银川话、南昌话、北京话、四川话、天津话'], languageCodes: ['zh-CN', 'en-US', 'en-GB', 'yue-HK'] },
+    ],
+  },
+  { value: 'azure', label: '微软', models: [{ value: ASRModel.AZURE_STT, label: '多语言识别', languages: ['中文、英语、日语、韩语、阿拉伯语、印尼语、泰语、马来语等'], languageCodes: ASR_LANGUAGE_OPTIONS.map((item) => item.value) }] },
+  { value: 'aws', label: '亚马逊云科技', models: [{ value: ASRModel.AWS_TRANSCRIBE, label: '多语言识别', languages: ['中文、英语、日语、韩语、阿拉伯语、印尼语、泰语、马来语等'], languageCodes: ASR_LANGUAGE_OPTIONS.map((item) => item.value) }] },
+  { value: 'google', label: '谷歌', models: [{ value: ASRModel.GOOGLE_STT, label: '通用语音识别', languages: ['中文、英语、日语、韩语、阿拉伯语、印尼语、泰语、马来语等'], languageCodes: ASR_LANGUAGE_OPTIONS.map((item) => item.value) }] },
+  { value: 'volc', label: '火山引擎', models: [{ value: ASRModel.VOLC_ASR, label: '中文语音识别', languages: ['中文（普通话）'], languageCodes: ['zh-CN'] }] },
+  { value: 'openai', label: 'OpenAI', models: [{ value: ASRModel.OPENAI_WHISPER, label: '多语言识别', languages: ['中文、英语、日语、韩语、阿拉伯语、印尼语、泰语、马来语等'], languageCodes: ASR_LANGUAGE_OPTIONS.map((item) => item.value) }] },
 ];
 
-const supportsAsrCandidateLanguages = (model: ASRModel) => (
-  model === ASRModel.AWS_TRANSCRIBE || model === ASRModel.AZURE_STT
-);
+const findAsrProvider = (model: ASRModel): AsrProviderOption => ASR_PROVIDER_OPTIONS.find((provider) => provider.models.some((item) => item.value === model)) || ASR_PROVIDER_OPTIONS[0];
+const findAsrModel = (model: ASRModel): AsrModelOption => findAsrProvider(model).models.find((item) => item.value === model) || findAsrProvider(model).models[0];
+const supportsAsrCandidateLanguages = (model: ASRModel) => model === ASRModel.AWS_TRANSCRIBE || model === ASRModel.AZURE_STT;
+
+interface AsrModelPickerProps {
+  models: AsrModelOption[];
+  value: ASRModel;
+  onChange: (model: ASRModel) => void;
+}
+
+// 模型列表中的问号展示支持语种，避免把型号和语言能力混在客户主界面上。
+const AsrModelPicker: React.FC<AsrModelPickerProps> = ({ models, value, onChange }) => {
+  const [open, setOpen] = useState(false);
+  const selected = models.find((item) => item.value === value) || models[0];
+
+  return <div className="relative">
+    <button type="button" onClick={() => setOpen((current) => !current)} aria-expanded={open} className="flex h-10 w-full items-center justify-between rounded border border-gray-200 bg-white px-3 text-left text-sm outline-none transition-colors hover:border-gray-300 focus:border-primary">
+      <span>{selected.label}</span><ChevronDown size={16} className="text-slate-400" />
+    </button>
+    {open && <div role="listbox" className="absolute z-30 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+      {models.map((model) => <div key={model.value} className="group flex items-center px-3 py-2 hover:bg-slate-50">
+        <button type="button" role="option" aria-selected={model.value === selected.value} onClick={() => { onChange(model.value); setOpen(false); }} className="min-w-0 flex-1 text-left text-sm text-slate-700">{model.label}</button>
+        <div className="relative ml-2 shrink-0">
+          <HelpCircle size={14} className="cursor-help text-slate-400" />
+          <div className="pointer-events-none absolute bottom-full right-0 z-40 mb-2 hidden w-72 rounded bg-slate-800 p-2 text-xs leading-5 text-white shadow-lg group-hover:block">支持语种：{model.languages.join('；')}</div>
+        </div>
+      </div>)}
+    </div>}
+  </div>;
+};
 
 // 长编号分段播报依赖自研 TTS，第三方模型暂不开放。
 const supportsIdentifierSlowReading = (model: TTSModel) => model === TTSModel.SELF_DEVELOPED_TTS;
@@ -89,6 +150,9 @@ const BotBasicConfig: React.FC<BotBasicConfigProps> = ({
   onCancel
 }) => {
   const [showGenerator, setShowGenerator] = useState(false);
+  const currentAsrProvider = findAsrProvider(config.asrModel);
+  const currentAsrModel = findAsrModel(config.asrModel);
+  const currentLanguageOptions = ASR_LANGUAGE_OPTIONS.filter((item) => currentAsrModel.languageCodes.includes(item.value));
 
   const addParameter = () => {
     // Only add if there are available variables
@@ -514,13 +578,29 @@ const BotBasicConfig: React.FC<BotBasicConfigProps> = ({
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:items-end">
             <div className="lg:col-span-4">
               <Select
-                label="ASR 模型"
-                options={ASR_MODEL_OPTIONS}
-                value={config.asrModel}
+                label="ASR 厂商"
+                options={ASR_PROVIDER_OPTIONS.map((provider) => ({ value: provider.value, label: provider.label }))}
+                value={currentAsrProvider.value}
                 onChange={(event) => {
-                  const nextModel = event.target.value as ASRModel;
-                  updateField('asrModel', nextModel);
-                  if (!supportsAsrCandidateLanguages(nextModel)) updateField('asrCandidateLanguages', []);
+                  const nextProvider = ASR_PROVIDER_OPTIONS.find((provider) => provider.value === event.target.value) || ASR_PROVIDER_OPTIONS[0];
+                  const nextModel = nextProvider.models[0];
+                  updateField('asrModel', nextModel.value);
+                  updateField('asrPrimaryLanguage', nextModel.languageCodes[0]);
+                  updateField('asrCandidateLanguages', []);
+                }}
+              />
+            </div>
+
+            <div className="lg:col-span-4">
+              <Label label="识别模型" tooltip="鼠标悬停模型后的问号，可查看该模型支持的语种。" />
+              <AsrModelPicker
+                models={currentAsrProvider.models}
+                value={config.asrModel}
+                onChange={(nextModelValue) => {
+                  const nextModel = findAsrModel(nextModelValue);
+                  updateField('asrModel', nextModel.value);
+                  if (!nextModel.languageCodes.includes(config.asrPrimaryLanguage || '')) updateField('asrPrimaryLanguage', nextModel.languageCodes[0]);
+                  if (!supportsAsrCandidateLanguages(nextModelValue)) updateField('asrCandidateLanguages', []);
                 }}
               />
             </div>
@@ -528,7 +608,7 @@ const BotBasicConfig: React.FC<BotBasicConfigProps> = ({
             <div className="lg:col-span-4">
               <Label label="主语言" required />
               <select value={config.asrPrimaryLanguage || 'zh-CN'} onChange={(event) => { updateField('asrPrimaryLanguage', event.target.value); updateField('asrCandidateLanguages', (config.asrCandidateLanguages || []).filter((item) => item !== event.target.value)); }} className="h-10 w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-primary">
-                {ASR_LANGUAGE_OPTIONS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+                {currentLanguageOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
               </select>
             </div>
 
@@ -548,9 +628,9 @@ const BotBasicConfig: React.FC<BotBasicConfigProps> = ({
             <div className="lg:col-span-4"><Input label="静音时长 (ms)" tooltip="检测到静音多长时间后切断识别" value={config.asrSilenceDurationMs} onChange={(event) => updateField('asrSilenceDurationMs', parseInt(event.target.value) || 0)} /></div>
 
             {supportsAsrCandidateLanguages(config.asrModel) && <div className="lg:col-span-8">
-              <div className="mb-1 flex items-center justify-between"><Label label="候选语言（最多 3 个）" /><button type="button" disabled={(config.asrCandidateLanguages || []).length >= 3} onClick={() => { const used = new Set([config.asrPrimaryLanguage || 'zh-CN', ...(config.asrCandidateLanguages || [])]); const next = ASR_LANGUAGE_OPTIONS.find((item) => !used.has(item.value)); if (next) updateField('asrCandidateLanguages', [...(config.asrCandidateLanguages || []), next.value]); }} className="flex items-center text-[11px] font-medium text-primary disabled:text-slate-300"><Plus size={12} className="mr-1" />添加</button></div>
+              <div className="mb-1 flex items-center justify-between"><Label label="候选语言（最多 3 个）" /><button type="button" disabled={(config.asrCandidateLanguages || []).length >= 3} onClick={() => { const used = new Set([config.asrPrimaryLanguage || 'zh-CN', ...(config.asrCandidateLanguages || [])]); const next = currentLanguageOptions.find((item) => !used.has(item.value)); if (next) updateField('asrCandidateLanguages', [...(config.asrCandidateLanguages || []), next.value]); }} className="flex items-center text-[11px] font-medium text-primary disabled:text-slate-300"><Plus size={12} className="mr-1" />添加</button></div>
               <div className="flex flex-wrap gap-2">
-                {(config.asrCandidateLanguages || []).map((language, index) => <div key={`${language}_${index}`} className="flex min-w-[190px] flex-1 items-center gap-1"><select value={language} onChange={(event) => updateField('asrCandidateLanguages', (config.asrCandidateLanguages || []).map((item, itemIndex) => itemIndex === index ? event.target.value : item))} className="h-10 min-w-0 flex-1 rounded border border-gray-200 bg-white px-2 text-xs outline-none focus:border-primary">{ASR_LANGUAGE_OPTIONS.map((item) => { const usedByOther = item.value === (config.asrPrimaryLanguage || 'zh-CN') || (config.asrCandidateLanguages || []).some((selected, selectedIndex) => selectedIndex !== index && selected === item.value); return <option key={item.value} value={item.value} disabled={usedByOther}>{item.label}</option>; })}</select><button type="button" onClick={() => updateField('asrCandidateLanguages', (config.asrCandidateLanguages || []).filter((_, itemIndex) => itemIndex !== index))} className="flex h-10 w-8 items-center justify-center text-slate-400 hover:text-red-500" title="删除候选语言"><Trash2 size={13} /></button></div>)}
+                {(config.asrCandidateLanguages || []).map((language, index) => <div key={`${language}_${index}`} className="flex min-w-[190px] flex-1 items-center gap-1"><select value={language} onChange={(event) => updateField('asrCandidateLanguages', (config.asrCandidateLanguages || []).map((item, itemIndex) => itemIndex === index ? event.target.value : item))} className="h-10 min-w-0 flex-1 rounded border border-gray-200 bg-white px-2 text-xs outline-none focus:border-primary">{currentLanguageOptions.map((item) => { const usedByOther = item.value === (config.asrPrimaryLanguage || 'zh-CN') || (config.asrCandidateLanguages || []).some((selected, selectedIndex) => selectedIndex !== index && selected === item.value); return <option key={item.value} value={item.value} disabled={usedByOther}>{item.label}</option>; })}</select><button type="button" onClick={() => updateField('asrCandidateLanguages', (config.asrCandidateLanguages || []).filter((_, itemIndex) => itemIndex !== index))} className="flex h-10 w-8 items-center justify-center text-slate-400 hover:text-red-500" title="删除候选语言"><Trash2 size={13} /></button></div>)}
               </div>
             </div>}
           </div>

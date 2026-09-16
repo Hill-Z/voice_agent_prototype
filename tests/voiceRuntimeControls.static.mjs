@@ -24,6 +24,10 @@ if (trigger.includes("value: 'pre_call_fetch'")) throw new Error('触发器仍�
 if (basic.includes('上下文压缩')) throw new Error('模型配置仍展示已移除的上下文压缩');
 if (!callDetail.includes('role="progressbar"') || !callDetail.includes('playingAudioIndex') || !callDetail.includes('CheckCircle2')) throw new Error('通话详情缺少播放自动跟随');
 
+for (const text of ['ASR 厂商', '识别模型', 'ASR_PROVIDER_OPTIONS', 'AsrModelPicker', '支持语种：', '中英方言混元大模型 3.0']) {
+  if (!basic.includes(text)) throw new Error(`ASR 级联配置缺少：${text}`);
+}
+
 for (const text of ['duplicateCallPolicy?', 'interruptionPolicy?', 'pauseSilenceTimer?', 'firstProgressFeedbackSeconds?', 'progressSpeeches?', 'contextCompactionEnabled?', 'interruptionSensitivity?', 'validShortReplyWords?', 'forceInterruptWords?', 'forceInterruptReply?: string | string[];', 'requestMappings?', 'responseMappings?']) {
   if (!types.includes(text)) throw new Error(`配置类型缺少：${text}`);
 }

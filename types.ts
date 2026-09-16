@@ -20,7 +20,18 @@ export enum ASRModel {
   AZURE_STT = 'Azure STT',
   AWS_TRANSCRIBE = 'AWS Transcribe',
   GOOGLE_STT = 'Google STT',
-  VOLC_ASR = 'Volcengine ASR'
+  VOLC_ASR = 'Volcengine ASR',
+  TENCENT_CHINESE = 'tencent:8k_zh',
+  TENCENT_CHINESE_LARGE = 'tencent:8k_zh_large',
+  TENCENT_ENGLISH = 'tencent:8k_en',
+  TENCENT_ENGLISH_LARGE = 'tencent:16k_en_large',
+  TENCENT_CANTONESE = 'tencent:16k_yue',
+  TENCENT_ZH_EN_YUE = 'tencent:16k_zh_en',
+  TENCENT_PUTONGHUA_ENGLISH = 'tencent:16k_zh_large',
+  TENCENT_MULTILINGUAL = 'tencent:16k_multi_lang',
+  TENCENT_ZH_EN_YUE_V2 = 'tencent:16k_zh_en_2.0',
+  TENCENT_ZH_EN_YUE_SPEAKER = 'tencent:16k_zh_en_speaker_2.0',
+  TENCENT_HUNYUAN = 'tencent:hy-asr-3.0-preview'
 }
 
 export const EMOTIONS = [
