@@ -2,13 +2,14 @@
 import React from 'react';
 import { 
   Headset, Search, RotateCcw, Clock, PhoneOff, CheckCircle2, 
-  MessageSquare, UserX, PlusCircle, X, Volume2, MicOff, Mic, Plus, Trash2,
+  MessageSquare, UserX, PlusCircle, X, Volume2, Mic, Plus, Trash2,
   ShieldCheck, AlertTriangle
 } from 'lucide-react';
 import { Switch, Label, TagInput, Select } from '../ui/FormComponents';
 import { BotConfiguration, FirstResponseFillerConfig } from '../../types';
 import SpeechListEditor from '../ui/SpeechListEditor';
 import IntelligentAnsweringHandlingConfig from './IntelligentAnsweringHandlingConfig';
+import InterruptionPolicyControl from './InterruptionPolicyControl';
 
 // --- Helper Components ---
 
@@ -206,15 +207,18 @@ const BotStrategyConfig: React.FC<BotStrategyConfigProps> = ({ config, updateFie
           </div>
           
           <div className={`transition-opacity duration-200 ${!config.welcomeMessageEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
-              <div className="flex justify-between items-center mb-2">
+              <div className="mb-2 grid grid-cols-1 items-end gap-3 md:grid-cols-[1fr_420px]">
                  <Label label="欢迎语话术" required />
-                 <div className="flex items-center space-x-2 bg-slate-50 px-2 py-1 rounded border border-slate-200">
-                    <span className="text-[10px] font-bold text-slate-500 flex items-center">
-                       {config.welcomeMessageInterruptible ? <Mic size={10} className="mr-1"/> : <MicOff size={10} className="mr-1"/>}
-                       允许打断
-                    </span>
-                    <Switch label="" checked={config.welcomeMessageInterruptible ?? true} onChange={(v) => updateField('welcomeMessageInterruptible', v)} />
-                 </div>
+                 <InterruptionPolicyControl
+                   label="开场白打断策略"
+                   mode={config.welcomeInterruptionMode ?? (config.welcomeMessageInterruptible === false ? 'never' : 'always')}
+                   rounds={config.welcomeInterruptionMode === 'after_repeated' ? (config.welcomeInterruptionRounds || 2) : 1}
+                   onModeChange={(mode) => {
+                     updateField('welcomeInterruptionMode', mode);
+                     updateField('welcomeMessageInterruptible', mode !== 'never');
+                   }}
+                   onRoundsChange={(rounds) => updateField('welcomeInterruptionRounds', rounds)}
+                 />
               </div>
               <textarea 
                 className="w-full h-24 px-4 py-3 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none resize-none bg-white leading-relaxed shadow-sm"

@@ -7,6 +7,7 @@ import { Input, Select, Slider, Switch, TagInput, Label } from '../ui/FormCompon
 import { BotConfiguration, ModelType, TTSModel, ASRModel, EMOTIONS, Parameter, BUILT_IN_FUNCTIONS } from '../../types';
 import PromptGeneratorModal from './PromptGeneratorModal';
 import PromptEditor from '../ui/PromptEditor';
+import InterruptionPolicyControl from './InterruptionPolicyControl';
 
 interface BotBasicConfigProps {
   config: BotConfiguration;
@@ -524,15 +525,24 @@ const BotBasicConfig: React.FC<BotBasicConfigProps> = ({
               />
             </div>
 
-            <div className="lg:col-span-5">
+            <div className="lg:col-span-4">
               <Label label="主语言" required />
               <select value={config.asrPrimaryLanguage || 'zh-CN'} onChange={(event) => { updateField('asrPrimaryLanguage', event.target.value); updateField('asrCandidateLanguages', (config.asrCandidateLanguages || []).filter((item) => item !== event.target.value)); }} className="h-10 w-full rounded border border-gray-200 bg-white px-3 text-sm outline-none focus:border-primary">
                 {ASR_LANGUAGE_OPTIONS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
               </select>
             </div>
 
-            <div className="pb-2 lg:col-span-3">
-              <Switch label="允许被打断" checked={config.asrInterruptible} onChange={(value) => updateField('asrInterruptible', value)} tooltip="客户说话时是否立刻停止机器人播报" />
+            <div className="lg:col-span-4">
+              <InterruptionPolicyControl
+                label="全局打断策略"
+                mode={config.globalInterruptionMode ?? (config.asrInterruptible === false ? 'never' : 'always')}
+                rounds={config.globalInterruptionMode === 'after_repeated' ? (config.globalInterruptionRounds || 2) : 1}
+                onModeChange={(mode) => {
+                  updateField('globalInterruptionMode', mode);
+                  updateField('asrInterruptible', mode !== 'never');
+                }}
+                onRoundsChange={(rounds) => updateField('globalInterruptionRounds', rounds)}
+              />
             </div>
 
             <div className="lg:col-span-4"><Input label="静音时长 (ms)" tooltip="检测到静音多长时间后切断识别" value={config.asrSilenceDurationMs} onChange={(event) => updateField('asrSilenceDurationMs', parseInt(event.target.value) || 0)} /></div>

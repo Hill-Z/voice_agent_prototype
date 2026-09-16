@@ -1661,6 +1661,11 @@ export interface BotConfiguration extends MarketingConfig, ProfileCollectionConf
   // Strategy Details
   welcomeMessageEnabled: boolean;
   welcomeMessage: string;
+  // 细粒度打断策略；旧版布尔开关继续保留，用于兼容历史配置。
+  globalInterruptionMode?: 'always' | 'after_repeated' | 'never';
+  globalInterruptionRounds?: number;
+  welcomeInterruptionMode?: 'always' | 'after_repeated' | 'never';
+  welcomeInterruptionRounds?: number;
   welcomeMessageInterruptible?: boolean;
   interruptionSensitivity?: 'sensitive' | 'balanced' | 'robust';
   validShortReplyWords?: string[];
