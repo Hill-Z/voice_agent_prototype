@@ -4,7 +4,7 @@ import {
   Sparkles, Loader2, Cpu, Volume2, Mic, MessageSquare, Plus, Trash2, ChevronDown, Languages, FileText, Edit3, HelpCircle
 } from 'lucide-react';
 import { Input, Select, Slider, Switch, TagInput, Label } from '../ui/FormComponents';
-import { BotConfiguration, ModelType, TTSModel, ASRModel, EMOTIONS, Parameter, BUILT_IN_FUNCTIONS } from '../../types';
+import { BotConfiguration, ModelType, TTSModel, ASRModel, EMOTIONS, Parameter, BUILT_IN_FUNCTIONS, ThinkingLevel } from '../../types';
 import PromptGeneratorModal from './PromptGeneratorModal';
 import PromptEditor from '../ui/PromptEditor';
 import InterruptionPolicyControl from './InterruptionPolicyControl';
@@ -119,8 +119,9 @@ const AsrModelPicker: React.FC<AsrModelPickerProps> = ({ models, value, onChange
 // 长编号分段播报依赖自研 TTS，第三方模型暂不开放。
 const supportsIdentifierSlowReading = (model: TTSModel) => model === TTSModel.SELF_DEVELOPED_TTS;
 
-// 思考强度使用中文展示，底层仍保存稳定的枚举值。
+// 思考强度使用中文展示，底层仍保存稳定的枚举值；关闭表示不做深度推理，不代表关闭双模协同。
 const THINKING_LEVELS = [
+  { value: 'off', label: '关闭' },
   { value: 'low', label: '轻度' },
   { value: 'high', label: '深度' },
   { value: 'max', label: '最大' },
@@ -150,6 +151,8 @@ const BotBasicConfig: React.FC<BotBasicConfigProps> = ({
   onCancel
 }) => {
   const [showGenerator, setShowGenerator] = useState(false);
+  const dualModelEnabled = config.dualModelEnabled ?? false;
+  const thinkingLevel: ThinkingLevel = config.thinkingLevel ?? 'off';
   const currentAsrProvider = findAsrProvider(config.asrModel);
   const currentAsrModel = findAsrModel(config.asrModel);
   const currentLanguageOptions = ASR_LANGUAGE_OPTIONS.filter((item) => currentAsrModel.languageCodes.includes(item.value));
@@ -188,11 +191,11 @@ const BotBasicConfig: React.FC<BotBasicConfigProps> = ({
   };
 
   // 开启时为旧配置补齐默认强度，关闭时保留原选择便于再次启用。
-  const handleThinkingToggle = (value: boolean) => {
+  const handleDualModelToggle = (value: boolean) => {
     if (value && !config.thinkingLevel) {
       updateField('thinkingLevel', 'low');
     }
-    updateField('thinkingEnabled', value);
+    updateField('dualModelEnabled', value);
   };
 
   // --- Voice Mapping Handlers ---
@@ -305,35 +308,38 @@ const BotBasicConfig: React.FC<BotBasicConfigProps> = ({
             </div>
             <div>
               <Label
-                label="思考模式"
-                tooltip="开启后模型会进行更深入的推理；强度越高，回答通常更充分，响应时间也可能增加。"
+                label="双模协同"
+                tooltip="由两个模型分工应答：先快速回应，再输出完整答复。开启后可配置思考强度，关闭表示不做深度推理；强度越高，回答通常更充分，响应时间也可能增加。"
               />
               <div className="mt-1 flex h-10 items-center gap-3 rounded-md border border-slate-200 bg-white px-3">
                 <Switch
                   label=""
-                  ariaLabel="思考模式"
+                  ariaLabel="双模协同"
                   compact
-                  checked={config.thinkingEnabled ?? false}
-                  onChange={handleThinkingToggle}
+                  checked={dualModelEnabled}
+                  onChange={handleDualModelToggle}
                 />
-                {config.thinkingEnabled ? (
-                  <div className="flex flex-1 items-center rounded bg-slate-100 p-0.5" role="radiogroup" aria-label="思考强度">
-                    {THINKING_LEVELS.map((level) => {
-                      const selected = (config.thinkingLevel ?? 'low') === level.value;
-                      return (
-                        <button
-                          key={level.value}
-                          type="button"
-                          role="radio"
-                          aria-checked={selected}
-                          onClick={() => updateField('thinkingLevel', level.value)}
-                          className={`h-7 flex-1 rounded text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${selected ? 'bg-white text-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                        >
-                          {level.label}
-                        </button>
-                      );
-                    })}
-                  </div>
+                {dualModelEnabled ? (
+                  <>
+                    <span className="shrink-0 text-xs text-slate-500">思考强度</span>
+                    <div className="flex flex-1 items-center rounded bg-slate-100 p-0.5" role="radiogroup" aria-label="思考强度">
+                      {THINKING_LEVELS.map((level) => {
+                        const selected = thinkingLevel === level.value;
+                        return (
+                          <button
+                            key={level.value}
+                            type="button"
+                            role="radio"
+                            aria-checked={selected}
+                            onClick={() => updateField('thinkingLevel', level.value)}
+                            className={`h-7 flex-1 rounded text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${selected ? 'bg-white text-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                          >
+                            {level.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
                 ) : (
                   <span className="text-xs text-slate-400">关闭</span>
                 )}

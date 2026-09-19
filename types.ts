@@ -7,6 +7,9 @@ export enum ModelType {
   CLAUDE_35 = 'Claude 3.5 Sonnet'
 }
 
+// 思考强度：off 表示不做深度推理，与双模协同开关相互独立。
+export type ThinkingLevel = 'off' | 'low' | 'high' | 'max';
+
 export enum TTSModel {
   SELF_DEVELOPED_TTS = '自研 TTS',
   GEMINI_TTS = 'Gemini TTS',
@@ -1552,8 +1555,12 @@ export interface BotConfiguration extends MarketingConfig, ProfileCollectionConf
   
   // Model Config
   llmType: ModelType;
+  // 双模协同：快模型先响应客户上一句，慢模型输出完整答复，两段拼接后播报。
+  dualModelEnabled?: boolean;
+  // 思考强度的唯一事实来源。
+  thinkingLevel?: ThinkingLevel;
+  // 兼容旧配置：仅在 handleEdit 一次性迁移时读取，组件不再读写。
   thinkingEnabled?: boolean;
-  thinkingLevel?: 'low' | 'high' | 'max';
   contextCompactionEnabled?: boolean;
   safetyGuardrailConfig?: SafetyGuardrailConfig;
   globalExceptionPolicy?: GlobalExceptionPolicy;

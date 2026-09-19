@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Sidebar, Header } from './components/ui/LayoutComponents';
-import { BotConfiguration, ModelType, TTSModel, ASRModel, EMOTIONS, LabelGroup, BotVariable, ExtractionConfig, BotIntent, MarketingCampaign, AgentTool, SatisfactionSurvey } from './types';
+import { BotConfiguration, ModelType, TTSModel, ASRModel, EMOTIONS, LabelGroup, BotVariable, ExtractionConfig, BotIntent, MarketingCampaign, AgentTool, SatisfactionSurvey, ThinkingLevel } from './types';
 import InformationExtraction from './InformationExtraction';
 import BotConfigForm from './components/bot/BotConfigForm';
 import BotListView from './components/bot/BotListView';
@@ -494,8 +494,13 @@ export default function App() {
   };
 
   const handleEdit = (bot: BotConfiguration) => {
+    // 旧配置兼容：旧版用“思考模式”开关表达是否深度推理，新版统一收敛到双模协同与思考强度。
+    const dualModelEnabled = bot.dualModelEnabled ?? bot.thinkingEnabled === true;
+    const thinkingLevel: ThinkingLevel = bot.thinkingLevel ?? (dualModelEnabled ? 'low' : 'off');
     const botToEdit = {
        ...bot,
+       dualModelEnabled,
+       thinkingLevel,
        variables: bot.variables && bot.variables.length > 0 ? bot.variables : DEFAULT_SYSTEM_VARIABLES,
        welcomeMessageInterruptible: bot.welcomeMessageInterruptible ?? true,
        transferIntentThreshold: bot.transferIntentThreshold ?? 1,
