@@ -1,4 +1,4 @@
-// 变量管理页，统一承接输入变量、通话变量、提取变量和实体配置。
+// 变量管理页，统一承接输入变量、对话变量、提取变量和实体配置。
 import React, { useMemo, useState } from 'react';
 import { Database, Edit3, Lock, MessageSquare, Plus, Server, Trash2, X, Box } from 'lucide-react';
 import { BotVariable, BotEntity } from '../../types';
@@ -349,8 +349,9 @@ const BotVariableConfig: React.FC<BotVariableConfigProps> = ({
     <div className="space-y-6">
       <div className="flex border-b border-gray-200 space-x-8 bg-white/50 px-4 -mx-4">
         {[
-          { id: 'INPUT', label: '话术输入变量', icon: Server },
-          { id: 'CONVERSATION', label: '通话变量', icon: MessageSquare },
+          // 页签名称与「通话详情」左侧栏分类保持一致：输入变量 / 对话变量 / 提取变量 / 实体。
+          { id: 'INPUT', label: '输入变量', icon: Server },
+          { id: 'CONVERSATION', label: '对话变量', icon: MessageSquare },
           { id: 'EXTRACTION', label: '提取变量', icon: Database },
           { id: 'ENTITY', label: '实体', icon: Box },
         ].map((tab) => (
@@ -375,14 +376,14 @@ const BotVariableConfig: React.FC<BotVariableConfigProps> = ({
 
       <div className="flex justify-between items-center">
         <div className="text-sm font-bold text-slate-800">
-          {isEntityTab ? '实体列表' : isStateTab ? '通话变量列表' : activeTab === 'INPUT' ? '话术输入变量列表' : '提取变量列表'}
+          {isEntityTab ? '实体列表' : isStateTab ? '对话变量列表' : activeTab === 'INPUT' ? '输入变量列表' : '提取变量列表'}
         </div>
         <button 
           onClick={() => isEntityTab ? openEntityModal() : openModal()} 
           className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-sky-600 transition-all flex items-center shadow-sm"
         >
           <Plus size={16} className="mr-2" />
-          {isEntityTab ? '添加实体' : isStateTab ? '添加通话变量' : activeTab === 'INPUT' ? '添加话术输入变量' : '添加提取变量'}
+          {isEntityTab ? '添加实体' : isStateTab ? '添加对话变量' : activeTab === 'INPUT' ? '添加输入变量' : '添加提取变量'}
         </button>
       </div>
 
@@ -404,7 +405,7 @@ const BotVariableConfig: React.FC<BotVariableConfigProps> = ({
               <h3 className="text-lg font-bold text-slate-800">
                 {isEntityTab 
                   ? (editingEntity ? '编辑实体' : '添加实体')
-                  : (editingVar ? '编辑变量' : isStateTab ? '添加通话变量' : activeTab === 'INPUT' ? '添加话术输入变量' : '添加提取变量')}
+                  : (editingVar ? '编辑变量' : isStateTab ? '添加对话变量' : activeTab === 'INPUT' ? '添加输入变量' : '添加提取变量')}
               </h3>
               <button onClick={closeModal} className="text-slate-400 hover:text-slate-600">
                 <X size={20} />

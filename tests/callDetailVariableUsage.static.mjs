@@ -6,20 +6,20 @@ import fs from 'node:fs';
 const call = fs.readFileSync('components/call/CallRecordDetail.tsx', 'utf8');
 const variableConfig = fs.readFileSync('components/bot/BotVariableConfig.tsx', 'utf8');
 
-// 两个页面共用同一套变量分类，id 和顺序必须对齐，否则同一类变量会被认成两种东西。
-// 这里只比 id：变量配置页的页签名称归它自己那部分管，不在本测试的范围内。
+// 两个页面共用同一套变量分类：id、名称、顺序三者都必须对齐，
+// 否则同一类变量在两个页面会被认成两种东西。
 const tabPattern = /\{\s*id:\s*'(INPUT|CONVERSATION|EXTRACTION|ENTITY)',\s*label:\s*'([^']+)'/g;
-const configIds = [...variableConfig.matchAll(tabPattern)].map(([, id]) => id);
-if (configIds.length !== 4) {
-  throw new Error(`变量配置页应有 4 个页签，实际解析到 ${configIds.length} 个，解析规则可能已失效`);
+const configTabs = [...variableConfig.matchAll(tabPattern)].map(([, id, label]) => ({ id, label }));
+if (configTabs.length !== 4) {
+  throw new Error(`变量配置页应有 4 个页签，实际解析到 ${configTabs.length} 个，解析规则可能已失效`);
 }
 
 const callPattern = /\{\s*id:\s*'(INPUT|CONVERSATION|EXTRACTION|ENTITY)',\s*label:\s*'([^']+)'\s*\}/g;
 const callCategories = [...call.matchAll(callPattern)].map(([, id, label]) => ({ id, label }));
 
-if (JSON.stringify(callCategories.map((item) => item.id)) !== JSON.stringify(configIds)) {
+if (JSON.stringify(callCategories) !== JSON.stringify(configTabs)) {
   throw new Error(
-    `通话详情变量分类的 id/顺序与变量配置页不一致：\n  变量配置页 ${JSON.stringify(configIds)}\n  通话详情   ${JSON.stringify(callCategories.map((item) => item.id))}`,
+    `通话详情变量分类与变量配置页不一致：\n  变量配置页 ${JSON.stringify(configTabs)}\n  通话详情   ${JSON.stringify(callCategories)}`,
   );
 }
 
@@ -31,8 +31,8 @@ if (JSON.stringify(callCategories.map((item) => item.label)) !== JSON.stringify(
   );
 }
 for (const retired of ['话术输入变量', '通话变量']) {
-  if (call.includes(retired)) {
-    throw new Error(`通话详情变量分类不应再叫「${retired}」`);
+  if (call.includes(retired) || variableConfig.includes(retired)) {
+    throw new Error(`变量分类不应再叫「${retired}」`);
   }
 }
 
