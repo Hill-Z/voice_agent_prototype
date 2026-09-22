@@ -3,6 +3,24 @@ import { Play, Volume2, Download, Edit, ChevronLeft, ChevronRight, ChevronUp, Ch
 import AiReplyLogModal, { AiReplyLogData, AiReplyLogScenario } from './AiReplyLogModal';
 import { SatisfactionSurveyResult } from '../../types';
 
+// 变量分类与「变量配置」页的四个页签一一对应，id 和顺序都保持一致；
+// 展示名统一规整为「输入变量 / 对话变量 / 提取变量 / 实体」，不带「话术」前缀。
+type VariableCategory = 'INPUT' | 'CONVERSATION' | 'EXTRACTION' | 'ENTITY';
+
+const VARIABLE_CATEGORIES: { id: VariableCategory; label: string }[] = [
+  { id: 'INPUT', label: '输入变量' },
+  { id: 'CONVERSATION', label: '对话变量' },
+  { id: 'EXTRACTION', label: '提取变量' },
+  { id: 'ENTITY', label: '实体' },
+];
+
+// 本次通话中用到的变量：只记录真正参与过这通电话的变量，没用到的不进这个列表。
+interface CallVariableUsage {
+  category: VariableCategory;
+  name: string;   // 变量名，取变量配置页里的中文说明；实体取实体名
+  value: string;  // 本次通话中这个变量的取值
+}
+
 interface CallDetail {
   callId: string;
   startTime: string;
@@ -26,6 +44,7 @@ interface CallDetail {
     url: string;
   }[];
   satisfactionSurveyResult?: SatisfactionSurveyResult;
+  variableUsages: CallVariableUsage[];
 }
 
 const MOCK_CALL_DETAIL: CallDetail = {
@@ -106,6 +125,24 @@ const MOCK_CALL_DETAIL: CallDetail = {
       url: 'ai_call2.mp3'
     }
   ],
+  variableUsages: [
+    // 输入变量：通话发起时随任务传入。
+    { category: 'INPUT', name: '客户姓名', value: '张先生' },
+    { category: 'INPUT', name: '进线渠道', value: '官网在线咨询' },
+    { category: 'INPUT', name: '客户等级', value: 'B5R（可能有意向）' },
+    // 对话变量：本次通话真正读取或写入过的系统变量，名称与变量配置页的中文说明一致。
+    { category: 'CONVERSATION', name: '当前通话 ID', value: '4cb67f3a-6d81-4033-bb5f-a3cf8292a2e5' },
+    { category: 'CONVERSATION', name: '当前对话轮次', value: '23' },
+    { category: 'CONVERSATION', name: '当前流程 ID', value: 'flow_auto_insurance' },
+    { category: 'CONVERSATION', name: '用户上一轮发言', value: '商业险有哪些具体的险种？' },
+    // 提取变量：通话中由模型从客户话术里抽出来的值。
+    { category: 'EXTRACTION', name: '险种类型', value: '商业险' },
+    { category: 'EXTRACTION', name: '车辆用途', value: '家用' },
+    { category: 'EXTRACTION', name: '咨询阶段', value: '险种咨询' },
+    // 实体：本次通话中真正命中过的实体及其取值，按原文完整展示，不做脱敏。
+    { category: 'ENTITY', name: '手机号', value: '13812346621' },
+    { category: 'ENTITY', name: '车牌号', value: '湘A·8F2K9' },
+  ],
   satisfactionSurveyResult: {
     surveyId: 'survey_after_sales_csat',
     surveyName: '售后服务满意度调查',
@@ -136,7 +173,11 @@ export default function CallRecordDetail({ callId }: CallRecordDetailProps) {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     '客户意向标签': true,
     '标签': true,
-    '情绪标签': true
+    '情绪标签': true,
+    '输入变量': true,
+    '对话变量': true,
+    '提取变量': true,
+    '实体': true,
   });
   const [addingToTestCase, setAddingToTestCase] = useState<boolean>(false);
   const [addSuccess, setAddSuccess] = useState<boolean>(false);
@@ -286,6 +327,27 @@ export default function CallRecordDetail({ callId }: CallRecordDetailProps) {
     // 可以通过全局状态管理或其他方式实现
   };
 
+  // 左侧栏七个板块（三个标签 + 四个变量分类）共用同一套折叠逻辑：标题和右侧箭头一行，
+  // 点标题切换展开态。抽成一个函数而不是各写一遍，保证它们的折叠行为永远一致。
+  const renderSection = (key: string, title: string, count: number | null, body: React.ReactNode) => {
+    const expanded = expandedSections[key] ?? true;
+    return (
+      <div key={key}>
+        <div className="flex justify-between items-center cursor-pointer" onClick={() => toggleSection(key)}>
+          <h3 className="text-sm font-bold text-slate-800">
+            {title}
+            {count !== null && <span className="ml-1.5 text-xs font-normal text-slate-400">{count}</span>}
+          </h3>
+          {expanded ?
+            <ChevronUp size={14} className="text-slate-400" /> :
+            <ChevronDown size={14} className="text-slate-400" />
+          }
+        </div>
+        {expanded && <div className="mt-2">{body}</div>}
+      </div>
+    );
+  };
+
   return (
     <div className="h-full flex flex-col relative">
       {/* 顶部信息栏 */}
@@ -329,67 +391,9 @@ export default function CallRecordDetail({ callId }: CallRecordDetailProps) {
         {/* 左侧边栏 */}
         <div className="w-64 border-r border-slate-200 bg-white p-4 overflow-y-auto">
           <div className="space-y-4">
-            {/* 客户意向标签 */}
+            {/* 通话统计固定在左侧栏最上面。它不是标签也不是变量、没有折叠态，
+                单独放在这里，避免和下面那组「长得一样、折叠逻辑也一样」的板块混在一起。 */}
             <div>
-              <div 
-                className="flex justify-between items-center cursor-pointer" 
-                onClick={() => toggleSection('客户意向标签')}
-              >
-                <h3 className="text-sm font-bold text-slate-800">客户意向标签</h3>
-                {expandedSections['客户意向标签'] ? 
-                  <ChevronUp size={14} className="text-slate-400" /> : 
-                  <ChevronDown size={14} className="text-slate-400" />
-                }
-              </div>
-              {expandedSections['客户意向标签'] && (
-                <div className="mt-2 space-y-1">
-                  {callDetail.labels.map((label, index) => (
-                    <div key={index} className="text-sm text-slate-600">{label}</div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* 标签 */}
-            <div>
-              <div 
-                className="flex justify-between items-center cursor-pointer" 
-                onClick={() => toggleSection('标签')}
-              >
-                <h3 className="text-sm font-bold text-slate-800">标签</h3>
-                {expandedSections['标签'] ? 
-                  <ChevronUp size={14} className="text-slate-400" /> : 
-                  <ChevronDown size={14} className="text-slate-400" />
-                }
-              </div>
-              {expandedSections['标签'] && (
-                <div className="mt-2">
-                  <div className="text-sm text-slate-500">-</div>
-                </div>
-              )}
-            </div>
-
-            {/* 情绪标签 */}
-            <div>
-              <div 
-                className="flex justify-between items-center cursor-pointer" 
-                onClick={() => toggleSection('情绪标签')}
-              >
-                <h3 className="text-sm font-bold text-slate-800">情绪标签</h3>
-                {expandedSections['情绪标签'] ? 
-                  <ChevronUp size={14} className="text-slate-400" /> : 
-                  <ChevronDown size={14} className="text-slate-400" />
-                }
-              </div>
-              {expandedSections['情绪标签'] && (
-                <div className="mt-2">
-                  <div className="text-sm text-slate-500">-</div>
-                </div>
-              )}
-            </div>
-
-            {/* 通话统计 */}
-            <div className="pt-4 border-t border-slate-200">
               <div className="mb-2 text-sm font-bold text-slate-800">通话统计</div>
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
@@ -401,6 +405,44 @@ export default function CallRecordDetail({ callId }: CallRecordDetailProps) {
                   <span className="text-sm font-bold text-blue-600">{callDetail.rounds}轮</span>
                 </div>
               </div>
+            </div>
+
+            {/* 三个标签板块和四个变量分类连续排布、共用 renderSection，折叠行为完全一致。
+                变量分类与「变量配置」页的四个页签一一对应，只展示本次通话真正用到的变量：
+                某一类没有用到的变量就整段不出现，不会留下一个空标题。 */}
+            <div className="space-y-4 pt-4 border-t border-slate-200">
+              {renderSection('客户意向标签', '客户意向标签', null,
+                <div className="space-y-1">
+                  {callDetail.labels.map((label, index) => (
+                    <div key={index} className="text-sm text-slate-600">{label}</div>
+                  ))}
+                </div>
+              )}
+              {renderSection('标签', '标签', null, <div className="text-sm text-slate-500">-</div>)}
+              {renderSection('情绪标签', '情绪标签', null, <div className="text-sm text-slate-500">-</div>)}
+              {VARIABLE_CATEGORIES.map((category) => {
+                const items = callDetail.variableUsages.filter((item) => item.category === category.id);
+                if (items.length === 0) return null;
+                return renderSection(category.label, category.label, items.length,
+                  // 变量名做成浅灰标签、取值用深色加重：先看到的是取值，字段名退成次要信息。
+                  // 不用彩色标签，B 端信息面板靠深浅和字重拉开层级就够了。
+                  <div className="divide-y divide-slate-100">
+                    {items.map((item, index) => (
+                      <div key={`${item.name}-${index}`} className="py-2 first:pt-0 last:pb-0">
+                        <span
+                          className="inline-block max-w-full truncate rounded bg-slate-100 py-0.5 px-1.5 text-[11px] font-medium text-slate-500"
+                          title={item.name}
+                        >
+                          {item.name}
+                        </span>
+                        {/* 取值可能很长且没有空格（比如通话 ID），必须允许任意位置换行，
+                            否则会顶破左侧栏的右边界。 */}
+                        <div className="mt-1 break-all text-sm font-medium leading-5 text-slate-800">{item.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
