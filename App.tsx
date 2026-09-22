@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Sidebar, Header } from './components/ui/LayoutComponents';
-import { BotConfiguration, ModelType, TTSModel, ASRModel, EMOTIONS, LabelGroup, BotVariable, ExtractionConfig, BotIntent, MarketingCampaign, AgentTool, SatisfactionSurvey, ThinkingLevel } from './types';
+import { BotConfiguration, ModelType, TTSModel, ASRModel, EMOTIONS, LabelGroup, BotVariable, ExtractionConfig, BotIntent, MarketingCampaign, AgentTool, SatisfactionSurvey, ThinkingLevel, DEFAULT_TRANSITION_PHRASES } from './types';
 import InformationExtraction from './InformationExtraction';
 import BotConfigForm from './components/bot/BotConfigForm';
 import BotListView from './components/bot/BotListView';
@@ -401,6 +401,10 @@ const DEFAULT_BOT: BotConfiguration = {
   llmType: ModelType.GEMINI_FLASH,
   temperature: 0.7,
   topP: 0.9,
+  fastModelType: ModelType.GEMINI_FLASH,
+  fastTemperature: 0.7,
+  fastTopP: 0.9,
+  transitionPhrases: DEFAULT_TRANSITION_PHRASES,
   ttsModel: TTSModel.GEMINI_TTS,
   voiceName: 'Azure-Xiaoxiao',
   volume: 80,
@@ -501,6 +505,11 @@ export default function App() {
        ...bot,
        dualModelEnabled,
        thinkingLevel,
+       // 快模型与过渡话术是新配置项，旧机器人进入编辑页时补默认值，避免出现空下拉和空列表。
+       fastModelType: bot.fastModelType ?? ModelType.GEMINI_FLASH,
+       fastTemperature: bot.fastTemperature ?? 0.7,
+       fastTopP: bot.fastTopP ?? 0.9,
+       transitionPhrases: bot.transitionPhrases ?? DEFAULT_TRANSITION_PHRASES,
        variables: bot.variables && bot.variables.length > 0 ? bot.variables : DEFAULT_SYSTEM_VARIABLES,
        welcomeMessageInterruptible: bot.welcomeMessageInterruptible ?? true,
        transferIntentThreshold: bot.transferIntentThreshold ?? 1,

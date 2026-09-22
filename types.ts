@@ -10,6 +10,13 @@ export enum ModelType {
 // 思考强度：off 表示不做深度推理，与双模协同开关相互独立。
 export type ThinkingLevel = 'off' | 'low' | 'high' | 'max';
 
+// 过渡话术预置值：双模协同时主模型出结果前先播报的承接语，客户可增删；删空表示不播报过渡话术。
+export const DEFAULT_TRANSITION_PHRASES = [
+  '稍等，我帮您查一下',
+  '那我帮您确认一下',
+  '请稍等',
+];
+
 export enum TTSModel {
   SELF_DEVELOPED_TTS = '自研 TTS',
   GEMINI_TTS = 'Gemini TTS',
@@ -1555,8 +1562,14 @@ export interface BotConfiguration extends MarketingConfig, ProfileCollectionConf
   
   // Model Config
   llmType: ModelType;
-  // 双模协同：快模型先响应客户上一句，慢模型输出完整答复，两段拼接后播报。
+  // 双模协同：快模型先响应客户上一句，主模型输出完整答复，两段拼接后播报。
   dualModelEnabled?: boolean;
+  // 快模型：复用主模型的可选列表，独立配置温度和采样；未配置时按默认值兜底。
+  fastModelType?: ModelType;
+  fastTemperature?: number;
+  fastTopP?: number;
+  // 过渡话术：主模型出结果前先播报的承接语，客户可全部删空。
+  transitionPhrases?: string[];
   // 思考强度的唯一事实来源。
   thinkingLevel?: ThinkingLevel;
   // 兼容旧配置：仅在 handleEdit 一次性迁移时读取，组件不再读写。

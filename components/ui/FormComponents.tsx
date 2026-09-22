@@ -59,26 +59,47 @@ export const Select: React.FC<React.SelectHTMLAttributes<HTMLSelectElement> & { 
   </div>
 );
 
-export const Slider: React.FC<{ label: string; value: number; onChange: (val: number) => void; min: number; max: number; step?: number; tooltip?: string }> = ({ label, value, onChange, min, max, step = 1, tooltip }) => (
-  <div className="mb-5">
-    <div className="flex justify-between items-center mb-2">
+// compact：标签在上、滑条与取值同处一个标准高度的输入框内。结构与 Select/Input 完全一致（同标签行距、同 40px 控件高度），
+// 所以并排时不需要额外的对齐处理，底边天然齐平。
+export const Slider: React.FC<{ label: string; value: number; onChange: (val: number) => void; min: number; max: number; step?: number; tooltip?: string; compact?: boolean }> = ({ label, value, onChange, min, max, step = 1, tooltip, compact = false }) => (
+  compact ? (
+    <div className="mb-5">
       <Label label={label} tooltip={tooltip} />
-      <span className="text-xs font-mono bg-[var(--color-semantic-bg-subtle)] px-2 py-1 rounded-[var(--radius-sm)] text-[var(--color-semantic-text-secondary)]">{value}</span>
+      <div className="flex h-[var(--component-field-height-md)] items-center gap-3 rounded-[var(--component-field-radius)] border border-[var(--color-semantic-border-default)] bg-[var(--color-semantic-bg-surface)] px-3 transition-colors hover:border-[var(--color-semantic-border-strong)] focus-within:border-[var(--color-semantic-border-focus)]">
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          aria-label={label}
+          onChange={(e) => onChange(parseFloat(e.target.value))}
+          className="h-1.5 min-w-0 flex-1 bg-[var(--color-semantic-border-default)] rounded-full appearance-none cursor-pointer accent-[var(--color-semantic-primary)] disabled:cursor-not-allowed"
+        />
+        <span className="w-7 shrink-0 text-right font-mono text-xs text-[var(--color-semantic-text-secondary)]">{value}</span>
+      </div>
     </div>
-    <input
-      type="range"
-      min={min}
-      max={max}
-      step={step}
-      value={value}
-      onChange={(e) => onChange(parseFloat(e.target.value))}
-      className="w-full h-1.5 bg-[var(--color-semantic-border-default)] rounded-full appearance-none cursor-pointer accent-[var(--color-semantic-primary)] disabled:cursor-not-allowed"
-    />
-    <div className="flex justify-between text-[10px] text-[var(--color-semantic-text-placeholder)] mt-1">
-      <span>{min}</span>
-      <span>{max}</span>
+  ) : (
+    <div className="mb-5">
+      <div className="flex justify-between items-center mb-2">
+        <Label label={label} tooltip={tooltip} />
+        <span className="text-xs font-mono bg-[var(--color-semantic-bg-subtle)] px-2 py-1 rounded-[var(--radius-sm)] text-[var(--color-semantic-text-secondary)]">{value}</span>
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+        className="w-full h-1.5 bg-[var(--color-semantic-border-default)] rounded-full appearance-none cursor-pointer accent-[var(--color-semantic-primary)] disabled:cursor-not-allowed"
+      />
+      <div className="flex justify-between text-[10px] text-[var(--color-semantic-text-placeholder)] mt-1">
+        <span>{min}</span>
+        <span>{max}</span>
+      </div>
     </div>
-  </div>
+  )
 );
 
 export const Switch: React.FC<{

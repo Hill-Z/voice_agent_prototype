@@ -1,10 +1,10 @@
 
 import React, { useState } from 'react';
 import { 
-  Sparkles, Loader2, Cpu, Volume2, Mic, MessageSquare, Plus, Trash2, ChevronDown, Languages, FileText, Edit3, HelpCircle
+  Sparkles, Loader2, Cpu, Volume2, Mic, MessageSquare, Plus, Trash2, ChevronDown, Languages, FileText, Edit3, HelpCircle, X
 } from 'lucide-react';
 import { Input, Select, Slider, Switch, TagInput, Label } from '../ui/FormComponents';
-import { BotConfiguration, ModelType, TTSModel, ASRModel, EMOTIONS, Parameter, BUILT_IN_FUNCTIONS, ThinkingLevel } from '../../types';
+import { BotConfiguration, ModelType, TTSModel, ASRModel, EMOTIONS, Parameter, BUILT_IN_FUNCTIONS, ThinkingLevel, DEFAULT_TRANSITION_PHRASES } from '../../types';
 import PromptGeneratorModal from './PromptGeneratorModal';
 import PromptEditor from '../ui/PromptEditor';
 import InterruptionPolicyControl from './InterruptionPolicyControl';
@@ -144,7 +144,61 @@ User: "Hello, 请问食咗饭未?"
 Assistant: "[LANG:YUE] Hello, 我食咗啦，你呢?"
 `;
 
-const BotBasicConfig: React.FC<BotBasicConfigProps> = ({ 
+// 行内标签：带问号提示但只占一行，用于需要压缩纵向空间的参数行。
+const InlineLabel: React.FC<{ label: string; tooltip?: string }> = ({ label, tooltip }) => (
+  <span className="flex shrink-0 items-center gap-1 text-xs font-semibold text-slate-700">
+    {label}
+    {tooltip && (
+      <span className="group relative flex items-center">
+        <HelpCircle size={13} className="cursor-help text-slate-400" />
+        <span className="pointer-events-none absolute bottom-full left-1/2 z-40 mb-2 hidden w-64 -translate-x-1/2 rounded bg-slate-800 p-2 text-xs font-normal leading-5 text-white shadow-lg group-hover:block">{tooltip}</span>
+      </span>
+    )}
+  </span>
+);
+
+// 过渡话术列表：双模协同时主模型给出完整答复前先播报的承接语，选填。
+// 删空表示不播报，所以空列表只留「添加话术」入口，不塞占位空行。
+const TransitionPhraseList: React.FC<{ phrases: string[]; onChange: (phrases: string[]) => void }> = ({ phrases, onChange }) => (
+  <div className="mt-1 border-t border-slate-200/70 pt-4">
+    <div className="mb-2 flex items-center justify-between gap-3">
+      <InlineLabel label="过渡话术（选填）" tooltip="双模协同时，主模型给出完整答复前先播报一句承接语，降低客户等待感；留空表示不播报。" />
+      <button
+        type="button"
+        onClick={() => onChange([...phrases, ''])}
+        className="inline-flex h-7 shrink-0 items-center gap-1 rounded border border-slate-200 bg-white px-2 text-xs text-slate-600 transition-colors hover:border-primary hover:text-primary"
+      >
+        <Plus size={12} /> 添加话术
+      </button>
+    </div>
+    {/* 话术都很短，两列排布可以把高度减半；叉号放在输入框内，省掉一列按钮。 */}
+    {phrases.length > 0 && (
+      <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+        {phrases.map((phrase, index) => (
+          <div key={index} className="relative">
+            <input
+              value={phrase}
+              aria-label="过渡话术"
+              placeholder="如：稍等，我帮您查一下"
+              onChange={(event) => onChange(phrases.map((item, itemIndex) => (itemIndex === index ? event.target.value : item)))}
+              className="h-9 w-full rounded border border-slate-200 bg-white pl-3 pr-9 text-sm outline-none transition-colors placeholder:text-slate-400 focus:border-primary"
+            />
+            <button
+              type="button"
+              aria-label="删除话术"
+              onClick={() => onChange(phrases.filter((_, itemIndex) => itemIndex !== index))}
+              className="absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-100 hover:text-red-500"
+            >
+              <X size={13} />
+            </button>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+);
+
+const BotBasicConfig: React.FC<BotBasicConfigProps> = ({
   config, 
   updateField, 
   onSave,
@@ -153,6 +207,11 @@ const BotBasicConfig: React.FC<BotBasicConfigProps> = ({
   const [showGenerator, setShowGenerator] = useState(false);
   const dualModelEnabled = config.dualModelEnabled ?? false;
   const thinkingLevel: ThinkingLevel = config.thinkingLevel ?? 'off';
+  // 快模型与过渡话术未配置时按默认值兜底。这里必须用 ??：用 || 会把客户删空的话术又填回预置值。
+  const fastModelType = config.fastModelType ?? ModelType.GEMINI_FLASH;
+  const fastTemperature = config.fastTemperature ?? 0.7;
+  const fastTopP = config.fastTopP ?? 0.9;
+  const transitionPhrases = config.transitionPhrases ?? DEFAULT_TRANSITION_PHRASES;
   const currentAsrProvider = findAsrProvider(config.asrModel);
   const currentAsrModel = findAsrModel(config.asrModel);
   const currentLanguageOptions = ASR_LANGUAGE_OPTIONS.filter((item) => currentAsrModel.languageCodes.includes(item.value));
@@ -288,64 +347,92 @@ const BotBasicConfig: React.FC<BotBasicConfigProps> = ({
       <div className="bg-white rounded border border-gray-200 shadow-sm p-6">
         <h3 className="text-sm font-bold text-slate-800 mb-5">核心模型配置</h3>
         <div className="bg-slate-50/50 rounded p-6 border border-slate-100">
-          <div className="mb-6 flex items-center gap-2">
+          {/* 双模协同开关固定在标题行：开关切换只增减下方内容，开关自身始终不动。 */}
+          <div className="mb-5 flex items-center justify-between gap-3">
             <div className="flex items-center space-x-2">
               <div className="rounded bg-blue-100 p-1.5 text-primary">
                 <Cpu size={14} />
               </div>
-              <span className="text-xs font-bold text-slate-700">大模型配置</span>
+              <span className="text-xs font-bold text-slate-700">模型配置</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <InlineLabel label="双模协同" tooltip="由两个模型分工应答：先快速回应，再输出完整答复。开启后可配置思考强度，关闭表示不做深度推理；强度越高，回答通常更充分，响应时间也可能增加。" />
+              <Switch
+                label=""
+                ariaLabel="双模协同"
+                compact
+                checked={dualModelEnabled}
+                onChange={handleDualModelToggle}
+              />
             </div>
           </div>
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:items-start">
-            <div>
-              <Select 
-                label="大模型类型" 
-                tooltip="选择用于生成对话内容的基础大语言模型。"
-                options={Object.values(ModelType) as string[]} 
-                value={config.llmType} 
-                onChange={(e) => updateField('llmType', e.target.value as ModelType)} 
+          {/* 主模型：双模协同开启后由它输出完整答复；关闭时它就是唯一的大模型。
+              三格同构（标签 + 40px 控件），并排即齐平，不需要额外的对齐处理。 */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+            <div className="lg:col-span-4">
+              <Select
+                label="主模型"
+                tooltip="机器人使用的大模型；开启双模协同时，由它输出完整答复。"
+                options={Object.values(ModelType) as string[]}
+                value={config.llmType}
+                onChange={(e) => updateField('llmType', e.target.value as ModelType)}
               />
             </div>
-            <div>
-              <Label
-                label="双模协同"
-                tooltip="由两个模型分工应答：先快速回应，再输出完整答复。开启后可配置思考强度，关闭表示不做深度推理；强度越高，回答通常更充分，响应时间也可能增加。"
-              />
-              <div className="mt-1 flex h-10 items-center gap-3 rounded-md border border-slate-200 bg-white px-3">
-                <Switch
-                  label=""
-                  ariaLabel="双模协同"
-                  compact
-                  checked={dualModelEnabled}
-                  onChange={handleDualModelToggle}
-                />
-                {dualModelEnabled ? (
-                  <>
-                    <span className="shrink-0 text-xs text-slate-500">思考强度</span>
-                    <div className="flex flex-1 items-center rounded bg-slate-100 p-0.5" role="radiogroup" aria-label="思考强度">
-                      {THINKING_LEVELS.map((level) => {
-                        const selected = thinkingLevel === level.value;
-                        return (
-                          <button
-                            key={level.value}
-                            type="button"
-                            role="radio"
-                            aria-checked={selected}
-                            onClick={() => updateField('thinkingLevel', level.value)}
-                            className={`h-7 flex-1 rounded text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${selected ? 'bg-white text-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                          >
-                            {level.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </>
-                ) : (
-                  <span className="text-xs text-slate-400">关闭</span>
-                )}
+            <div className="lg:col-span-4">
+              <Slider compact label="温度" min={0} max={1} step={0.1} value={config.temperature} onChange={(value) => updateField('temperature', value)} tooltip="数值越高回答越发散，越低越稳定，客服场景一般取 0.3 左右。" />
+            </div>
+            <div className="lg:col-span-4">
+              <Slider compact label="Top-P" min={0} max={1} step={0.1} value={config.topP} onChange={(value) => updateField('topP', value)} tooltip="控制候选词范围，通常与温度搭配调整。" />
+            </div>
+          </div>
+
+          {dualModelEnabled && (
+            <>
+              {/* 思考强度归属主模型，紧跟主模型一行并与其首列对齐。 */}
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+                <div className="mb-5 lg:col-span-4">
+                  <Label label="主模型思考强度" tooltip="主模型回答前的推理深度：「关闭」表示不做深度推理，不代表关闭双模协同；强度越高，回答通常更充分，响应时间也可能增加。" />
+                  <div className="flex h-[var(--component-field-height-md)] items-center rounded-[var(--component-field-radius)] bg-slate-100 p-0.5" role="radiogroup" aria-label="主模型思考强度">
+                    {THINKING_LEVELS.map((level) => {
+                      const selected = thinkingLevel === level.value;
+                      return (
+                        <button
+                          key={level.value}
+                          type="button"
+                          role="radio"
+                          aria-checked={selected}
+                          onClick={() => updateField('thinkingLevel', level.value)}
+                          className={`h-full flex-1 rounded text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${selected ? 'bg-white text-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                          {level.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+                <div className="lg:col-span-4">
+                  <Select
+                    label="快模型"
+                    tooltip="负责先一步快速回应的模型，通常选响应更快的型号。"
+                    options={Object.values(ModelType) as string[]}
+                    value={fastModelType}
+                    onChange={(e) => updateField('fastModelType', e.target.value as ModelType)}
+                  />
+                </div>
+                <div className="lg:col-span-4">
+                  <Slider compact label="温度" min={0} max={1} step={0.1} value={fastTemperature} onChange={(value) => updateField('fastTemperature', value)} tooltip="快模型的发散程度；快模型只做简短回应，一般可略高于主模型。" />
+                </div>
+                <div className="lg:col-span-4">
+                  <Slider compact label="Top-P" min={0} max={1} step={0.1} value={fastTopP} onChange={(value) => updateField('fastTopP', value)} tooltip="快模型的候选词范围，通常与温度搭配调整。" />
+                </div>
+              </div>
+
+              <TransitionPhraseList phrases={transitionPhrases} onChange={(phrases) => updateField('transitionPhrases', phrases)} />
+            </>
+          )}
         </div>
 
         <div className="mt-8 border-t border-gray-100 pt-8">
