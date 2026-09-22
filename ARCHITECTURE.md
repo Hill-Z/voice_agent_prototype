@@ -270,10 +270,10 @@ dist/docs/：与主系统一起部署的 /docs 子页面
 | `components/call/CallRecordManager.tsx` | 通话记录模块入口。 |
 | `components/call/CallRecordList.tsx` | 展示通话记录列表。 |
 | `components/call/CallRecordDetail.tsx` | 展示单通电话详情，并记录满意度调查是否发生、问卷版本和逐题结果。 |
-| `components/satisfaction/SatisfactionSurveyManager.tsx` | 满意度调查模块入口，组织问卷列表、详情和报表。 |
-| `components/satisfaction/SatisfactionSurveyEditor.tsx` | 配置 IVR 或语音智能体问卷、标准量表、话术与问题。 |
-| `components/satisfaction/SatisfactionSurveyReport.tsx` | 按机器人和问卷分析完成率、CSAT、NPS、开放反馈主题及明细。 |
-| `components/satisfaction/satisfactionData.ts` | 提供满意度问卷与调查结果演示数据。 |
+| `components/satisfaction/SatisfactionSurveyManager.tsx` | 管理草稿和不可变的已发布问卷；已发布问卷通过复制新建产生新口径。 |
+| `components/satisfaction/SatisfactionSurveyEditor.tsx` | 配置 IVR 或语音智能体问卷、核心满意度题、逐题聚合和原因追溯开关。 |
+| `components/satisfaction/SatisfactionSurveyReport.tsx` | 按问卷口径计算完成率和满意度，逐题展示回答分布、分类覆盖率及完整明细。 |
+| `components/satisfaction/satisfactionData.ts` | 提供三份问卷和同一机器人 100 次多题型调查结果，用于验证报表口径。 |
 | `components/report/MonitoringReport.tsx` | 综合运营报表入口，组织顶部筛选、刷新状态、通话统计、业务与流程分析、工具调用区块。 |
 | `components/report/RealtimeMonitoringPage.tsx` | 实时监控与预警入口，展示运行指标、机器人健康、实时通话、告警规则和告警记录。 |
 | `components/report/realtimeMonitoringData.ts` | 实时监控原型的指标、通话、机器人、规则和告警记录数据。 |

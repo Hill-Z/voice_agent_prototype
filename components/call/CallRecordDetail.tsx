@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Play, Volume2, Download, Edit, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Plus, FileSearch, CheckCircle2 } from 'lucide-react';
 import AiReplyLogModal, { AiReplyLogData, AiReplyLogScenario } from './AiReplyLogModal';
 import { SatisfactionSurveyResult } from '../../types';
+import { INITIAL_SATISFACTION_SURVEYS, SATISFACTION_RESPONSE_RECORDS, SatisfactionResponseRecord, resolvePrimaryQuestionId, resolveSurveyQuestions } from '../satisfaction/satisfactionData';
 
 // 变量分类与「变量配置」页的四个页签一一对应，id 和顺序都保持一致；
 // 展示名统一规整为「输入变量 / 对话变量 / 提取变量 / 实体」，不带「话术」前缀。
@@ -162,12 +163,109 @@ const MOCK_CALL_DETAIL: CallDetail = {
   },
 };
 
+const pad = (value: number) => String(value).padStart(2, '0');
+
+// 转写和录音的时间戳按通话起始时间加秒偏移推算，保证两者对得上。
+const formatStamp = (base: number, offsetSeconds: number) => {
+  const time = new Date(base + offsetSeconds * 1000);
+  return `${time.getFullYear()}-${pad(time.getMonth() + 1)}-${pad(time.getDate())} ${pad(time.getHours())}:${pad(time.getMinutes())}:${pad(time.getSeconds())}`;
+};
+
+// 满意度调查发生在通话结束前，这里把这次调查的问答还原成通话转写，报表按 Call ID 跳过来才能看到对应的通话内容。
+const buildCallDetailFromSurvey = (record: SatisfactionResponseRecord): CallDetail => {
+  const startedAt = new Date(record.time).getTime();
+  const dialogues: CallDetail['dialogues'] = [
+    { timestamp: formatStamp(startedAt, 0), content: '您好，感谢您的来电，本次通话即将结束。', isUser: false, tag: '大模型智能体', model: 'gpt-4', offsetSeconds: 0 },
+    { timestamp: formatStamp(startedAt, 4), content: '好的。', isUser: true, offsetSeconds: 4 },
+  ];
+  // 逐题还原成“机器人问、客户答”，客户原话取自调查记录本身。
+  record.answers.forEach((answer, index) => {
+    const askedAt = 8 + index * 14;
+    dialogues.push({ timestamp: formatStamp(startedAt, askedAt), content: answer.question, isUser: false, tag: '满意度调查', model: 'gpt-4', offsetSeconds: askedAt });
+    dialogues.push({ timestamp: formatStamp(startedAt, askedAt + 7), content: answer.displayValue, isUser: true, offsetSeconds: askedAt + 7 });
+  });
+  const closedAt = 12 + record.answers.length * 14;
+  dialogues.push({ timestamp: formatStamp(startedAt, closedAt), content: '感谢您的反馈，祝您生活愉快。', isUser: false, tag: '大模型智能体', model: 'gpt-4', offsetSeconds: closedAt });
+  const minutes = Math.floor(closedAt / 60);
+  const seconds = closedAt % 60;
+  return {
+    callId: record.callId,
+    startTime: formatStamp(startedAt, 0),
+    endTime: formatStamp(startedAt, closedAt),
+    duration: `${minutes}分${seconds}秒`,
+    rounds: dialogues.filter(item => !item.isUser).length,
+    company: record.botName,
+    dialogues,
+    labels: [],
+    emotionLabels: [],
+    audioFiles: [
+      { type: '振铃音', duration: '00:04', url: 'ring.mp3' },
+      { type: 'AI通话', duration: `${pad(minutes)}:${pad(seconds)}`, url: `ai_call_${record.callId.slice(0, 8)}.mp3` },
+    ],
+    // 调查记录里没有变量参与情况：这份通话是从满意度回答反推出来的，不是真实的变量运行轨迹。
+    // 侧栏对没用到的变量分类本来就整段不渲染，给空数组正是「这通电话没有记录到变量」，不编造取值。
+    variableUsages: [],
+  };
+};
+
+// 满意度区块统一成一份视图数据：调查记录能给出聚合分类、原因追溯和完成进度，通话自带的旧结果只提供基础信息。
+interface SatisfactionView {
+  surveyName: string;
+  surveyVersion?: number;
+  mode: 'ivr' | 'voice_agent';
+  completed: boolean;
+  offeredAt: string;
+  score?: number;
+  scoreMax?: number;
+  answeredCount: number;
+  totalQuestionCount: number;
+  answers: Array<{ questionId: string; question: string; value: string; inputMode: string; category?: string; reason?: string; reasonCategory?: string }>;
+  feedbackTheme?: string;
+}
+
 interface CallRecordDetailProps {
   callId?: string;
 }
 
 export default function CallRecordDetail({ callId }: CallRecordDetailProps) {
-  const [callDetail, setCallDetail] = useState<CallDetail>(MOCK_CALL_DETAIL);
+  // 报表按 Call ID 跳过来，命中调查记录时展示那次调查对应的通话内容，否则回落到示例通话。
+  const surveyRecord = useMemo(() => (callId ? SATISFACTION_RESPONSE_RECORDS.find(record => record.callId === callId) : undefined), [callId]);
+  const callDetail = useMemo(() => (surveyRecord ? buildCallDetailFromSurvey(surveyRecord) : MOCK_CALL_DETAIL), [surveyRecord]);
+
+  // 满意度区块优先用调查记录渲染：记录里带着逐题聚合分类、原因追溯和完成进度。
+  const satisfactionView = useMemo<SatisfactionView | undefined>(() => {
+    if (surveyRecord) {
+      const survey = INITIAL_SATISFACTION_SURVEYS.find(item => item.id === surveyRecord.surveyId);
+      const primaryQuestion = survey ? resolveSurveyQuestions(survey).find(question => question.id === resolvePrimaryQuestionId(survey)) : undefined;
+      const primaryAnswer = primaryQuestion ? surveyRecord.answers.find(answer => answer.questionId === primaryQuestion.id) : undefined;
+      return {
+        surveyName: surveyRecord.surveyName, surveyVersion: survey?.version, mode: surveyRecord.mode,
+        completed: surveyRecord.status === 'completed', offeredAt: surveyRecord.time,
+        score: primaryQuestion?.type === 'rating' && primaryAnswer ? Number(primaryAnswer.rawValue) : undefined,
+        scoreMax: primaryQuestion?.scaleMax,
+        answeredCount: surveyRecord.answeredCount, totalQuestionCount: surveyRecord.totalQuestionCount,
+        answers: surveyRecord.answers.map(answer => ({
+          questionId: answer.questionId, question: answer.question, value: answer.displayValue,
+          inputMode: surveyRecord.mode === 'ivr' ? '按键输入' : '语音回答',
+          category: answer.category, reason: answer.reason, reasonCategory: answer.reasonCategory,
+        })),
+      };
+    }
+    const fallback = callDetail.satisfactionSurveyResult;
+    if (!fallback) return undefined;
+    return {
+      surveyName: fallback.surveyName, surveyVersion: fallback.surveyVersion, mode: fallback.mode,
+      completed: fallback.status === 'completed', offeredAt: fallback.offeredAt,
+      score: fallback.score, scoreMax: 5,
+      answeredCount: fallback.answers.length, totalQuestionCount: fallback.answers.length,
+      answers: fallback.answers.map(answer => ({
+        questionId: answer.questionId, question: answer.question,
+        value: typeof answer.value === 'number' ? `${answer.value} 分` : String(answer.value),
+        inputMode: answer.inputMode === 'dtmf' ? '按键输入' : '语音回答',
+      })),
+      feedbackTheme: fallback.feedbackTheme,
+    };
+  }, [surveyRecord, callDetail]);
   const [playingAudioIndex, setPlayingAudioIndex] = useState<number | null>(null);
   const [debugMode, setDebugMode] = useState(true);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -514,24 +612,29 @@ export default function CallRecordDetail({ callId }: CallRecordDetailProps) {
           </div>
 
           {/* 满意度调查是原通话的一段后续流程，结果与当前 Call ID 保持关联。 */}
-          {callDetail.satisfactionSurveyResult && (
+          {satisfactionView && (
             <div className="mb-4 rounded-lg border border-blue-100 bg-white p-4 shadow-sm">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
                   <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-primary"><CheckCircle2 size={17} /></div>
                   <div>
-                    <div className="flex flex-wrap items-center gap-2"><h3 className="text-sm font-bold text-slate-800">满意度调查</h3><span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-600">已完成</span></div>
-                    <div className="mt-1 text-xs text-slate-500">{callDetail.satisfactionSurveyResult.offeredAt} 发起 · {callDetail.satisfactionSurveyResult.surveyName} · V{callDetail.satisfactionSurveyResult.surveyVersion}</div>
+                    <div className="flex flex-wrap items-center gap-2"><h3 className="text-sm font-bold text-slate-800">满意度调查</h3><span className={`rounded-full px-2 py-0.5 text-xs ${satisfactionView.completed ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>{satisfactionView.completed ? '已完成' : `未完成 ${satisfactionView.answeredCount}/${satisfactionView.totalQuestionCount}`}</span></div>
+                    <div className="mt-1 text-xs text-slate-500">{satisfactionView.offeredAt} 发起 · {satisfactionView.surveyName}{satisfactionView.surveyVersion ? ` · V${satisfactionView.surveyVersion}` : ''}</div>
                   </div>
                 </div>
-                <div className="text-right"><div className="text-2xl font-bold text-slate-900">{callDetail.satisfactionSurveyResult.score}<span className="ml-1 text-sm font-normal text-slate-400">/ 5</span></div><div className="mt-1 text-xs text-slate-500">{callDetail.satisfactionSurveyResult.mode === 'ivr' ? 'IVR 按键' : '语音智能体'}采集</div></div>
+                <div className="text-right">{satisfactionView.score !== undefined && <div className="text-2xl font-bold text-slate-900">{satisfactionView.score}<span className="ml-1 text-sm font-normal text-slate-400">/ {satisfactionView.scoreMax ?? 5}</span></div>}<div className="mt-1 text-xs text-slate-500">{satisfactionView.mode === 'ivr' ? 'IVR 按键' : '语音智能体'}采集</div></div>
               </div>
               <div className="mt-4 overflow-hidden rounded border border-slate-100">
-                {callDetail.satisfactionSurveyResult.answers.map((answer, index) => (
-                  <div key={answer.questionId} className={`grid grid-cols-1 gap-1 px-4 py-3 text-sm md:grid-cols-[260px_minmax(0,1fr)_80px] ${index > 0 ? 'border-t border-slate-100' : ''}`}><span className="text-slate-500">{answer.question}</span><span className="font-medium text-slate-700">{typeof answer.value === 'number' ? `${answer.value} 分` : answer.value}</span><span className="text-xs text-slate-400 md:text-right">{answer.inputMode === 'dtmf' ? '按键输入' : '语音回答'}</span></div>
+                {satisfactionView.answers.map((answer, index) => (
+                  <div key={answer.questionId} className={`px-4 py-3 text-sm ${index > 0 ? 'border-t border-slate-100' : ''}`}>
+                    <div className="grid grid-cols-1 gap-1 md:grid-cols-[260px_minmax(0,1fr)_80px]"><span className="text-slate-500">{answer.question}</span><span className="font-medium text-slate-700">{answer.value}</span><span className="text-xs text-slate-400 md:text-right">{answer.inputMode}</span></div>
+                    {answer.category && <div className="mt-2 text-xs text-blue-600">聚合分类：{answer.category}</div>}
+                    {answer.reason && <div className="mt-2 rounded bg-amber-50 p-3"><div className="text-xs font-semibold text-amber-700">原因追溯 · {answer.reasonCategory || '未归类'}</div><div className="mt-1 text-sm text-slate-700">{answer.reason}</div></div>}
+                  </div>
                 ))}
               </div>
-              {callDetail.satisfactionSurveyResult.feedbackTheme && <div className="mt-3 text-xs text-slate-500">开放回答归类：<span className="font-semibold text-slate-700">{callDetail.satisfactionSurveyResult.feedbackTheme}</span></div>}
+              {!satisfactionView.completed && <div className="mt-3 rounded bg-slate-50 px-4 py-3 text-sm text-slate-500">客户在第 {satisfactionView.answeredCount + 1} 题前结束调查，后续问题没有回答。</div>}
+              {satisfactionView.feedbackTheme && <div className="mt-3 text-xs text-slate-500">开放回答归类：<span className="font-semibold text-slate-700">{satisfactionView.feedbackTheme}</span></div>}
             </div>
           )}
 

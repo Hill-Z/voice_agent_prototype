@@ -1431,11 +1431,13 @@ export interface SafetyGuardrailConfig {
 export type SatisfactionSurveyMode = 'ivr' | 'voice_agent';
 export type SatisfactionMetricType = 'csat' | 'nps' | 'custom';
 export type SatisfactionQuestionType = 'rating' | 'single_choice' | 'open_text';
-export type SatisfactionSurveyStatus = 'draft' | 'published' | 'disabled';
+export type SatisfactionSurveyStatus = 'draft' | 'published';
 
 export interface SatisfactionSurveyOption {
   value: string;
   label: string;
+  // 仅核心满意度题使用，用于计算“满意回答占比”。
+  satisfied?: boolean;
 }
 
 export interface SatisfactionSurveyQuestion {
@@ -1446,7 +1448,18 @@ export interface SatisfactionSurveyQuestion {
   required: boolean;
   scaleMin?: number;
   scaleMax?: number;
+  satisfactionThreshold?: number;
   options?: SatisfactionSurveyOption[];
+  // 聚合提示词只负责把自然语言回答归入稳定分类，不直接生成报表指标。
+  aggregationPrompt?: string;
+  aggregationCategories?: string[];
+  reasonTraceEnabled?: boolean;
+  reasonTriggerValues?: string[];
+  reasonScoreThreshold?: number;
+  reasonTracePrompt?: string;
+  reasonAggregationPrompt?: string;
+  reasonAggregationCategories?: string[];
+  // 兼容历史低分追问字段。
   lowScoreFollowUpEnabled?: boolean;
   lowScoreThreshold?: number;
   lowScoreFollowUpPrompt?: string;
@@ -1468,6 +1481,9 @@ export interface SatisfactionSurvey {
   closingPrompt: string;
   noInputPrompt: string;
   maxNoInputRetries: number;
+  // 一份问卷最多选择一个封闭题作为核心满意度题。
+  primaryQuestionId?: string;
+  // 兼容历史问卷级原因追溯字段；新问卷在题目级配置。
   reasonTraceEnabled?: boolean;
   reasonTracePrompt?: string;
   includeUnmatchedAsValid?: boolean;
