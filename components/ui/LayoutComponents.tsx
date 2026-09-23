@@ -17,6 +17,7 @@ import {
   ShoppingBag,
   History,
   Clock,
+  Wallet,
   ShieldAlert,
   BookOpen,
   Disc,
@@ -115,6 +116,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeSubItem, onNavigate }) =
     { icon: Workflow, label: '流程配置', id: '流程配置' },
     { icon: Code, label: '代码块', id: '函数管理' },
     { icon: Database, label: '信息提取配置', id: '信息提取配置' },
+
+    { type: 'header', label: '账户与计费' },
+    { icon: Wallet, label: '计费中心', id: '计费中心' },
     
     { type: 'header', label: '资源市场' },
     { icon: Box, label: '机器人模版', id: '机器人模版' },

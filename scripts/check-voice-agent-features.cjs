@@ -23,6 +23,18 @@ const checks = [
   ['Global first-response filler guardrails are hidden defaults', () => read('components/bot/BotStrategyConfig.tsx').includes('minUserTurnsBetweenPlays: 2') && read('components/bot/BotStrategyConfig.tsx').includes('avoidConsecutiveRepeat: true') && !read('components/bot/BotStrategyConfig.tsx').includes('至少间隔 2 轮') && !read('components/bot/BotStrategyConfig.tsx').includes('不会连续播放同一句')],
   ['Tool sound effect config exists', () => read('types.ts').includes('soundEffect') && read('components/bot/agent/AgentToolModal.tsx').includes('等待音效')],
   ['Tool sound effect keeps runtime defaults hidden', () => read('components/bot/agent/AgentToolModal.tsx').includes('键盘敲击声') && read('components/bot/agent/AgentToolModal.tsx').includes('stopOnTtsStart: true') && !read('components/bot/agent/AgentToolModal.tsx').includes('最大播放时长') && !read('components/bot/agent/AgentToolModal.tsx').includes('停止规则') && !read('components/bot/agent/AgentToolModal.tsx').includes('正式 TTS 开始时停止')],
+
+  // 计费中心这一组只查「零件在不在、入口通不通」，金额算得对不对交给 tests/billingCenter.static.mjs。
+  // 分开的理由：这里挂一次就是少一个页面，那里挂一次是客户看到错的钱，两者的严重程度不一样。
+  ['Billing center page exists', () => exists('components/billing/BillingCenter.tsx') && exists('components/billing/billingEngine.ts') && exists('components/billing/billingData.ts') && exists('components/billing/billingUi.tsx')],
+  ['Billing center has four tabs', () => ['UsageOverview', 'CallBillingDetail', 'BotBillingStats', 'PublishRatePreview'].every((name) => exists(`components/billing/${name}.tsx`))],
+  ['Billing rate basis panel exists', () => exists('components/billing/BillingBasisPanel.tsx') && read('components/billing/BillingBasisPanel.tsx').includes('算不出费率') && read('components/billing/BillingBasisPanel.tsx').includes('内部视角')],
+  ['Sidebar has billing center entry', () => read('components/ui/LayoutComponents.tsx').includes('计费中心') && read('components/ui/LayoutComponents.tsx').includes('账户与计费')],
+  ['App routes billing center pages', () => read('App.tsx').includes('BillingCenter') && read('App.tsx').includes("case '计费中心'")],
+  ['Billing engine pins the pricing rule', () => read('components/billing/billingEngine.ts').includes('PRICING_RULE') && read('components/billing/billingEngine.ts').includes('RESERVE_MINUTES_PER_CALL')],
+  ['Publish flow freezes the rate snapshot', () => read('components/bot/BotConfigForm.tsx').includes('billingRateSnapshot:') && read('types.ts').includes('billingRateSnapshot')],
+  ['Call record detail shows billing block', () => read('components/call/CallRecordDetail.tsx').includes('计费') && read('components/call/CallRecordDetail.tsx').includes('detailMatchesRequest')],
+  ['Billing guard test exists', () => exists('tests/billingCenter.static.mjs') && exists('docs/计费中心PRD.md') && exists('docs/计费引擎规格.md')],
 ];
 
 let failed = 0;

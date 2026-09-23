@@ -4,10 +4,11 @@ import {
   Sparkles, Loader2, Cpu, Volume2, Mic, MessageSquare, Plus, Trash2, ChevronDown, Languages, FileText, Edit3, HelpCircle, X
 } from 'lucide-react';
 import { Input, Select, Slider, Switch, TagInput, Label } from '../ui/FormComponents';
-import { BotConfiguration, ModelType, TTSModel, ASRModel, EMOTIONS, Parameter, BUILT_IN_FUNCTIONS, ThinkingLevel, DEFAULT_TRANSITION_PHRASES } from '../../types';
+import { BotConfiguration, BotRateResult, ModelType, TTSModel, ASRModel, EMOTIONS, Parameter, BUILT_IN_FUNCTIONS, ThinkingLevel, DEFAULT_TRANSITION_PHRASES } from '../../types';
 import PromptGeneratorModal from './PromptGeneratorModal';
 import PromptEditor from '../ui/PromptEditor';
 import InterruptionPolicyControl from './InterruptionPolicyControl';
+import BotRatePreviewBar from '../billing/BotRatePreviewBar';
 
 interface BotBasicConfigProps {
   config: BotConfiguration;
@@ -16,6 +17,9 @@ interface BotBasicConfigProps {
   handleSmartGenerate: () => void; // Legacy, kept for interface compatibility if needed, but overridden locally
   onSave: () => void;
   onCancel: () => void;
+  // 当前配置的单价，由机器人表单算一次传下来（和发布弹窗共用同一个结果）。
+  // 不传就不显示那条只读条——本组件不自己调计价引擎，免得两处各算一遍再分叉。
+  rateResult?: BotRateResult;
 }
 
 // Available voices for mapping
@@ -199,10 +203,11 @@ const TransitionPhraseList: React.FC<{ phrases: string[]; onChange: (phrases: st
 );
 
 const BotBasicConfig: React.FC<BotBasicConfigProps> = ({
-  config, 
-  updateField, 
+  config,
+  updateField,
   onSave,
-  onCancel
+  onCancel,
+  rateResult,
 }) => {
   const [showGenerator, setShowGenerator] = useState(false);
   const dualModelEnabled = config.dualModelEnabled ?? false;
@@ -819,6 +824,10 @@ const BotBasicConfig: React.FC<BotBasicConfigProps> = ({
               </div>
             )}
           </div>
+
+          {/* 单价只读条放在这一区的最后：它由上面的大模型、音色、TTS、ASR 共同决定，
+              放在这四组输入的下方，改完最后一项抬眼就能看到价格变了。 */}
+          {rateResult && <BotRatePreviewBar result={rateResult} robotName={config.name || '未命名机器人'} />}
         </div>
 
 

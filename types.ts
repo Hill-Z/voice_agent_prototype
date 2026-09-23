@@ -1630,6 +1630,9 @@ export interface BotConfiguration extends MarketingConfig, ProfileCollectionConf
   asrPrimaryLanguage?: string;
   asrCandidateLanguages?: string[];
   
+  // 计费：发布时冻结的费率快照，历史通话一律按它复算，改配置不影响已产生的费用。
+  billingRateSnapshot?: BotRateSnapshot;
+
   // Logic
   systemPrompt: string;
   variables: BotVariable[];
@@ -3291,3 +3294,244 @@ export interface FlowConfig {
 }
 
 // ==================== End PolyAI Flow Types ====================
+
+// ============ 计费中心 ============
+// 计费口径集中在这里定义：成本分项、费率快照、通话扣费记录、账户流水。
+// 金额一律整数存储——单价用「厘/分钟」，金额用「分」，中间成本用「微元」，避免浮点误差。
+
+export type BillingCategory = 'ASR' | 'TTS' | 'LLM';
+
+// 供应商的计价单位：ASR 按时长、TTS 按字符、大模型按 token。
+export type BillingCostUnit = 'per_hour' | 'per_10k_chars' | 'per_million_tokens';
+
+// 对客展示的档位名，与费率区间一一对应。
+export type BillingTier = 'standard' | 'advanced' | 'premium';
+
+// priced 表示已算出费率；pending 表示配置里用到的模型还没定价，费率不可用。
+export type BillingAccuracy = 'priced' | 'pending';
+
+export type BillingStatus = 'billed' | 'free' | 'reversed' | 'partial' | 'pending';
+
+// MODEL_NOT_PRICED 是「待定价」的原因：机器人用到的模型当时还没有配价。
+// 这类通话金额记 0 但状态不是正常计费，所以不能用 NORMAL 顶替——
+// 结算系统按原因码分派补扣逻辑，标成 NORMAL 就永远不会被挑出来补扣。
+export type BillingReasonCode =
+  | 'NORMAL' | 'NOT_ANSWERED' | 'MODEL_NOT_PRICED' | 'TEST_WHITELIST' | 'PACKAGE_INCLUDED'
+  | 'SYSTEM_ERROR' | 'REVERSED' | 'PARTIAL_TRANSFERRED' | 'BALANCE_EXHAUSTED';
+
+// expire 是额度批次到期清零产生的流水：金额为负，各批次各自产生一条。
+export type LedgerEntryType =
+  | 'recharge' | 'call_charge' | 'refund' | 'reversal' | 'adjustment' | 'reserve' | 'release'
+  | 'expire';
+
+// 成本参数表：计费中心内部对成本口径的唯一事实来源，与机器人配置的模型枚举解耦。
+// boundModelValue 指向 ASRModel / TTSModel / ModelType 里的值；为空表示已定价但配置里还选不到。
+export interface BillingCostModel {
+  id: string;
+  category: BillingCategory;
+  displayName: string;
+  boundModelValue?: string;
+  unit: BillingCostUnit;
+  unitPrice: number;
+  effectiveFrom: string;
+  estimated?: boolean;
+}
+
+// 每种语言一分钟通话折算成多少字符、多少 token、多少秒有效语音。
+export interface BillingLanguageParam {
+  language: string;
+  label: string;
+  ttsCharsPerSec: number;
+  ttsSpeakSecPerMin: number;
+  llmInputTokensPerMin: number;
+  llmOutputTokensPerMin: number;
+  asrSpeechSecPerMin: number;
+}
+
+export interface RateSnapshotAsr {
+  modelId: string;
+  displayName: string;
+  boundModelValue?: string;
+  unitPricePerHour: number;
+  speechSecPerMin: number;
+  costPerMinMicro: number;
+}
+
+export interface RateSnapshotTts {
+  modelId: string;
+  displayName: string;
+  boundModelValue?: string;
+  voiceName: string;
+  language: string;
+  unitPricePer10kChars: number;
+  charsPerMin: number;
+  charsPerMinMethod: 'duration_x_rate' | 'prompt_estimate' | 'manual';
+  speakSecPerMin: number;
+  costPerMinMicro: number;
+}
+
+export interface RateSnapshotLlm {
+  modelId: string;
+  displayName: string;
+  boundModelValue?: string;
+  inputPricePerMillion: number;
+  // 输出 token 单价暂缺，只计输入；缺失时必须在快照里显式标记，不能静默当 0。
+  outputPricePerMillion: number | null;
+  outputPriceMissing: boolean;
+  inputTokensPerMin: number;
+  outputTokensPerMin: number;
+  costPerMinMicro: number;
+}
+
+// 费率快照：存的是配置参数而不只是算好的单价，任何人都能照着复算一遍。
+// 一经写入不可修改，机器人改配置、供应商调价都不影响历史通话的金额。
+export interface BotRateSnapshot {
+  snapshotId: string;
+  robotId: string;
+  robotName: string;
+  publishVersion: string;
+  language: string;
+  asr: RateSnapshotAsr;
+  tts: RateSnapshotTts;
+  llm: RateSnapshotLlm;
+  costPerMinMicro: number;
+  markupRatio: number;
+  priceListMicro: number;
+  priceGridMilli: number;
+  priceFloorMilli: number;
+  // priceMilli 是最终单价，单位「厘/分钟」：150 即 0.15 元/分钟。
+  priceMilli: number;
+  floorApplied: boolean;
+  tier: BillingTier;
+  pricingRuleVersion: string;
+  costTableVersion: string;
+  // 取整口径：按什么计费、最少算多少秒、金额怎么进位。将来改了规则，靠这三个字段
+  // 才能把老账按当时的算法复算回来。
+  roundingRuleVersion: string;
+  billableBasis: string;
+  minBillableSec: number;
+  fxUsdCny: number;
+  // 这份快照是什么时候算出来的。逐通通话记的是该通通话的开始时间。
+  computedAt: string;
+  // 配置指纹：只由配置和规则版本决定，不含时刻，同一份配置每次算都一样。
+  hash: string;
+}
+
+// 待定价：配置里用到的模型不在成本表里，返回显式状态，绝不返回 0 也绝不套默认值。
+export interface BotRatePending {
+  accuracy: 'pending';
+  missing: string[];
+  reasons: string[];
+}
+
+export interface BotRatePriced {
+  accuracy: 'priced';
+  rate: BotRateSnapshot;
+}
+
+export type BotRateResult = BotRatePriced | BotRatePending;
+
+// 每通通话的计费结果：金额、余额变化、以及当时为什么是这个价。
+export interface CallBillingRecord {
+  callId: string;
+  snapshot: BotRateSnapshot;
+  billableSec: number;
+  amountCents: number;
+  currency: string;
+  balanceBeforeCents: number;
+  balanceAfterCents: number;
+  formula: string;
+  billingStatus: BillingStatus;
+  billingReasonCode: BillingReasonCode;
+  billingReasonText: string;
+  // 算不出费率时缺的是哪一项，在计费发生的那一刻就写死进记录。
+  // 之后机器人补齐了配置也不改这里——历史记录必须保留当时的判定依据，
+  // 否则回头再看这通电话，会拿今天已经配好的机器人去解释当时的「算不出来」。
+  billingMissing?: string[];
+  ledgerEntryId: string;
+  idempotencyKey: string;
+  computedAt: string;
+}
+
+// 资金的三种来源。分开记的理由不是好看，是有效期和来源完全不同：
+// voucher 是随套餐给的映射额度，一年到期清零；cash 是客户自己掏的钱，无限期；
+// credit 是平台授信的垫付，自有资金用尽后兜底，动用即形成欠费。
+// 前两种是「账上有的钱」（形成批次），credit 是「能欠的钱」——它只在流水与分摊里
+// 作为一段来源出现，不形成批次，也不进账面余额。见 CreditLine。
+export type FundKind = 'voucher' | 'cash' | 'credit';
+
+// 充值方式，对应两类充值。auto 走代金券体系（有有效期），manual 无限期。
+export type RechargeSource = 'auto' | 'manual';
+
+// 平台授信：一段时间内允许多欠多少钱，由平台核定、客户只读。
+// 它不是一个钱包——开通授信不产生到账流水，也不让账面余额变多；
+// 只有真的透支了才形成欠费。把授信算进余额，客户会以为账上凭空多了一笔钱。
+export interface CreditLine {
+  accountId: string;
+  totalCents: number;         // 授信额度上限
+  grantedAt: string;          // 开通时间
+  expiresAt: string | null;   // 授信有效期；null = 长期有效
+  status: 'active' | 'closed';
+}
+
+// 额度批次：一笔充值到账形成的一批钱，各自记各自的剩余与有效期。
+// 余额不是一个大池子，是所有未过期批次剩余之和——这样才说得清「哪笔钱什么时候到期」。
+// 注意：批次只记自有资金（voucher / cash），授信不是批次，见 CreditLine。
+export interface FundGrant {
+  grantId: string;
+  accountId: string;
+  kind: FundKind;
+  source: RechargeSource;
+  title: string;              // 「标准套餐 A · 映射额度」「单独充值」「平台授信」
+  originalCents: number;
+  grantedAt: string;
+  expiresAt: string | null;   // 有效期至；null = 无限期
+  orderId?: string;
+}
+
+// 一笔流水落在哪个（或哪些）额度批次上：扣费是「从这些批次里扣」，充值是「充进这个批次」。
+// 扣费通常只有一段；「先扣快到期的」把一笔扣费劈到两个批次时才会有两段。
+// 不允许空数组：每笔扣费至少落在某一个批次上。
+export interface FundAllocation {
+  grantId: string;
+  amountCents: number;        // 正数，该批次被动用的金额
+}
+
+export interface LedgerEntry {
+  entryId: string;
+  accountId: string;
+  type: LedgerEntryType;
+  amountCents: number;
+  balanceAfterCents: number;
+  // 每笔流水都必须能指回一个来源对象，不得悬挂；period 指月度结算汇总。
+  refType: 'call' | 'recharge' | 'ticket' | 'period';
+  refId: string;
+  title: string;
+  occurredAt: string;
+  idempotencyKey: string;
+  // 这笔变动的是哪一类钱。账户级余额链仍是一条（不动 isLedgerChainIntact），
+  // 批次级的进出记在 allocations 里——跨批次不等于多开一条流水。
+  fundKind: FundKind;
+  // 这笔流水动的是哪个批次的钱，见 FundAllocation。充值与扣费都会带上，
+  // 资金流水页靠它答「这笔钱从哪来 / 扣的是哪一笔」。
+  allocations?: FundAllocation[];
+}
+
+// 客户买过的一个套餐批次，是余额的来源。
+export interface BillingPackage {
+  id: string;
+  name: string;
+  purchasedAt: string;
+  totalCents: number;
+  talkFeeCents: number;
+  usedCents: number;
+  expiresAt: string | null;
+  // 套餐买断的并发路数。总额 = 服务费 + 路数 × 单路映射额度。
+  concurrency: number;
+}
+
+export interface BillingUsageLine {
+  key: string;
+  label: string;
+  note: string;
+}

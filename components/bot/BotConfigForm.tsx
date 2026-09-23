@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { ArrowRight, Workflow, Bot, Plus, Trash2, History, X } from 'lucide-react';
 import { AgentTool, BotConfiguration, ExtractionConfig, MarketingCampaign, FlowConfig, FlowDefinition, FlowNodeType, ExitNodeType, SatisfactionSurvey } from '../../types';
 import { generateBotPrompt } from '../../services/geminiService';
@@ -17,6 +17,8 @@ import BotTopicManager from './BotTopicManager';
 import BotTriggerManager from './BotTriggerManager';
 import AgentOrchestrationConfig from './AgentOrchestrationConfig';
 import FlowStudio from '../flow/FlowStudio';
+import PublishRatePreview from '../billing/PublishRatePreview';
+import { computeRateForBot } from '../billing/billingEngine';
 
 interface BotConfigFormProps {
   initialData: BotConfiguration;
@@ -432,6 +434,15 @@ const BotConfigForm: React.FC<BotConfigFormProps> = ({ initialData, onSave, onCa
     return `V${major || '1'}.${Number(minor || 0) + 1}`;
   };
 
+  // 下一个版本号与它对应的费率只算一次，发布预览和发布时冻结的快照共用这一份结果。
+  // 两处各算一遍的话，将来只要有一处改了入参（比如漏了名称兜底），
+  // 客户就会看到「预览是一个价、发布后扣的是另一个价」。
+  const nextVersion = getNextVersion();
+  const nextRateResult = useMemo(
+    () => computeRateForBot({ ...config, name: config.name || '未命名机器人' }, nextVersion),
+    [config, nextVersion],
+  );
+
   // 保存草稿只更新当前配置状态，不影响已发布版本。
   const handleSaveDraft = (overrides: Partial<BotConfiguration> = {}) => {
     const draftConfig = {
@@ -447,8 +458,10 @@ const BotConfigForm: React.FC<BotConfigFormProps> = ({ initialData, onSave, onCa
   };
 
   // 发布生成不可变版本，并更新正式通话使用的已发布版本。
+  // 同时把这一刻的费率快照冻结在配置上：之后改模型、供应商调价都不影响已经打完的电话，
+  // 每通历史通话都能按它自己那份快照独立复算。
   const handlePublishVersion = () => {
-    const version = getNextVersion();
+    const version = nextVersion;
     const nextConfig = {
       ...config,
       currentVersion: version,
@@ -456,6 +469,9 @@ const BotConfigForm: React.FC<BotConfigFormProps> = ({ initialData, onSave, onCa
       onlineVersion: version,
       versionUpdatedAt: Date.now(),
       versionChangeSummary: ['提示词', '流程', '对话策略'],
+      // 算不出费率时不覆盖旧快照：上一份价格继续生效，历史通话仍按各自的快照复算，
+      // 也不会在配置里留下一个 0 元单价冒充价格。
+      billingRateSnapshot: nextRateResult.accuracy === 'priced' ? nextRateResult.rate : config.billingRateSnapshot,
     };
     setConfig(nextConfig);
     onSave(nextConfig);
@@ -635,13 +651,14 @@ const BotConfigForm: React.FC<BotConfigFormProps> = ({ initialData, onSave, onCa
       {/* Tab Panels */}
       <div className="animate-in fade-in duration-300">
         {activeTab === 'BASIC' && (
-          <BotBasicConfig 
-            config={config} 
-            updateField={updateField} 
-            isGenerating={isGenerating} 
-            handleSmartGenerate={handleSmartGenerate} 
+          <BotBasicConfig
+            config={config}
+            updateField={updateField}
+            isGenerating={isGenerating}
+            handleSmartGenerate={handleSmartGenerate}
             onSave={handleSave}
             onCancel={onCancel}
+            rateResult={nextRateResult}
           />
         )}
 
@@ -983,6 +1000,10 @@ const BotConfigForm: React.FC<BotConfigFormProps> = ({ initialData, onSave, onCa
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">版本号</label>
                 <input className="w-full h-[var(--component-field-height-md)] border border-[var(--color-semantic-border-default)] rounded-[var(--component-field-radius)] px-[var(--component-field-padding-x)] text-sm bg-[var(--state-readonly-bg)] text-[var(--state-readonly-text)]" value={getNextVersion()} readOnly />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">费用预览</label>
+                <PublishRatePreview config={config} nextVersion={nextVersion} result={nextRateResult} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">版本说明</label>

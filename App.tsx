@@ -36,6 +36,8 @@ import CallRecordManager from './components/call/CallRecordManager';
 import ToolConfigPage, { INITIAL_TOOLS } from './components/tools/ToolConfigPage';
 import { AGENT_DEMO_BOT } from './services/agentDemoBot';
 import SatisfactionSurveyManager from './components/satisfaction/SatisfactionSurveyManager';
+import BillingCenter from './components/billing/BillingCenter';
+import { getSnapshot } from './components/billing/billingData';
 import { INITIAL_SATISFACTION_SURVEYS } from './components/satisfaction/satisfactionData';
 
 // --- CONSTANTS & DEFAULTS ---
@@ -470,12 +472,21 @@ const INITIAL_EXTRACTION_CONFIGS: ExtractionConfig[] = [
 
 // --- MAIN APP COMPONENT ---
 
+// 这两台演示机器人已经在计费中心里产生过通话，配置里也该带着「上一次发布时冻结的价」。
+// 不补这一份的话，编辑页的发布预览会显示「还没有一份生效中的发布价格，本次发布后开始计费」，
+// 而计费中心里它们明明已经花掉了几百块——同一个页面体系里两个说法对不上。
+// 复制一份再挂上去，不共用计费侧那个对象，避免日后谁改了这里连带改掉演示账目。
+const publishedRateOf = (robotId: string): Pick<BotConfiguration, 'billingRateSnapshot'> => {
+  const rate = getSnapshot(robotId);
+  return rate ? { billingRateSnapshot: { ...rate, asr: { ...rate.asr }, tts: { ...rate.tts }, llm: { ...rate.llm } } } : {};
+};
+
 export default function App() {
   const [activeMenu, setActiveMenu] = useState('机器人配置');
   const [selectedCallRecordId, setSelectedCallRecordId] = useState<string | null>(null);
   const [bots, setBots] = useState<BotConfiguration[]>([
-    { ...DIDI_BOT, currentVersion: '草稿', currentVersionType: 'draft', onlineVersion: 'V1.8', versionChangeSummary: ['提示词', '流程', '对话策略'] },
-    { ...AGENT_DEMO_BOT, currentVersion: 'V2.3', currentVersionType: 'published', onlineVersion: 'V2.3', versionChangeSummary: ['提示词', '工具配置'] },
+    { ...DIDI_BOT, ...publishedRateOf('bot_didi_demo'), currentVersion: '草稿', currentVersionType: 'draft', onlineVersion: 'V1.8', versionChangeSummary: ['提示词', '流程', '对话策略'] },
+    { ...AGENT_DEMO_BOT, ...publishedRateOf('bot_agent_demo'), currentVersion: 'V2.3', currentVersionType: 'published', onlineVersion: 'V2.3', versionChangeSummary: ['提示词', '工具配置'] },
   ]); // Pre-load Didi Bot and Agent Demo Bot
   const [editingBot, setEditingBot] = useState<BotConfiguration | null>(null);
   const [versionBot, setVersionBot] = useState<BotConfiguration | null>(null);
@@ -632,6 +643,8 @@ export default function App() {
         return <CallRecordManager initialCallId={selectedCallRecordId} />;
       case '满意度调查':
         return <SatisfactionSurveyManager surveys={satisfactionSurveys} onChange={setSatisfactionSurveys} bots={bots} onOpenCallRecord={(callId) => { setSelectedCallRecordId(callId); setActiveMenu('通话记录'); }} />;
+      case '计费中心':
+        return <BillingCenter onOpenCallRecord={(callId) => { setSelectedCallRecordId(callId); setActiveMenu('通话记录'); }} />;
       case '工具配置':
         return <ToolConfigPage bots={bots} extractionConfigs={extractionConfigs} tools={toolCatalog} onToolsChange={setToolCatalog} />;
       default:

@@ -295,7 +295,29 @@ dist/docs/：与主系统一起部署的 /docs 子页面
 | `components/report/SatisfactionAnalysis.tsx` | 展示满意度分析。 |
 | `components/report/mockData.ts` | 生成报表、通话记录、历史实时监控、告警、Topic、Flow、工具转人工和订阅模拟数据。 |
 
-### 6.10 其他组件
+### 6.10 计费中心：`components/billing`
+
+| 文件 | 职责 |
+| --- | --- |
+| `components/billing/billingEngine.ts` | 计费引擎（纯函数，不依赖 React）：成本表、按配置折算成本、加成定价、金额向上取整、并发预占额度换算和金额格式化。所有钱的算式只在这里一份。 |
+| `components/billing/billingData.ts` | 计费演示数据：账户与额度批次、信用额度、充值方式与自动充值设置、预警设置与提醒档位（含到期档）、发票档案、续费与加购报价、逐通通话计费记录、资金流水、月度用量、机器人与并发档案，以及由逐通记录累加出来的月度合计、余额链校验和批次分摊派生。 |
+| `components/billing/billingUi.tsx` | 六个页签共用的界面零件与枚举中文名：面板外壳、表格单元格、状态徽章、金额与数量格式化和时间范围切换。 |
+| `components/billing/BillingCenter.tsx` | 计费中心入口，常驻概览四卡（余额 / 可用额度 / 本期消费 / 本期充值）、页面级时间范围、余额与待定价告警条和六个页签。余额告警线读客户在预警设置里定的那个数，不在页面里另算一套。 |
+| `components/billing/UsageOverview.tsx` | 页签 1 余额与额度：余额构成、充值、信用额度、额度批次明细、套餐、套餐续费与加购、预警设置、并发容量和费用怎么算。 |
+| `components/billing/RechargePanel.tsx` | 充值：充值金额与方式（含到账说明）、自动充值三件套（低于 / 充到 / 每月最多）与硬约束校验。 | 
+| `components/billing/PackageActionsPanel.tsx` | 套餐续费与加购：续费顺延主套餐到期日、加购并发自成一年、发票可开票金额与申请入口，报价全部现算。 |
+| `components/billing/FundFlow.tsx` | 页签 2 资金流水：全部 / 充值记录 / 扣费记录三个子页签，每行带期初余额与期末余额。 |
+| `components/billing/CallBillingDetail.tsx` | 页签 3 通话消费明细：按月份和计费状态筛选、排序、分页，并可展开单通通话的计价依据面板。 |
+| `components/billing/BotBillingStats.tsx` | 页签 4 消费统计：按机器人消费和按月份看消费两张表。 |
+| `components/billing/NotifyRecords.tsx` | 页签 5 通知记录：提醒规则、提醒文案预览和提醒记录（含发送结果与触发时的余额）。 |
+| `components/billing/ReportExport.tsx` | 页签 6 报表导出：导出说明、五张报表清单、字段口径和本次会话的导出记录。 |
+| `components/billing/billingReports.ts` | 五张报表的定义：字段口径、取数函数和示例取值，导出与页面复用同一份取数。 |
+| `components/billing/billingCsv.ts` | CSV 生成与下载：BOM、CRLF、公式注入防护、文件名和范围月数校验。 |
+| `components/billing/BillingBasisPanel.tsx` | 单通通话的计价依据面板，展示计费时的配置快照、逐项成本和折算过程；算不出费率时说明缺什么。 |
+| `components/billing/BotRatePreviewBar.tsx` | 机器人编辑页的只读单价条，费率由表单算好后作为 props 传入，组件自己不重算。 |
+| `components/billing/PublishRatePreview.tsx` | 机器人发布页的实时价格预览，同时显示当前生效价和本次发布后的价格。 |
+
+### 6.11 其他组件
 
 | 文件 | 职责 |
 | --- | --- |
@@ -391,3 +413,5 @@ App.tsx
 | `tests/voiceCustomerOperations.static.mjs` | 客户画像、营销活动、自动跟进和机器人营销配置的静态能力检查。 |
 | `tests/customerOperations.behavior.mjs` | 客户触达保护、活动匹配、跟进任务生成和重试策略行为检查。 |
 | `tests/customerOperations.enterpriseUi.static.mjs` | 客户运营 B 端形态的静态能力检查，包括规则画布、筛选、规则配置和能力绑定。 |
+| `tests/billingCenter.money.mjs` | 计费算术测试：把 TS 打进内存再导入，逐通复算演示数据里的每一笔金额——定价边界、余额链首尾相接、批次分摊与扣费顺序、授信垫付与欠费、到期清零幂等、CSV 转义、五张报表与页面同源。 |
+| `tests/billingCenter.static.mjs` | 计费中心的口径守卫：只有一份账、金额向上取整、未计费不显示 0 元、跳转不串号、余额两条恒等式、授信不进账面余额、提醒渠道与记录、导出与页面同源、六个页签都挂上了面板；第十四节另锁「承诺与能力必须对得上」——充值方式的可代扣标记与到账时间、自动充值的三件套与不可解除的次数上限、到期提醒四档（含只有一档可关闭）、提醒文案三句话、套餐动作入口与报价现算、页头告警线与预警设置同源。 |

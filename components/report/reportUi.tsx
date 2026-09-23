@@ -86,16 +86,21 @@ export const SortableHeader = <T extends string>({
   sort,
   onSort,
   className,
+  cellClassName,
 }: {
   label: string;
   sortKey: T;
   sort: SortState<T>;
   onSort: (key: T) => void;
   className?: string;
+  // 单元格内边距。默认 px-6 py-3 与报表类表格一致；表格自身的行内边距不是 px-6 时
+  // 从这里整个替换掉，不要用 className 传——Tailwind 按样式表顺序而不是类名顺序
+  // 决定同族工具类谁生效，className 里的 px-3 盖不住默认的 px-6。
+  cellClassName?: string;
 }) => {
   const active = sort.key === sortKey;
   return (
-    <th className={cx('px-6 py-3', className)}>
+    <th className={cx(cellClassName ?? 'px-6 py-3', className)}>
       <button
         type="button"
         onClick={() => onSort(sortKey)}

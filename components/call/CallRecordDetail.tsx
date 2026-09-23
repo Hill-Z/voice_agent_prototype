@@ -3,6 +3,9 @@ import { Play, Volume2, Download, Edit, ChevronLeft, ChevronRight, ChevronUp, Ch
 import AiReplyLogModal, { AiReplyLogData, AiReplyLogScenario } from './AiReplyLogModal';
 import { SatisfactionSurveyResult } from '../../types';
 import { INITIAL_SATISFACTION_SURVEYS, SATISFACTION_RESPONSE_RECORDS, SatisfactionResponseRecord, resolvePrimaryQuestionId, resolveSurveyQuestions } from '../satisfaction/satisfactionData';
+import BillingBasisPanel, { type RateBasisSubject } from '../billing/BillingBasisPanel';
+import { BILLING_CALL_ROWS } from '../billing/billingData';
+import { centsToYuan, formatPricePerMin } from '../billing/billingEngine';
 
 // 变量分类与「变量配置」页的四个页签一一对应，id 和顺序都保持一致；
 // 展示名统一规整为「输入变量 / 对话变量 / 提取变量 / 实体」，不带「话术」前缀。
@@ -51,7 +54,8 @@ interface CallDetail {
 const MOCK_CALL_DETAIL: CallDetail = {
   callId: '4cb67f3a-6d81-4033-bb5f-a3cf8292a2e5',
   startTime: '2026-03-20 14:29:23',
-  endTime: '2026-03-20 14:33:19',
+  // 结束时间 = 开始时间 + 3 分 49 秒，跟下面的 duration 对得上。
+  endTime: '2026-03-20 14:33:12',
   duration: '3分49秒',
   rounds: 23,
   company: '湖南壹行网络科技',
@@ -115,14 +119,18 @@ const MOCK_CALL_DETAIL: CallDetail = {
       duration: '00:04',
       url: 'ring.mp3'
     },
+    // 两段 AI 通话 116 秒 + 113 秒 = 229 秒，正好是上面的 3 分 49 秒，也是计费用的那 229 秒。
+    // 振铃那 4 秒**不算在里面**：计费从接通开始，规则里写明「振铃等待时间不计费」，
+    // 把 4 秒算进 229 秒的话，客户把三段加起来一算就会发现「说不计费、实际收了」。
+    // （之前两段各写 03:50，加起来比整通电话还长。）
     {
       type: 'AI通话',
-      duration: '03:50',
+      duration: '01:56',
       url: 'ai_call1.mp3'
     },
     {
       type: 'AI通话',
-      duration: '03:50',
+      duration: '01:53',
       url: 'ai_call2.mp3'
     }
   ],
@@ -198,8 +206,10 @@ const buildCallDetailFromSurvey = (record: SatisfactionResponseRecord): CallDeta
     dialogues,
     labels: [],
     emotionLabels: [],
+    // 这通是从满意度回答反推出来的，没有真实录音，不能编造分段：整通按一段 AI 通话呈现，
+    // 也就没有「振铃」这一段可加。硬加一段 4 秒振铃的话，段加起来会比 duration 长 4 秒，
+    // 而计费侧用的就是 duration —— 客户一加就能看出「说不计费、实际收了」。
     audioFiles: [
-      { type: '振铃音', duration: '00:04', url: 'ring.mp3' },
       { type: 'AI通话', duration: `${pad(minutes)}:${pad(seconds)}`, url: `ai_call_${record.callId.slice(0, 8)}.mp3` },
     ],
     // 调查记录里没有变量参与情况：这份通话是从满意度回答反推出来的，不是真实的变量运行轨迹。
@@ -231,6 +241,29 @@ export default function CallRecordDetail({ callId }: CallRecordDetailProps) {
   // 报表按 Call ID 跳过来，命中调查记录时展示那次调查对应的通话内容，否则回落到示例通话。
   const surveyRecord = useMemo(() => (callId ? SATISFACTION_RESPONSE_RECORDS.find(record => record.callId === callId) : undefined), [callId]);
   const callDetail = useMemo(() => (surveyRecord ? buildCallDetailFromSurvey(surveyRecord) : MOCK_CALL_DETAIL), [surveyRecord]);
+
+  // 跳转过来、但通话记录里还没录入这一通的详情时，页面会回落到示例通话。
+  // 这种时候页面上显示的时长、对话内容都来自另一通电话，计费金额当然也不对应，
+  // 所以宁可整块不显示，也不能让客户看到「一通电话配着另一通的金额」。
+  const detailMatchesRequest = !callId || callDetail.callId === callId;
+
+  // 这通电话的计费信息按 Call ID 从计费中心取，不写进通话记录本身的数据结构：
+  // 计费是独立一份账，通话记录只负责展示，两边各自演进、互不拖累。
+  // 取不到表示这通电话没有计费记录，此时整块扣费信息都不展示（与「本通没用到某类变量就不展示」同一套做法）。
+  const billingRow = useMemo(
+    () => (detailMatchesRequest ? BILLING_CALL_ROWS.find((row) => row.record.callId === callDetail.callId) : undefined),
+    [detailMatchesRequest, callDetail.callId],
+  );
+  const [isBillingBasisOpen, setIsBillingBasisOpen] = useState(false);
+  const billingSubject = useMemo<RateBasisSubject | null>(() => {
+    if (!billingRow) return null;
+    return {
+      snapshot: billingRow.record.snapshot,
+      title: billingRow.robotName,
+      subtitle: `${billingRow.startedAt} · 通话记录`,
+      call: billingRow.record,
+    };
+  }, [billingRow]);
 
   // 满意度区块优先用调查记录渲染：记录里带着逐题聚合分类、原因追溯和完成进度。
   const satisfactionView = useMemo<SatisfactionView | undefined>(() => {
@@ -502,6 +535,50 @@ export default function CallRecordDetail({ callId }: CallRecordDetailProps) {
                   <span className="text-sm text-slate-600">对话轮次:</span>
                   <span className="text-sm font-bold text-blue-600">{callDetail.rounds}轮</span>
                 </div>
+                {/* 详情页回落到示例通话时，把「为什么没有金额」说清楚，而不是默默少一行。 */}
+                {!detailMatchesRequest && (
+                  <p className="rounded-md bg-slate-50 px-2.5 py-2 text-xs leading-5 text-slate-500">
+                    这通电话的详情还没录入通话记录，页面内容是示例通话。费用与它不对应，这里不显示金额。
+                  </p>
+                )}
+                {/* 扣费信息只在有计费记录时展示，并给出「为什么是这个价」的入口。 */}
+                {billingRow && (
+                  <>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-slate-600">本通费用:</span>
+                      {/* 三种状态三种写法，用词与颜色都跟计费中心明细表一致：
+                          「未接通不计费」而不是「不收费」——「不收费」看起来像一个金额，
+                          而且没说清是「这通不该收」还是「这通被免了」。
+                          待定价用琥珀色、未接通用灰色，蓝色全站都表示「正常的一个金额」。 */}
+                      <span className={`text-sm font-bold ${
+                        billingRow.record.billingStatus === 'billed'
+                          ? 'text-blue-600'
+                          : billingRow.record.billingStatus === 'pending' ? 'text-amber-600' : 'text-slate-500'
+                      }`}>
+                        {billingRow.record.billingStatus === 'billed'
+                          ? `¥${centsToYuan(billingRow.record.amountCents).toFixed(2)}`
+                          : billingRow.record.billingStatus === 'pending' ? '待定价' : '未接通不计费'}
+                      </span>
+                    </div>
+                    {/* 费率只对真的扣了钱的通话显示。没计费的通话里快照是占位值（单价 0），
+                        照常渲染会写出「0.00 元/分钟」——和上面的「未接通不计费」自相矛盾。 */}
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-slate-600">适用费率:</span>
+                      <span className="text-sm text-slate-700">
+                        {billingRow.record.billingStatus === 'billed'
+                          ? formatPricePerMin(billingRow.record.snapshot.priceMilli)
+                          : '—'}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsBillingBasisOpen(true)}
+                      className="w-full rounded-md border border-slate-200 px-2 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
+                    >
+                      查看计费依据
+                    </button>
+                  </>
+                )}
               </div>
             </div>
 
@@ -754,6 +831,7 @@ export default function CallRecordDetail({ callId }: CallRecordDetailProps) {
         </div>
       </div>
       <AiReplyLogModal log={selectedAiLog} onClose={() => setSelectedAiLog(null)} />
+      {isBillingBasisOpen && <BillingBasisPanel subject={billingSubject} onClose={() => setIsBillingBasisOpen(false)} />}
     </div>
   );
 }
