@@ -4,10 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { ChevronRight, ExternalLink } from 'lucide-react';
 import {
   BILLING_CALL_ROWS,
-  BILLING_MONTHS,
   BILLING_ROBOT_PROFILES,
-  CURRENT_MONTH,
-  monthLabelLong,
   type BillingCallRow,
 } from './billingData';
 import { formatPricePerMin, milliToYuan, TIER_LABEL } from './billingEngine';
@@ -41,6 +38,8 @@ const INPUT = 'h-9 w-52 rounded-md border border-slate-200 bg-white px-2.5 text-
 const TH_CELL = 'whitespace-nowrap px-3 py-2 text-left text-xs font-semibold text-slate-500';
 
 interface Props {
+  from: string;
+  to: string;
   onOpenBasis: (subject: RateBasisSubject) => void;
   onOpenCallRecord: (callId: string) => void;
 }
@@ -52,10 +51,7 @@ const DEFAULT_SORT: SortState<SortKey> = { key: 'startedAt', direction: 'desc' }
 // 但它留下的通话记录仍然在这里，所以行上要标出来它已经不在了。
 const deletedRobotIds = new Set(BILLING_ROBOT_PROFILES.filter((item) => item.state === 'deleted').map((item) => item.id));
 
-const CallBillingDetail: React.FC<Props> = ({ onOpenBasis, onOpenCallRecord }) => {
-  // 默认看本月：客户打开计费中心最先想知道的就是「这个月花了多少」，
-  // 而且默认落在一个能对上「本月消费」那张卡的月份上，同一屏两个数字永远相等。
-  const [month, setMonth] = useState<string>(CURRENT_MONTH);
+const CallBillingDetail: React.FC<Props> = ({ from, to, onOpenBasis, onOpenCallRecord }) => {
   const [robotId, setRobotId] = useState<string>('all');
   const [status, setStatus] = useState<StatusFilter>('all');
   const [direction, setDirection] = useState<DirectionFilter>('all');
@@ -70,7 +66,8 @@ const CallBillingDetail: React.FC<Props> = ({ onOpenBasis, onOpenCallRecord }) =
     // 号码按「只留数字」比对：客户输 1334 或 176****1334 都能命中 176****1334 这一行。
     const phoneNeedle = digitsOnly(needle);
     const rows = BILLING_CALL_ROWS.filter((row) => {
-      if (month !== 'all' && row.month !== month) return false;
+      const day = row.startedAt.slice(0, 10);
+      if (day < from || day > to) return false;
       if (robotId !== 'all' && row.robotId !== robotId) return false;
       if (status !== 'all' && row.record.billingStatus !== status) return false;
       if (direction !== 'all' && row.direction !== direction) return false;
@@ -93,7 +90,7 @@ const CallBillingDetail: React.FC<Props> = ({ onOpenBasis, onOpenCallRecord }) =
       if (typeof av === 'string' && typeof bv === 'string') return av.localeCompare(bv) * dir;
       return ((av as number) - (bv as number)) * dir;
     });
-  }, [month, robotId, status, direction, tier, keyword, sort]);
+  }, [from, to, robotId, status, direction, tier, keyword, sort]);
 
   // 合计只累加已计费的钱；未计入的通话单独报数，避免「合计」看起来少算了却说不清。
   const billedCents = filtered.filter((row) => row.record.billingStatus === 'billed').reduce((sum, row) => sum + row.record.amountCents, 0);
@@ -131,7 +128,6 @@ const CallBillingDetail: React.FC<Props> = ({ onOpenBasis, onOpenCallRecord }) =
   };
 
   const clearFilters = () => {
-    setMonth('all');
     setRobotId('all');
     setStatus('all');
     setDirection('all');
@@ -141,21 +137,12 @@ const CallBillingDetail: React.FC<Props> = ({ onOpenBasis, onOpenCallRecord }) =
   };
 
   const hasFilter =
-    month !== 'all' || robotId !== 'all' || status !== 'all' ||
+    robotId !== 'all' || status !== 'all' ||
     direction !== 'all' || tier !== 'all' || keyword.trim() !== '';
 
   return (
     <div className="rounded-lg border border-slate-200 bg-white">
       <div className="flex flex-wrap items-end gap-3 border-b border-slate-200 px-5 py-4">
-        <label className="flex flex-col gap-1">
-          <span className="text-xs text-slate-500">月份</span>
-          <select className={SELECT} value={month} onChange={(event) => changeFilter(setMonth)(event.target.value)}>
-            <option value="all">全部月份</option>
-            {[...BILLING_MONTHS].reverse().map((item) => (
-              <option key={item} value={item}>{monthLabelLong(item)}</option>
-            ))}
-          </select>
-        </label>
         <label className="flex flex-col gap-1">
           <span className="text-xs text-slate-500">机器人</span>
           <select className={SELECT} value={robotId} onChange={(event) => changeFilter(setRobotId)(event.target.value)}>
@@ -214,7 +201,7 @@ const CallBillingDetail: React.FC<Props> = ({ onOpenBasis, onOpenCallRecord }) =
       {filtered.length === 0 ? (
         <EmptyTableState
           title="没有符合条件的通话"
-          desc="换一个月份、机器人、通话类型或计费状态试试。"
+          desc="调整页首时间范围或这里的筛选条件试试。"
           action={
             hasFilter ? (
               <button type="button" onClick={clearFilters} className="rounded-md border border-slate-200 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50">

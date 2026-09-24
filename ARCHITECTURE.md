@@ -302,13 +302,13 @@ dist/docs/：与主系统一起部署的 /docs 子页面
 | `components/billing/billingEngine.ts` | 计费引擎（纯函数，不依赖 React）：成本表、按配置折算成本、加成定价、金额向上取整、并发预占额度换算和金额格式化。所有钱的算式只在这里一份。 |
 | `components/billing/billingData.ts` | 计费演示数据：账户与额度批次、信用额度、充值方式与自动充值设置、预警设置与提醒档位（含到期档）、发票档案、续费与加购报价、逐通通话计费记录、资金流水、月度用量、机器人与并发档案，以及由逐通记录累加出来的月度合计、余额链校验和批次分摊派生。 |
 | `components/billing/billingUi.tsx` | 六个页签共用的界面零件与枚举中文名：面板外壳、表格单元格、状态徽章、金额与数量格式化和时间范围切换。 |
-| `components/billing/BillingCenter.tsx` | 计费中心入口，常驻概览四卡（余额 / 可用额度 / 本期消费 / 本期充值）、页面级时间范围、余额与待定价告警条和六个页签。余额告警线读客户在预警设置里定的那个数，不在页面里另算一套。 |
-| `components/billing/UsageOverview.tsx` | 页签 1 余额与额度：余额构成、充值、信用额度、额度批次明细、套餐、套餐续费与加购、预警设置、并发容量和费用怎么算。 |
-| `components/billing/RechargePanel.tsx` | 充值：充值金额与方式（含到账说明）、自动充值三件套（低于 / 充到 / 每月最多）与硬约束校验。 | 
-| `components/billing/PackageActionsPanel.tsx` | 套餐续费与加购：续费顺延主套餐到期日、加购并发自成一年、发票可开票金额与申请入口，报价全部现算。 |
-| `components/billing/FundFlow.tsx` | 页签 2 资金流水：全部 / 充值记录 / 扣费记录三个子页签，每行带期初余额与期末余额。 |
-| `components/billing/CallBillingDetail.tsx` | 页签 3 通话消费明细：按月份和计费状态筛选、排序、分页，并可展开单通通话的计价依据面板。 |
-| `components/billing/BotBillingStats.tsx` | 页签 4 消费统计：按机器人消费和按月份看消费两张表。 |
+| `components/billing/BillingCenter.tsx` | 计费中心入口：页首并列显示余额、按批次计算的当前可用并发和所选时间消费；统一的消费与流水时间范围传给明细、统计、流水和导出。余额告警线沿用客户设置值。 |
+| `components/billing/UsageOverview.tsx` | 账户、套餐和提醒页面：额度到期明细、授信、分页的套餐购买记录、并发容量、续费与加购、预警设置；不展示充值入口。 |
+| `components/billing/RechargePanel.tsx` | 旧版充值交互原型，当前不挂载到计费中心页面。 |
+| `components/billing/PackageActionsPanel.tsx` | 套餐续费与加购：续费时先选购买批次，按该笔的路数和到期日顺延；加购自成独立一年；报价现算。 |
+| `components/billing/FundFlow.tsx` | 资金流水：全部 / 额度到账 / 扣费记录三个子页签，每行带期初余额与期末余额。 |
+| `components/billing/CallBillingDetail.tsx` | 逐通消费明细：使用页首起止日期，并支持机器人、状态等筛选、排序、分页与单通计价依据。 |
+| `components/billing/BotBillingStats.tsx` | 消费统计：按页首起止日期从逐通记录聚合机器人和月份两张表，自定义日期也与页首金额一致。 |
 | `components/billing/NotifyRecords.tsx` | 页签 5 通知记录：提醒规则、提醒文案预览和提醒记录（含发送结果与触发时的余额）。 |
 | `components/billing/ReportExport.tsx` | 页签 6 报表导出：导出说明、五张报表清单、字段口径和本次会话的导出记录。 |
 | `components/billing/billingReports.ts` | 五张报表的定义：字段口径、取数函数和示例取值，导出与页面复用同一份取数。 |

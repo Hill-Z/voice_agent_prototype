@@ -168,9 +168,21 @@ assert(
   data.MONTHLY_USAGE.reduce((sum, item) => sum + item.amountCents, 0) === data.TOTAL_SPENT_CENTS,
   '按机器人的合计与账户已用话费对不上',
 );
-// 6 路并发的套餐：6 万元总额里映射额度 6 × 7500 = 4.5 万元，另 1.5 万元是平台与并发服务费。
-assert(data.TALK_FEE_TOTAL_CENTS === 4500000, '6 路套餐的映射额度应为 4.5 万元');
-assert(data.PACKAGE_TOTAL_CENTS === 6000000, '6 路套餐总额应为 6 万元');
+// 3 月 6 路、4 月增购 1 路：共 7 路，额度与有效期仍按两笔批次独立记录。
+assert(data.PURCHASED_CONCURRENCY === 7, '两笔购买合计应为 7 路');
+assert(data.BILLING_PACKAGES.length === 2, '3 月与 4 月的并发必须分批保存');
+assert(data.BILLING_PACKAGES[0].concurrency === 6 && data.BILLING_PACKAGES[0].expiresAt === '2027-03-01', '3 月批次应为 6 路且独立到期');
+assert(data.BILLING_PACKAGES[1].concurrency === 1 && data.BILLING_PACKAGES[1].expiresAt === '2027-04-01', '4 月批次应为 1 路且独立到期');
+assert(data.BILLING_PACKAGES.reduce((sum, item) => sum + item.concurrency, 0) === data.PURCHASED_CONCURRENCY, '批次路数与汇总不一致');
+assert(data.activeConcurrencyAt('2026-03-15') === 6, '4 月加购前，可用并发应为 6 路');
+assert(data.activeConcurrencyAt('2026-04-15') === 7, '4 月加购后，可用并发应为 7 路');
+assert(data.activeConcurrencyAt('2027-03-01') === 1, '3 月批次到期后，4 月批次的 1 路仍可用');
+assert(data.activeConcurrencyAt('2027-04-01') === 0, '两笔批次都到期后，可用并发应为 0');
+assert(data.ACTIVE_CONCURRENCY === 7, '当前页首可用并发应为 7 路');
+assert(data.renewalQuote('pkg_202603').expiresAt === '2028-03-01', '3 月套餐续费应保留完整年月日');
+assert(data.renewalQuote('pkg_202604').expiresAt === '2028-04-01', '4 月增购续费应按自己的到期日顺延');
+assert(data.TALK_FEE_TOTAL_CENTS === 5250000, '7 路套餐的通话额度应为 5.25 万元');
+assert(data.PACKAGE_TOTAL_CENTS === 7000000, '7 路套餐总额应为 7 万元');
 assert(
   data.TALK_FEE_TOTAL_CENTS === data.PURCHASED_CONCURRENCY * data.GRANT_CENTS_PER_CONCURRENCY,
   '映射额度必须是「路数 × 单路额度」算出来的，不能是一个和前两者无关的孤立数字',
@@ -184,16 +196,16 @@ assert(
   '映射额度 + 平台服务费 = 套餐总额，这条恒等式不成立，客户会以为套餐金额少了',
 );
 assert(data.TALK_FEE_TOTAL_CENTS - data.TOTAL_SPENT_CENTS === data.REMAINING_TALK_FEE_CENTS, '剩余额度 = 已购 − 已用，这条恒等式不成立');
-assert(data.REMAINING_TALK_FEE_CENTS === 4268974, '余额应为 42,689.74 元');
+assert(data.REMAINING_TALK_FEE_CENTS === 5018974, '余额应为 50,189.74 元');
 assert(data.USED_CALLS === data.BILLING_CALL_ROWS.length, '累计通数与明细行数对不上');
 
 // —— 9. 折算分钟数只能由金额和最低价推出 ——
 // 折算出来的分钟数是小数（2,310.26 ÷ 0.15 = 15,401.73…），页面上取整显示。
 // 所以这里既断言「显示出来的整数」，也断言「整数背后的原始值由金额现推」——
 // 只断言前者的话，把分母写死成 15,402 也能过。
-assert(data.PURCHASED_MINUTES_AT_BASE_RATE === 300000, '4.5 万元按 0.15 元/分钟应折算 30 万分钟');
+assert(data.PURCHASED_MINUTES_AT_BASE_RATE === 350000, '5.25 万元按 0.15 元/分钟应折算 35 万分钟');
 assert(Math.round(data.USED_MINUTES_AT_BASE_RATE) === 15402, '已用 2,310.26 元按 0.15 元/分钟应显示 15,402 分钟');
-assert(Math.round(data.REMAINING_MINUTES_AT_BASE_RATE) === 284598, '余额 42,689.74 元按 0.15 元/分钟应显示 284,598 分钟');
+assert(Math.round(data.REMAINING_MINUTES_AT_BASE_RATE) === 334598, '余额 50,189.74 元按 0.15 元/分钟应显示 334,598 分钟');
 const expectMinutes = (cents) => (cents / 100) / (data.BASE_RATE_MILLI / 1000);
 const close = (a, b) => Math.abs(a - b) < 1e-9;
 assert(close(data.USED_MINUTES_AT_BASE_RATE, expectMinutes(data.TOTAL_SPENT_CENTS)), '已用分钟数必须由已用话费按最低价现推');

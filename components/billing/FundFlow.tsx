@@ -14,6 +14,7 @@ import {
   GRANT_STATUS_LABEL,
   GRANT_STATUS_TONE,
   LEDGER_TYPE_LABEL,
+  Note,
   Panel,
   RECHARGE_SOURCE_LABEL,
   TD,
@@ -37,7 +38,7 @@ type FlowTabKey = 'all' | 'recharge' | 'call_charge';
 
 const FLOW_TABS: { key: FlowTabKey; label: string; desc: string }[] = [
   { key: 'all', label: '全部', desc: '这段时间里所有动过余额的流水，含通话前预占与预占释放。' },
-  { key: 'recharge', label: '充值记录', desc: '钱进来的记录。系统自动充值的额度有有效期，单独充值的没有。' },
+  { key: 'recharge', label: '额度到账', desc: '套餐购买形成的额度逐笔到账，并按各自有效期管理。' },
   { key: 'call_charge', label: '扣费记录', desc: '每一通电话实际扣掉的钱，以及从哪一笔额度里扣的。' },
 ];
 
@@ -131,7 +132,7 @@ const FundFlow: React.FC<Props> = ({ from, to }) => {
                   <TH>流水号</TH>
                   {tab === 'all' && <TH>类型</TH>}
                   {tab === 'all' && <TH>说明</TH>}
-                  {tab === 'recharge' && <TH>充值方式</TH>}
+                  {tab === 'recharge' && <TH>到账来源</TH>}
                   {tab === 'recharge' && <TH>到账金额</TH>}
                   {tab === 'recharge' && <TH>资金形式</TH>}
                   {tab === 'recharge' && <TH>有效期至</TH>}
@@ -209,13 +210,13 @@ const FundFlow: React.FC<Props> = ({ from, to }) => {
         </>
       )}
 
-      <p className="mt-3 rounded bg-slate-50 p-3 text-xs leading-5 text-slate-600">
+      <Note>
         两条读法：一、每一笔的「期初余额」就是上一笔的「期末余额」，中间不会跳；
         二、余额只在账户这一层，不分摊到机器人头上，所以每一笔扣费都从同一个余额里出。
         {tab === 'all' && '「通话前预占」与「预占释放」是通话开始前先占住 5 分钟额度、通话结束按实际费用结算后把多占的退回；两者一进一出金额相抵，不是两笔收费。'}
         {tab === 'call_charge' && '扣费金额是这通电话实际扣掉的钱；「扣减来源」写的是这笔钱从哪一个额度批次里扣的，跨批次时会标明含几个批次。'}
-        {tab === 'recharge' && '「资金形式」指这笔钱的性质：系统自动充值进来的是代金券额度，有有效期、到期没用完会清零；单独充值的钱没有有效期。'}
-      </p>
+        {tab === 'recharge' && '「资金形式」说明这笔额度是否有有效期。每笔套餐额度独立到期，未用完的部分到期清零。'}
+      </Note>
     </Panel>
   );
 };

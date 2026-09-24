@@ -116,13 +116,12 @@ if (ledgerTypes.some((t) => t.includes('settle'))) {
   throw new Error(`流水里出现结算类条目（${ledgerTypes.filter((t) => t.includes('settle')).join(',')}）—— 每通通话只应有一条扣费记录`);
 }
 
-// 演示口径的算术锚点：客户买的是 6 路 1 年，6 万元套餐里映射额度 6 × 7500 = 45000 元
-// （4500000 分），按 0.15 元/分钟正好 30 万分钟；剩下 15000 元是平台与并发服务费，不进余额。
+// 演示口径：3 月 6 路、4 月增购 1 路，两批合计 7 路、7 万元，额度 5.25 万元。
 //
 // 这三个数必须由「路数」推出来，不能各自写死：客户加买 1 路时只改路数，
 // 额度与套餐总额要跟着走。写死了就成了三个互不相干的数字，改一个漏两个。
 const concurrency = constant(data, 'PURCHASED_CONCURRENCY');
-if (concurrency !== 6) throw new Error(`已购并发应为 6 路，实际 ${concurrency}`);
+if (concurrency !== 7) throw new Error(`已购并发应为 7 路，实际 ${concurrency}`);
 const perConcurrencyPrice = constant(data, 'PACKAGE_PRICE_PER_CONCURRENCY_CENTS');
 if (perConcurrencyPrice !== 1000000) throw new Error(`单路并发 1 年的套餐价应为 1000000 分（1 万元），实际 ${perConcurrencyPrice}`);
 const perConcurrencyGrant = constant(data, 'GRANT_CENTS_PER_CONCURRENCY');
@@ -136,8 +135,8 @@ if (constant(data, 'PACKAGE_TOTAL_CENTS') !== concurrency * perConcurrencyPrice)
 }
 // 折算分钟数只在编辑页的单价条上用，且必须写明是按最低档估的。
 const purchasedMinutes = talkFeeCents / 100 / (PRICE_FLOOR_MILLI / 1000);
-if (purchasedMinutes !== 300000) {
-  throw new Error(`45000 元按 ${PRICE_FLOOR_MILLI / 1000} 元/分钟应折出 300000 分钟，实际 ${purchasedMinutes} —— 单价或套餐金额被改过，对外话术要一起改`);
+if (purchasedMinutes !== 350000) {
+  throw new Error(`52500 元按 ${PRICE_FLOOR_MILLI / 1000} 元/分钟应折出 350000 分钟，实际 ${purchasedMinutes} —— 单价或套餐金额被改过，对外话术要一起改`);
 }
 
 // ---------------- 四、没计费的通话不能显示成 0 元 ----------------
@@ -161,9 +160,16 @@ if (!/pending:\s*pendingReasons\.length/.test(detail)) throw new Error('「算�
 if (!basis.includes('算不出费率')) throw new Error('依据面板缺少「算不出费率」的说明文案');
 if (!basis.includes('自动补扣')) throw new Error('依据面板的「算不出费率」里要说明会补扣，否则客户以为这通永远不收费');
 
-// 明细表默认停在本月：客户打开计费中心最先想知道的是「这个月花了多少」，
-// 而本月也是「本月消费」那张卡能立刻对上的口径。
-if (!/useState<string>\(CURRENT_MONTH\)/.test(detail)) throw new Error('明细表默认月份应为本月');
+// 明细与统计不再各设一套月份，统一接页首的起止日期。
+if (!/const CallBillingDetail: React\.FC<Props> = \(\{ from, to,/.test(detail) || !/row\.startedAt\.slice\(0, 10\)/.test(detail)) {
+  throw new Error('逐通明细没有使用页首时间范围');
+}
+if (!/const BotBillingStats: React\.FC<Props> = \(\{ from, to \}\)/.test(stats) || !/usageInRange\(/.test(stats)) {
+  throw new Error('机器人和月份统计没有使用页首时间范围');
+}
+if (!/from=\{from\}[\s\S]*?to=\{to\}[\s\S]*?<BotBillingStats from=\{from\} to=\{to\}/.test(center)) {
+  throw new Error('消费两个视图没有收到同一个时间范围');
+}
 
 // ---------------- 五、跳转不串号 ----------------
 
@@ -213,9 +219,12 @@ if (!/grantsByConsumeOrder\(\)/.test(overview) || !/sortedGrants\.map\(/.test(ov
 // 页面自己再排一遍、再分一遍，两处迟早给出不同的「先扣哪笔」。
 if (!data.includes('compareGrants')) throw new Error('数据层缺少批次顺序的排序规则，页面会各自排各自的');
 if (!data.includes('allocateAcrossGrants')) throw new Error('数据层缺少按批次分摊扣费的实现');
-// 已购并发和已分配并发必须同时出现：只说「已分配 5 路」，客户不知道自己买了 6 路。
-if (!overview.includes('PURCHASED_CONCURRENCY') || !overview.includes('ALLOCATED_CONCURRENCY')) {
+// 当前有效并发必须由购买批次与有效期计算，不能直接把历史已购数量写在页面上。
+if (!overview.includes('ACTIVE_CONCURRENCY') || !overview.includes('ALLOCATED_CONCURRENCY') || !overview.includes('BILLING_PACKAGES.map')) {
   throw new Error('并发这张表要同时给出「已购」和「已分配」，否则看不出还能再分配几路');
+}
+if (!center.includes('ACTIVE_CONCURRENCY') || !center.includes('当前可用并发')) {
+  throw new Error('当前可用并发没有与余额一起显示在计费中心页首');
 }
 
 // 今日 / 昨日 / 最近 7 天必须真的是三份数据，不能只是一个点了没反应的开关。
@@ -331,12 +340,13 @@ for (const [name, source] of [['用量与余额', overview], ['通话消费明�
   }
 }
 
-// 本月的环比必须跟上月同期比。本月才过到一半就去比上月整月，会得出「消费下降三成」的假结论，
-// 而账单其实一分没少。页面必须同时给出上月同期和上月整月两个数。
-if (!stats.includes('monthSpentCentsThrough')) {
-  throw new Error('消费统计没有用「上月同期」做环比，会拿半个月的账去比一整个月');
+// 自定义日期也须从逐通记录聚合，不能用整月数据冒充所选时间的消费。
+if (!stats.includes('BILLING_CALL_ROWS.filter') || !stats.includes('usageInRange(from')) {
+  throw new Error('消费统计没有按页首日期从逐通记录汇总');
 }
-if (!stats.includes('PREVIOUS_MONTH')) throw new Error('消费统计应同时给出上月整月的数，否则客户没法自己核对');
+if (stats.includes('最近 3 个月') || detail.includes('全部月份')) {
+  throw new Error('消费页又出现了第二套时间范围');
+}
 
 // 明细表的合计与筛选范围必须自洽：合计只算已计费的通话，未计入的要单独报数。
 if (!/已计费 \{[\s\S]{0,60}?\} 通合计/.test(detail)) throw new Error('明细表合计没有说明「只算已计费的通话」');
@@ -381,7 +391,7 @@ if (!rateBar.includes('BILLING_PACKAGES')) {
 
 // 充值记录、扣费记录、报表都得有——这三样是客户对账的入口，缺一样就没法自己核对。
 // 这一页必须是同一本账的两种视角（子页签），不能各写一套数据源。
-for (const label of ['充值记录', '扣费记录']) {
+for (const label of ['额度到账', '扣费记录']) {
   if (!flow.includes(label)) throw new Error(`资金流水页缺少「${label}」，客户无法逐笔核对`);
 }
 if (!/fundFlowInRange\(/.test(flow)) throw new Error('资金流水页没有走数据层的 fundFlowInRange，会另起一套取数逻辑');
@@ -482,7 +492,7 @@ if (!/\{账户名\}|\{账面余额\}|\{预警值\}/.test(data)) {
   throw new Error('提醒文案里没有占位符，实际发的短信会带着一份写死的演示余额');
 }
 // 提醒只是为了通知，不能顺手替客户充钱——那是一个没有授权的扣款动作。
-if (!/不会自动充值/.test(notify)) throw new Error('通知记录页没有说明提醒不会自动充值，客户会以为平台会替他扣款');
+if (!/不会自动增加额度/.test(notify)) throw new Error('通知记录页没有说明提醒不会自动增加额度');
 
 // 13.3 报表导出：五张报表、字段口径、每一列都从同一份数据来。
 for (const id of ['recharge', 'call_charge', 'calls', 'stats', 'notify']) {
@@ -493,7 +503,7 @@ if (!/REPORT_DEFINITIONS\.map\(/.test(exportPage)) {
   throw new Error('报表导出页没有遍历报表定义，页面上的报表与数据层会各有一份清单');
 }
 // 每一列是什么、怎么算的，必须写在客户看得见的地方——对不上账时他得能自己查。
-for (const column of ['单位', '这是什么', '口径说明', '表头']) {
+for (const column of ['单位', '含义', '计算口径', '表头']) {
   if (!exportPage.includes(column) && !reports.includes(column)) {
     throw new Error(`报表缺少「${column}」这一项，客户对不上账时查不到口径`);
   }
@@ -527,12 +537,15 @@ if (!/from: string;\s*\n\s*to: string;/.test(exportPage) || !/<ReportExport from
   throw new Error('报表导出页的范围不是从页面顶部传下来的，会出现两个各说各话的时间范围');
 }
 
-// 13.4 六个页签必须都能真的打开。加了页签却没挂面板，点进去是一片空白。
-for (const [label, component] of [['余额与额度', 'UsageOverview'], ['资金流水', 'FundFlow'], ['通话消费明细', 'CallBillingDetail'], ['消费统计', 'BotBillingStats'], ['通知记录', 'NotifyRecords'], ['报表导出', 'ReportExport']]) {
-  if (!center.includes(label)) throw new Error(`计费中心缺少「${label}」页签，客户点不到这一块`);
+// 13.4 主导航按客户的查账路径组织；详情、统计和提醒记录从对应页面切换。
+for (const [label, component] of [['账户', 'UsageOverview'], ['套餐', 'UsageOverview'], ['消费', 'CallBillingDetail'], ['流水', 'FundFlow'], ['提醒', 'NotifyRecords'], ['下载', 'ReportExport']]) {
+  if (!center.includes(label)) throw new Error(`计费中心缺少「${label}」入口，客户点不到这一块`);
   if (!new RegExp(`<${component}\\b`).test(center)) {
-    throw new Error(`「${label}」页签没有挂上面板（${component}），点进去是一片空白`);
+    throw new Error(`「${label}」入口没有挂上面板（${component}）`);
   }
+}
+if (!center.includes('逐通明细') || !center.includes('按机器人和月份统计') || !center.includes('发送记录')) {
+  throw new Error('消费或提醒页面缺少子视图，客户无法按用途切换');
 }
 
 // ---------------- 十四、客户动作入口与到期提醒（第八轮新增） ----------------
@@ -629,7 +642,7 @@ const template = data.slice(data.indexOf('export const NOTIFY_TEMPLATE'), data.i
 for (const [channel, body] of [['邮件', 'emailBody'], ['短信', 'smsBody']]) {
   const matched = template.match(new RegExp(`${body}:[\\s\\S]*?\\n  (?:[a-zA-Z]+):`));
   const text = matched ? matched[0] : '';
-  if (!/不会自动(为你)?充值/.test(text)) throw new Error(`${channel}提醒里没有「不会自动充值」——客户会以为提醒等同于会自动充上`);
+  if (!/不会自动增加额度/.test(text)) throw new Error(`${channel}提醒里没有「不会自动增加额度」`);
   if (!/不(会)?中断/.test(text)) throw new Error(`${channel}提醒里没有「不会中断通话」——客户会以为收到提醒就是服务要停了`);
   if (!/会被拦住|被拦/.test(text)) throw new Error(`${channel}提醒里没有「余额用尽后新通话会被拦住」——只报余额不说后果，客户到那天会认为平台骗了他`);
 }
@@ -648,21 +661,21 @@ if (!/daysLeft !== undefined/.test(notify)) {
   throw new Error('提醒记录页没有渲染到期档的天数，记了却看不到');
 }
 
-// 14.5 文案承诺了充值，页面上就必须真的有充值入口；承诺了续费与加购，就得有对应的动作。
-// Synthflow 犯过同样的错：报错文案写 "Please top up"，而公开文档里没有任何自助充值入口。
+// 14.5 面客页面不再提供充值入口；套餐续费与加购仍保留。
+if (/RechargePanel|立即充值|自动充值/.test(overview)) throw new Error('账户页仍在显示充值入口');
+if (/请及时充值/.test(center) || /请及时充值/.test(notify)) throw new Error('提醒仍引导客户使用已移除的充值入口');
 for (const [component, pattern, why] of [
-  ['UsageOverview', /RechargePanel/, '余额与额度页没有挂充值面板，提醒文案承诺的充值无处可去'],
   ['UsageOverview', /PackageActionsPanel/, '余额与额度页没有挂续费与加购面板'],
-  ['UsageOverview', /setOpen|useState/, '充值面板没有可展开的状态，默认全展开会占满一屏'],
 ]) {
   if (!new RegExp(pattern).test(overview)) throw new Error(why + `（${component}）`);
 }
-if (!/立即充值/.test(recharge)) throw new Error('充值面板上没有「立即充值」入口');
-if (!/自动充值/.test(recharge)) throw new Error('充值面板上没有自动充值的开关');
+if (!/ReportTablePagination/.test(overview) || !/paginateRows\(purchaseEntries, purchasePage, purchasePageSize\)/.test(overview)) {
+  throw new Error('套餐购买记录没有分页');
+}
 
 // 14.6 报价必须现算，不能把数字写死在页面里——写死那天改了套餐，页面说的还是旧价。
 for (const [pattern, why] of [
-  [/renewalQuote\(\)/, '续费报价不是现算的'],
+  [/renewalQuote\(renewalPackageId\)/, '续费报价没有按所选购买批次计算'],
   [/concurrencyQuote\(/, '加购报价不是现算的'],
   [/invoiceableCents\(\)/, '可开票金额不是从已支付减已开票算出来的'],
 ]) {
@@ -674,7 +687,7 @@ if (/20[2-9]\d-/.test(codeOnly(packageActions))) {
   throw new Error('套餐动作页写死了某个年份的到期日，套餐一改就会与真实到期日对不上');
 }
 // 两类额度的到期日各算各的，这一句必须写出来，否则客户会以为加购的额度跟着套餐一起到期。
-if (!/各算各的/.test(packageActions)) {
+if (!/独立的有效期/.test(packageActions)) {
   throw new Error('没有说明「续费顺延主套餐、加购自到账起另算一年」，客户的到期预期会错');
 }
 

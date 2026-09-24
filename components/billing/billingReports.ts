@@ -60,9 +60,9 @@ export interface ReportDefinition {
 const RECHARGE_FIELDS: ReportField[] = [
   { name: '时间', unit: '—', meaning: '这笔钱到账的时刻', note: '按到账时刻归属，不按订单创建时刻' },
   { name: '流水号', unit: '—', meaning: '这笔到账在账户流水里的编号', note: '唯一的，可用它对上资金流水页的同一行' },
-  { name: '充值方式', unit: '—', meaning: '系统自动充值 / 单独充值', note: '系统自动充值走代金券体系，有有效期；单独充值无限期' },
+  { name: '到账来源', unit: '—', meaning: '套餐购买 / 其他入账', note: '套餐通话额度按购买批次分别到期' },
   { name: '到账金额', unit: '元', meaning: '这一笔实际到账的金额', note: '不含平台与并发服务费，那部分不进余额' },
-  { name: '资金形式', unit: '—', meaning: '这笔钱的性质（代金券额度 / 单独充值 / 平台授信）', note: '决定它有没有有效期' },
+  { name: '资金形式', unit: '—', meaning: '这笔额度的性质（套餐通话额度 / 独立到账余额 / 平台授信）', note: '决定它有没有有效期' },
   { name: '有效期至', unit: '—', meaning: '这笔钱能用到的最后一天', note: '到期没用完的部分清零，不结转下一期；无有效期的写「无限期」' },
   { name: '期末余额', unit: '元', meaning: '这笔到账之后的账面余额', note: '同一张表里上一行的期末余额就是下一行的期初余额' },
   { name: '状态', unit: '—', meaning: '这笔额度的当前状态（生效中 / 已用完 / 已过期）', note: '由剩余金额与有效期现推，导出时刻的状态' },
@@ -121,10 +121,10 @@ const NOTIFY_FIELDS: ReportField[] = [
 export const REPORT_DEFINITIONS: ReportDefinition[] = [
   {
     id: 'recharge',
-    name: '充值记录',
-    filePrefix: '充值记录',
-    desc: '钱进来的记录。系统自动充值的额度有有效期，单独充值的没有。',
-    source: '资金流水 · 充值记录',
+    name: '额度到账记录',
+    filePrefix: '额度到账记录',
+    desc: '每笔套餐通话额度的到账金额与到期日。',
+    source: '资金流水 · 额度到账',
     fields: RECHARGE_FIELDS,
     rows: (from, to) =>
       [...fundFlowInRange(from, to, 'recharge')].reverse().map((row) => {

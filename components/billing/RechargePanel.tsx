@@ -87,9 +87,6 @@ const RechargePanel: React.FC = () => {
           <Zap size={15} aria-hidden />
           自动充值：{auto.enabled ? '已开启' : '未开启'}
         </button>
-        <span className="text-xs text-slate-500">
-          自动充值默认关闭。它是一个会自己花钱的开关，默认打开等于替你做了一个你没做过的决定。
-        </span>
       </div>
 
       {open && (

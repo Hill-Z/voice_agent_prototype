@@ -51,19 +51,19 @@ export const CREDIT_LINE: CreditLine = {
 // 直接取定价规则里的底价，避免这里再写一个 150、平台调价时漏改。
 export const BASE_RATE_MILLI = PRICING_RULE.priceFloorMilli;
 
-// 客户买的并发路数。并发是容量不是消耗品：买了多少路就一直是多少路，不随时间减少。
-export const PURCHASED_CONCURRENCY = 6;
+// 当前两笔购买合计 7 路；展示可用路数时仍须逐批检查有效期，不能只读这个合计。
+export const PURCHASED_CONCURRENCY = 7;
 
 // 单路并发的套餐单价与其中随套餐附带的映射额度：1 路 1 年 1 万元，
 // 含 7500 元映射额度（按最低档 0.15 元/分钟可打 5 万分钟），另 2500 元是平台与并发服务费。
 export const PACKAGE_PRICE_PER_CONCURRENCY_CENTS = 1000000;
 export const GRANT_CENTS_PER_CONCURRENCY = 750000;
 
-// 套餐总额与其中的映射额度，两个都随路数走：6 路 = 6 万元套餐，映射额度 6 × 7500 = 45000 元。
+// 3 月买 6 路、4 月增购 1 路，累计 7 万元，映射额度 7 × 7500 = 52500 元。
 // 只有映射额度是能用来打电话的那笔钱。服务费客户确实花了，但不进余额、不能打电话，
 // 所以余额永远小于套餐总额——这不是算错了，要在套餐明细里与映射额度分列写明。
-export const PACKAGE_TOTAL_CENTS = 6000000;
-const TALK_FEE_CENTS = 4500000;
+export const PACKAGE_TOTAL_CENTS = 7000000;
+const TALK_FEE_CENTS = 5250000;
 export const PACKAGE_SERVICE_FEE_CENTS = PACKAGE_TOTAL_CENTS - TALK_FEE_CENTS;
 
 export interface BillingRobotProfile {
@@ -590,7 +590,7 @@ const buildBilling = (): { records: CallBillingRecord[]; ledger: LedgerEntry[]; 
     {
       kind: 'recharge',
       at: '2026-03-01 00:05:00',
-      amountCents: TALK_FEE_CENTS,
+      amountCents: 6 * GRANT_CENTS_PER_CONCURRENCY,
       title: '标准套餐 A（6 路 · 1 年）映射额度到账',
       grantTitle: '标准套餐 A（6 路 · 1 年）· 映射额度',
       refId: 'pkg_202603',
@@ -598,6 +598,18 @@ const buildBilling = (): { records: CallBillingRecord[]; ledger: LedgerEntry[]; 
       fundKind: 'voucher',
       source: 'auto',
       expiresAt: '2027-03-01',
+    },
+    {
+      kind: 'recharge',
+      at: '2026-04-01 10:12:00',
+      amountCents: GRANT_CENTS_PER_CONCURRENCY,
+      title: '4 月增购 1 路并发通话额度到账',
+      grantTitle: '4 月增购（1 路 · 1 年）· 通话额度',
+      refId: 'pkg_202604',
+      grantId: 'grant_20260401_01',
+      fundKind: 'voucher',
+      source: 'auto',
+      expiresAt: '2027-04-01',
     },
     ...ALL_CALLS.map((input): BillingEvent => ({ kind: 'call', at: input.startedAt, input })),
     // 预占发生在通话开始前、释放发生在通话结束后，中间的扣费夹在两者之间，余额链才连贯。
@@ -1065,24 +1077,42 @@ export const BILLING_PACKAGES: BillingPackage[] = [
   {
     id: 'pkg_202603',
     name: '标准套餐 A（6 路 · 1 年）',
-    purchasedAt: '2026-03-01 10:12',
-    totalCents: PACKAGE_TOTAL_CENTS,
-    talkFeeCents: TALK_FEE_CENTS,
+    purchasedAt: '2026-03-01 00:05',
+    totalCents: 6 * PACKAGE_PRICE_PER_CONCURRENCY_CENTS,
+    talkFeeCents: 6 * GRANT_CENTS_PER_CONCURRENCY,
     usedCents: TOTAL_SPENT_CENTS,
     expiresAt: '2027-03-01',
-    concurrency: PURCHASED_CONCURRENCY,
+    concurrency: 6,
+  },
+  {
+    id: 'pkg_202604',
+    name: '4 月增购（1 路 · 1 年）',
+    purchasedAt: '2026-04-01 10:12',
+    totalCents: PACKAGE_PRICE_PER_CONCURRENCY_CENTS,
+    talkFeeCents: GRANT_CENTS_PER_CONCURRENCY,
+    usedCents: 0,
+    expiresAt: '2027-04-01',
+    concurrency: 1,
   },
 ];
 
-// 套餐总额里不形成余额的那部分：客户花了 6 万元，其中 4.5 万元是能打电话的映射额度，
-// 1.5 万元是平台与并发服务费。这三个数要一起给，只给余额，客户会以为少了 1.5 万。
+// 当前并发按购买批次的生效日和到期日计算；历史购买合计不等于任意一天的可用路数。
+export const activeConcurrencyAt = (day: string): number =>
+  BILLING_PACKAGES.reduce((sum, item) => (
+    item.purchasedAt.slice(0, 10) <= day && (!item.expiresAt || day < item.expiresAt)
+      ? sum + item.concurrency
+      : sum
+  ), 0);
+export const ACTIVE_CONCURRENCY = activeConcurrencyAt(DATA_CUTOFF_LABEL);
+
+// 套餐总额里不形成余额的那部分：7 万元中 5.25 万元是通话额度，1.75 万元是平台服务费。
 export const PACKAGE_SERVICE_FEE_TOTAL_CENTS = BILLING_PACKAGES.reduce((sum, item) => sum + (item.totalCents - item.talkFeeCents), 0);
 
 // 余额折算可用时长：按平台最低价 0.15 元/分钟估算。
 // 这几个常量不再出现在面客页面上（价格是动态的，折算出来的是「按今天这个价能打多久」，
 // 不是「还剩多久」），保留是因为额度与最低档之间的关系本身仍要被测试钉住。
 export const REMAINING_MINUTES_AT_BASE_RATE = centsToYuan(REMAINING_TALK_FEE_CENTS) / milliToYuan(BASE_RATE_MILLI);
-export const PURCHASED_MINUTES_AT_BASE_RATE = centsToYuan(TALK_FEE_CENTS) / milliToYuan(BASE_RATE_MILLI);
+export const PURCHASED_MINUTES_AT_BASE_RATE = centsToYuan(TALK_FEE_TOTAL_CENTS) / milliToYuan(BASE_RATE_MILLI);
 // 已经消耗掉的「额度分钟数」：按最低档折算。它和实际通话分钟数不是一回事——
 // 单价高于最低档的机器人，一分钟通话会消耗掉多于一分钟的额度。
 export const USED_MINUTES_AT_BASE_RATE = centsToYuan(TOTAL_SPENT_CENTS) / milliToYuan(BASE_RATE_MILLI);
@@ -1108,14 +1138,14 @@ export const GRANT_REMAINDER_CENTS = BILLING_GRANT_BALANCES.reduce((sum, item) =
 export const RECONCILIATION = {
   monthlyCents: TOTAL_SPENT_CENTS,
   ledgerCents: SPENT_CENTS_FROM_LEDGER(),
-  packageUsedCents: BILLING_PACKAGES[0].usedCents,
+  packageUsedCents: BILLING_PACKAGES.reduce((sum, item) => sum + item.usedCents, 0),
   ledgerClosingCents: LEDGER_CLOSING_BALANCE_CENTS,
   remainingCents: REMAINING_TALK_FEE_CENTS,
   grantRemainderCents: GRANT_REMAINDER_CENTS,
   allocatedCents: ALLOCATED_CENTS_FROM_LEDGER(),
   ok:
     TOTAL_SPENT_CENTS === SPENT_CENTS_FROM_LEDGER() &&
-    TOTAL_SPENT_CENTS === BILLING_PACKAGES[0].usedCents &&
+    TOTAL_SPENT_CENTS === BILLING_PACKAGES.reduce((sum, item) => sum + item.usedCents, 0) &&
     TOTAL_SPENT_CENTS === ALLOCATED_CENTS_FROM_LEDGER() &&
     LEDGER_CLOSING_BALANCE_CENTS === REMAINING_TALK_FEE_CENTS &&
     GRANT_REMAINDER_CENTS === LEDGER_CLOSING_BALANCE_CENTS,
@@ -1382,12 +1412,12 @@ export const NOTIFY_TEMPLATE = {
   emailSubject: '【语音智能体】账户余额提醒',
   emailBody:
     '你的账户（{账户名}）当前余额为 {账面余额} 元，已低于你设置的预警值 {预警值} 元。' +
-    '这条提醒只是通知：不会自动为你充值（充值需要你确认，避免出现你没同意的扣款），' +
-    '也不会中断正在进行的通话。但余额用尽后，新的通话会被拦住，请及时充值。' +
-    '如需调整预警值或接收人，可在计费中心「余额与额度」页修改。',
+    '这条提醒只是通知，不会自动增加额度，' +
+    '也不会中断正在进行的通话。但余额用尽后，新的通话会被拦住。请联系客户经理补充通话额度。' +
+    '如需调整预警值或接收人，可在计费中心「提醒」页修改。',
   smsBody:
-    '【语音智能体】账户余额 {账面余额} 元，已低于预警值 {预警值} 元。提醒只是通知，不会自动充值、' +
-    '不中断通话；余额用尽后新通话会被拦住，请及时充值。',
+    '【语音智能体】账户余额 {账面余额} 元，已低于预警值 {预警值} 元。提醒不会自动增加额度、' +
+    '不中断通话；余额用尽后新通话会被拦住。请联系客户经理补充额度。',
   // 到期提醒是另一个事由，不能复用余额那套文案：客户看到「余额 42689 元」是不会动的，
   // 看到「有 15000 元将在 7 天后清零」才会动。这两件事必须分别写。
   expiryEmailSubject: '【语音智能体】额度即将到期提醒',
@@ -1539,8 +1569,8 @@ export interface PurchaseQuote {
 
 // 到期日按「年」顺延。日期都是 YYYY-MM-DD，不跨时区，直接改年份即可。
 const plusYears = (date: string, years: number): string => {
-  const [year, rest] = date.split('-');
-  return `${Number(year) + years}-${rest}`;
+  const [year, ...rest] = date.split('-');
+  return `${Number(year) + years}-${rest.join('-')}`;
 };
 
 export const concurrencyQuote = (ways: number): PurchaseQuote => ({
@@ -1552,12 +1582,14 @@ export const concurrencyQuote = (ways: number): PurchaseQuote => ({
   expiresAt: plusYears(DATA_CUTOFF_LABEL, 1),
 });
 
-export const renewalQuote = (): PurchaseQuote => ({
-  concurrency: PURCHASED_CONCURRENCY,
-  packageCents: PACKAGE_TOTAL_CENTS,
-  grantCents: TALK_FEE_CENTS,
-  serviceFeeCents: PACKAGE_SERVICE_FEE_CENTS,
-  // 续费从现有套餐到期日往后顺延，而不是从今天起算——
-  // 从今天起算会让客户白白丢掉已付的剩余月份。
-  expiresAt: plusYears(BILLING_PACKAGES[0].expiresAt || DATA_CUTOFF_LABEL, 1),
-});
+export const renewalQuote = (packageId: string = BILLING_PACKAGES[0].id): PurchaseQuote => {
+  const selected = BILLING_PACKAGES.find((item) => item.id === packageId) ?? BILLING_PACKAGES[0];
+  return {
+    concurrency: selected.concurrency,
+    packageCents: selected.totalCents,
+    grantCents: selected.talkFeeCents,
+    serviceFeeCents: selected.totalCents - selected.talkFeeCents,
+    // 续费从所选购买批次到期日顺延，其他批次不受影响。
+    expiresAt: plusYears(selected.expiresAt || DATA_CUTOFF_LABEL, 1),
+  };
+};

@@ -2,7 +2,7 @@
 // 三个视角——余额与额度（还剩多少、哪笔什么时候到期）、通话消费明细（每一通花了多少）、
 // 消费统计（谁花的、哪个月花的）。
 import React, { useState } from 'react';
-import { Bell, Bot, Download, FileText, PieChart, Receipt, Wallet } from 'lucide-react';
+import { Bell, Download, FileText, Package, Receipt, Wallet } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import BillingBasisPanel, { type RateBasisSubject } from './BillingBasisPanel';
 import UsageOverview from './UsageOverview';
@@ -13,19 +13,20 @@ import NotifyRecords from './NotifyRecords';
 import ReportExport from './ReportExport';
 import {
   ACCOUNT_NAME,
+  ACTIVE_CONCURRENCY,
+  ALLOCATED_CONCURRENCY,
   BALANCE_COMPOSITION,
+  BILLING_CALL_ROWS,
   BILLING_GRANT_BALANCES,
   BILLING_ROBOT_PROFILES,
   DATA_CUTOFF_LABEL,
-  MONTHLY_USAGE,
   NOTIFY_SETTINGS,
   getPendingReason,
-  rechargeInRange,
   usageInRange,
 } from './billingData';
-import { PERIOD_LABEL, PeriodToggle, SummaryBar, num, yuan, type PeriodKey } from './billingUi';
+import { PERIOD_LABEL, PeriodToggle, num, yuan, type PeriodKey } from './billingUi';
 
-type TabKey = 'overview' | 'flow' | 'calls' | 'stats' | 'notify' | 'export';
+type TabKey = 'account' | 'package' | 'consumption' | 'flow' | 'reminders' | 'export';
 
 // 余额不足的提醒线就是客户在「余额与额度」页设的那个预警值，不在这里另算一套。
 //
@@ -38,12 +39,11 @@ type TabKey = 'overview' | 'flow' | 'calls' | 'stats' | 'notify' | 'export';
 const ALERT_BELOW_CENTS = NOTIFY_SETTINGS.thresholdCents;
 
 const TABS: { key: TabKey; label: string; icon: LucideIcon }[] = [
-  { key: 'overview', label: '余额与额度', icon: Wallet },
-  { key: 'flow', label: '资金流水', icon: Receipt },
-  { key: 'calls', label: '通话消费明细', icon: FileText },
-  { key: 'stats', label: '消费统计', icon: PieChart },
-  { key: 'notify', label: '通知记录', icon: Bell },
-  { key: 'export', label: '报表导出', icon: Download },
+  { key: 'account', label: '账户', icon: Wallet },
+  { key: 'package', label: '套餐', icon: Package },
+  { key: 'consumption', label: '消费', icon: FileText },
+  { key: 'flow', label: '流水', icon: Receipt },
+  { key: 'reminders', label: '提醒', icon: Bell },
 ];
 
 // 演示数据没有实时钟：页面上的「今天」就是数据截止日，相对日期一律从它往前推。
@@ -83,7 +83,9 @@ interface Props {
 }
 
 const BillingCenter: React.FC<Props> = ({ onOpenCallRecord }) => {
-  const [tab, setTab] = useState<TabKey>('overview');
+  const [tab, setTab] = useState<TabKey>('account');
+  const [consumptionView, setConsumptionView] = useState<'calls' | 'stats'>('calls');
+  const [reminderView, setReminderView] = useState<'settings' | 'records'>('settings');
   const [basis, setBasis] = useState<RateBasisSubject | null>(null);
   // 默认停在本月：客户打开计费中心最先想知道的就是「这个月花了多少」。
   const [period, setPeriod] = useState<PeriodKey>('month');
@@ -92,7 +94,6 @@ const BillingCenter: React.FC<Props> = ({ onOpenCallRecord }) => {
 
   const { from, to } = periodRange(period, { from: customFrom, to: customTo });
   const spend = usageInRange(from, to);
-  const recharge = rechargeInRange(from, to);
   const comp = BALANCE_COMPOSITION;
 
   // 余额不跟时间范围走：筛选变的是「这段时间花了多少」，不是「现在还剩多少」。
@@ -104,28 +105,34 @@ const BillingCenter: React.FC<Props> = ({ onOpenCallRecord }) => {
   // 待定价的机器人：算不出费率就不能计费，这里在页面顶部直接告诉客户要补什么。
   // 取自计费侧的机器人档而非机器人列表——只要产生过通话的机器人就该在这里报出来，
   // 哪怕它后来被删了或者不在机器人列表里。
+  const callsInRange = BILLING_CALL_ROWS.filter((row) => row.startedAt.slice(0, 10) >= from && row.startedAt.slice(0, 10) <= to);
+  const pendingRobotIds = new Set(callsInRange.filter((row) => row.record.billingStatus === 'pending').map((row) => row.robotId));
   const pendingRobots = BILLING_ROBOT_PROFILES
+    .filter((profile) => pendingRobotIds.has(profile.id))
     .map((profile) => ({ profile, reasons: getPendingReason(profile.id) }))
     .filter((item) => item.reasons.length > 0);
 
   // 产生过通话的机器人台数（含已删除的）。注意是「产生过通话」而不是「产生过费用」：
   // 待定价和未接通的机器人有记录但没有金额，说成「产生过费用」会和下面的合计对不上。
-  const archivedRobotCount = new Set(MONTHLY_USAGE.map((item) => item.robotId)).size;
+  const archivedRobotCount = new Set(callsInRange.map((item) => item.robotId)).size;
 
-  // 代金券额度的到期日：余额构成那行「哪部分会到期」靠它说清。有多笔代金券时取最近的那个到期日，
-  // 客户最该先知道的就是最快到期的那一笔。没有代金券（或用光了）时留空，不编一个日期出来。
-  const voucherExpiry = BILLING_GRANT_BALANCES
-    .filter((item) => item.grant.kind === 'voucher' && item.grant.expiresAt !== null && item.remainingCents > 0)
-    .map((item) => item.grant.expiresAt as string)
-    .sort()[0] || '';
+  // 多笔套餐额度分别展示余额和到期日，不能把合计标成最近一笔的到期日。
+  const voucherBatches = BILLING_GRANT_BALANCES
+    .filter((item) => item.grant.kind === 'voucher' && item.remainingCents > 0)
+    .sort((a, b) => (a.grant.expiresAt ?? '').localeCompare(b.grant.expiresAt ?? ''));
   const periodLabel = period === 'custom' ? `${from} ~ ${to}` : PERIOD_LABEL[period];
 
   return (
-    <div className="flex h-full flex-col">
-      {/* 页头只留时间范围和截止日：标题由面包屑承担，页面上不再重复一遍「这是计费中心」。
-          下面四张卡都是钱的数，所以时间范围放在最上面、和它们同一屏。 */}
-      <div className="border-b border-slate-200 bg-white px-6 py-3">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+    <div className="min-h-full bg-slate-50">
+      {/* 页面使用外层主区域自然滚动，不能再制造一个像 iframe 的内部滚动区。 */}
+      <div className="mx-auto w-full max-w-[1600px] px-5 pb-3 pt-5 lg:px-7">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight text-slate-950">计费中心</h1>
+            <p className="mt-1 text-xs text-slate-500">{ACCOUNT_NAME} · 数据截止 {DATA_CUTOFF_LABEL}</p>
+          </div>
+          <div className="flex flex-col items-start gap-1">
+          <span className="text-xs text-slate-500">消费与流水时间</span>
           <PeriodToggle value={period} onChange={setPeriod}>
             {period === 'custom' && (
               <div className="flex items-center gap-2 text-sm text-slate-600">
@@ -150,82 +157,54 @@ const BillingCenter: React.FC<Props> = ({ onOpenCallRecord }) => {
               </div>
             )}
           </PeriodToggle>
-          <div className="text-right">
-            <p className="text-xs text-slate-500">计费账户 · {ACCOUNT_NAME}</p>
-            <p className="mt-0.5 text-sm text-slate-700">数据截止 {DATA_CUTOFF_LABEL}（今天）</p>
           </div>
         </div>
 
-        <div className="mt-3">
-          <SummaryBar
-            items={[
-              {
-                label: '余额（截至今日）',
-                value: yuan(comp.balanceCents),
-                note: `代金券额度 ${yuan(comp.voucherCents)}${voucherExpiry ? `（${voucherExpiry} 到期）` : ''} · 单独充值 ${yuan(comp.cashCents)}（无限期）`,
-                // 余额偏低或已经欠费才是风险状态，其余一律中性色。
-                tone: lowBalance || comp.debtCents > 0 ? 'risk' : 'default',
-              },
-              {
-                label: '可用额度（截至今日）',
-                value: yuan(comp.availableCents),
-                note: comp.creditTotalCents > 0
-                  ? `已含可用信用额度 ${yuan(comp.creditAvailableCents)} · 通话中预占 ${yuan(comp.frozenCents)}`
-                  : `账面余额扣掉通话中预占的 ${yuan(comp.frozenCents)} · 信用额度未开通`,
-              },
-              {
-                label: `本期消费（${periodLabel}）`,
-                value: yuan(spend.cents),
-                note: `通话 ${num(spend.calls)} 通（其中智呼 ${num(spend.outboundCalls)} 通）· 时长 ${num(spend.talkMinutes)} 分钟`,
-              },
-              {
-                label: `本期充值（${periodLabel}）`,
-                value: yuan(recharge.totalCents),
-                note: recharge.count === 0
-                  ? '这段时间没有充值到账'
-                  : `系统自动充值 ${yuan(recharge.autoCents)} · 单独充值 ${yuan(recharge.manualCents)}`,
-              },
-            ]}
-          />
+        <div className="mt-4 grid gap-3 lg:grid-cols-3">
+          <div className="rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+            <p className="text-xs font-medium text-slate-500">账户余额 <span className="font-normal">· 截至 {DATA_CUTOFF_LABEL}</span></p>
+            <p className={`mt-1 text-[28px] font-semibold tracking-tight tabular-nums ${lowBalance || comp.debtCents > 0 ? 'text-amber-700' : 'text-slate-950'}`}>{yuan(comp.balanceCents)}</p>
+            <div className="mt-3 space-y-1 border-t border-slate-100 pt-3 text-xs">
+              {voucherBatches.map((item) => (
+                <div key={item.grant.grantId} className="flex flex-wrap items-center justify-between gap-x-2">
+                  <span className="text-slate-500" title={item.grant.title}>{item.grant.grantedAt.slice(0, 7)} 套餐额度</span>
+                  <span className="font-medium tabular-nums text-slate-800">{yuan(item.remainingCents)} <span className="font-normal text-slate-400">· {item.grant.expiresAt} 到期</span></span>
+                </div>
+              ))}
+              {comp.cashCents > 0 && <div className="flex justify-between gap-2"><span className="text-slate-500">独立到账余额</span><span className="font-medium text-slate-800">{yuan(comp.cashCents)} · 长期有效</span></div>}
+            </div>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+            <p className="text-xs font-medium text-slate-500">当前可用并发 <span className="font-normal">· 截至 {DATA_CUTOFF_LABEL}</span></p>
+            <p className="mt-1 text-[28px] font-semibold tracking-tight tabular-nums text-slate-950">{ACTIVE_CONCURRENCY} <span className="text-base font-normal">路</span></p>
+            <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 border-t border-slate-100 pt-3 text-xs text-slate-500">
+              <span>已分配 {ALLOCATED_CONCURRENCY} 路</span>
+              <span>待分配 {Math.max(0, ACTIVE_CONCURRENCY - ALLOCATED_CONCURRENCY)} 路</span>
+            </div>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+            <p className="text-xs font-medium text-slate-500">{periodLabel}消费</p>
+            <p className="mt-1 text-2xl font-semibold tracking-tight tabular-nums text-slate-950">{yuan(spend.cents)}</p>
+            <p className="mt-3 border-t border-slate-100 pt-3 text-xs text-slate-500">已计费 {num(spend.calls)} 通 · {num(spend.talkMinutes)} 分钟</p>
+          </div>
         </div>
       </div>
 
-      {(lowBalance || pendingRobots.length > 0) && (
-        <div className="space-y-2 border-b border-slate-200 bg-white px-6 py-3">
-          {lowBalance && (
-            <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs leading-5 text-amber-800">
+      {lowBalance && (
+        <div className="mx-auto w-full max-w-[1600px] space-y-2 px-5 pb-3 lg:px-7">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800">
               {/* 这句回答的是客户最关心的那个问题：钱花完了会怎样。
                   所以写的是余额的后果（新的拨不出去、在通话中的不中断），不是并发的后果——
                   余额和并发是两件事，拿「排队等一路空出来」解释余额不足，客户按这句话去
                   充值就会得出「充钱能解决排队」的错误结论。 */}
-              账面余额 {yuan(comp.balanceCents)} 已经低于你设的预警值 {yuan(ALERT_BELOW_CENTS)}，建议及时充值。
-              {comp.creditAvailableCents > 0
-                ? `余额扣完后会先动用信用额度垫付（当前可用 ${yuan(comp.creditAvailableCents)}），垫付的部分形成欠费，欠费未结清时新的通话将无法发起；`
-                : '余额扣完后新的通话将无法发起；'}
-              正在通话中的不会中断，会按实际时长扣到本通结束；充值到账后即可继续发起通话。
-              {/* 提醒里写着「充值到账后即可继续发起通话」，页面上就必须真的能充值——
-                  文案承诺了一件产品做不到的事，客户按提示去找、找不到，比不承诺更糟。 */}
-              <span className="ml-1 font-medium">「余额与额度」页可以直接充值，也可以开自动充值。</span>
+              余额低于预警值 {yuan(ALERT_BELOW_CENTS)}，请联系客户经理补充通话额度。
+              <span className="ml-1 text-amber-700">余额和授信用尽后，新通话将暂停。</span>
             </div>
-          )}
-          {pendingRobots.length > 0 && (
-            <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs leading-5 text-amber-800">
-              <p className="font-semibold">有 {pendingRobots.length} 台机器人暂时算不出单价，这些机器人上的通话暂不扣费，价格补齐后会自动补扣。</p>
-              <ul className="mt-1 space-y-0.5">
-                {pendingRobots.map((item) => (
-                  <li key={item.profile.id}>
-                    · {item.profile.name}：{item.reasons.join('；')}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
         </div>
       )}
 
-      {/* 这一行是四个页签，所以按页签的语义写：读屏能念出「当前选中第 2 个，共 4 个」，
-          而不是四个看不出关系的普通按钮。 */}
-      <div role="tablist" aria-label="计费中心" className="flex items-center border-b border-slate-200 bg-white px-6">
+      <div className="mx-auto w-full max-w-[1600px] px-5 lg:px-7">
+      <div role="tablist" aria-label="计费中心" className="flex flex-wrap items-center gap-1 rounded-xl border border-slate-200 bg-white p-1.5 shadow-sm">
         {TABS.map((item) => {
           const Icon = item.icon;
           const active = tab === item.key;
@@ -238,8 +217,8 @@ const BillingCenter: React.FC<Props> = ({ onOpenCallRecord }) => {
               aria-selected={active}
               aria-controls="billing-tabpanel"
               onClick={() => setTab(item.key)}
-              className={`flex items-center gap-1.5 border-b-2 px-4 py-3 text-sm font-semibold ${
-                active ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-700'
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                active ? 'bg-blue-50 text-primary' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
               }`}
             >
               <Icon size={16} />
@@ -247,38 +226,50 @@ const BillingCenter: React.FC<Props> = ({ onOpenCallRecord }) => {
             </button>
           );
         })}
-        <span className="ml-auto flex items-center gap-1.5 text-xs text-slate-500">
-          <Bot size={13} />
-          共 {archivedRobotCount} 台机器人产生过通话
-        </span>
+        <button type="button" role="tab" id="billing-tab-export" aria-selected={tab === 'export'} aria-controls="billing-tabpanel" onClick={() => setTab('export')} className={`ml-auto inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium ${tab === 'export' ? 'bg-blue-50 text-primary' : 'text-slate-600 hover:bg-slate-50'}`}><Download size={16} />下载</button>
+      </div>
       </div>
 
       <div
         id="billing-tabpanel"
         role="tabpanel"
         aria-labelledby={`billing-tab-${tab}`}
-        className="flex-1 overflow-y-auto bg-slate-50 p-6"
+        className="mx-auto w-full max-w-[1600px] p-5 lg:px-7 lg:py-6"
       >
-        {tab === 'overview' && <UsageOverview />}
+        {tab === 'account' && <UsageOverview section="account" />}
+        {tab === 'package' && <UsageOverview section="package" />}
         {tab === 'flow' && <FundFlow from={from} to={to} />}
-        {tab === 'calls' && (
+        {tab === 'consumption' && <div className="space-y-4">
+          {pendingRobots.length > 0 && <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <p className="font-medium">存在尚未计费的通话</p>
+            <p className="mt-1 text-xs leading-5 text-amber-800">{pendingRobots.map((item) => `${item.profile.name}：${item.reasons.join('；')}`).join('。')}。相关通话可在逐通明细中查看，待价格确定后再计费。</p>
+          </div>}
+          <div className="flex items-center justify-between gap-3">
+            <div role="tablist" aria-label="通话消费视图" className="inline-flex rounded-lg border border-slate-200 bg-white p-1">
+              {([['calls', '逐通明细'], ['stats', '按机器人和月份统计']] as const).map(([key, label]) => <button key={key} type="button" role="tab" aria-selected={consumptionView === key} onClick={() => setConsumptionView(key)} className={`rounded-md px-3 py-1.5 text-sm ${consumptionView === key ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>{label}</button>)}
+            </div>
+            <span className="hidden text-xs text-slate-500 lg:inline">共 {archivedRobotCount} 台机器人有通话记录</span>
+          </div>
+          {consumptionView === 'calls' ? (
           <CallBillingDetail
+            from={from}
+            to={to}
             onOpenBasis={setBasis}
             onOpenCallRecord={(callId) => {
               setBasis(null);
               onOpenCallRecord(callId);
             }}
           />
-        )}
-        {tab === 'stats' && <BotBillingStats />}
-        {tab === 'notify' && <NotifyRecords />}
+          ) : <BotBillingStats from={from} to={to} />}
+        </div>}
+        {tab === 'reminders' && <div className="space-y-4">
+          <div role="tablist" aria-label="提醒视图" className="inline-flex rounded-lg border border-slate-200 bg-white p-1">
+            {([['settings', '提醒设置'], ['records', '发送记录']] as const).map(([key, label]) => <button key={key} type="button" role="tab" aria-selected={reminderView === key} onClick={() => setReminderView(key)} className={`rounded-md px-3 py-1.5 text-sm ${reminderView === key ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>{label}</button>)}
+          </div>
+          {reminderView === 'settings' ? <UsageOverview section="alerts" /> : <NotifyRecords />}
+        </div>}
         {tab === 'export' && <ReportExport from={from} to={to} />}
 
-        <p className="mt-4 text-xs leading-5 text-slate-500">
-          说明：费用按每通电话的通话时长计算，按秒向上取整到分。每分钟单价由该机器人使用的语音识别、
-          大模型和音色共同决定，在发布时确定并记进这通电话的计费依据里，之后改配置不影响已经打完的电话。
-          余额、月度合计和通话记录里的金额来自同一套账：把消费明细切到「全部月份」后，每一笔相加就等于累计已用额度。
-        </p>
       </div>
 
       {/* 条件挂载而不是传 null：面板里「内部视角」这类开关是组件内部状态，

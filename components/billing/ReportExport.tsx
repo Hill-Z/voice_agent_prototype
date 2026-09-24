@@ -19,7 +19,7 @@ import {
   sampleRow,
   type ReportDefinition,
 } from './billingReports';
-import { EmptyTableState, StatusBadge } from '../report/reportUi';
+import { EmptyTableState } from '../report/reportUi';
 import { Note, Panel, TD, TH, num } from './billingUi';
 
 // 导出权限按角色控制：只有计费管理员能导出。原型没有登录态，所以这里是当前账号的角色。
@@ -100,74 +100,38 @@ const ReportExport: React.FC<Props> = ({ from, to }) => {
 
   return (
     <div className="space-y-4">
-      <Panel
-        title="导出说明"
-        desc="五张报表都能下载成 CSV 文件，用 Excel 或账务工具直接打开。"
-        extra={<StatusBadge tone="blue">{EXPORT_ROLE}可导出</StatusBadge>}
-      >
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {[
-            { label: '导出范围', value: `${from} ~ ${to}`, desc: '跟随页面顶部的时间范围' },
-            { label: '单次上限', value: `${EXPORT_MAX_MONTHS} 个月`, desc: '更长的区间请分几次导出' },
-            { label: '文件格式', value: 'CSV（UTF-8）', desc: '带 BOM，中文用 Excel 打开不乱码' },
-            { label: '导出权限', value: EXPORT_ROLE, desc: '每次导出都会留下记录' },
-          ].map((item) => (
-            <div key={item.label} className="rounded-md border border-slate-200 bg-white px-3 py-2.5">
-              <p className="text-xs text-slate-500">{item.label}</p>
-              <p className="mt-1 text-sm font-bold text-slate-900">{item.value}</p>
-              <p className="mt-0.5 text-xs text-slate-400">{item.desc}</p>
-            </div>
-          ))}
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm text-slate-700 shadow-sm">
+        <span>导出时间：<strong className="text-slate-900">{from} 至 {to}</strong></span>
+        <span className="text-xs text-slate-500">CSV 文件 · 单次最多 {EXPORT_MAX_MONTHS} 个月 · {EXPORT_ROLE}</span>
         {tooWide && (
-          <div className="mt-3 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs leading-5 text-amber-800">
+          <div className="flex w-full items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs leading-5 text-amber-800">
             <AlertTriangle size={14} className="mt-0.5 shrink-0" aria-hidden />
-            <span>当前范围跨 {span} 个月，超过单次上限 {EXPORT_MAX_MONTHS} 个月，导出已被拦下。请把页面顶部的时间范围收窄到 {EXPORT_MAX_MONTHS} 个月以内。</span>
+            <span>当前选中 {span} 个月。请把顶部时间范围缩小到 {EXPORT_MAX_MONTHS} 个月以内再下载。</span>
           </div>
         )}
-        <Note>
-          导出的是「这一刻的账」，与页面所见一致。金额是纯数字（如 42689.74），时长统一为分钟、两位小数。
-        </Note>
-      </Panel>
+      </div>
 
       <Panel
-        title="报表清单"
-        desc="范围内的数据行数与字段数。下载前先看一眼行数，能避免导出一个空文件还不知道。"
+        title="选择要下载的记录"
+        desc="按你选择的时间导出；提醒记录包含全部历史发送凭证。"
         extra={<span className="text-xs text-slate-500">数据截止 {DATA_CUTOFF_LABEL}</span>}
       >
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead className="border-b border-slate-200">
-              <tr>
-                <TH>报表</TH><TH>这张表是什么</TH><TH>与页面上哪一块同一份数据</TH>
-                <TH>字段数</TH><TH>范围内行数</TH><TH>操作</TH>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {prepared.map(({ definition, rows }) => (
-                <tr key={definition.id}>
-                  <TD className="font-medium text-slate-900">{definition.name}</TD>
-                  <TD className="text-xs text-slate-600">{definition.desc}</TD>
-                  <TD className="text-xs text-slate-500">{definition.source}</TD>
-                  <TD className="text-slate-600">{definition.fields.length}</TD>
-                  <TD className={rows.length === 0 ? 'text-slate-400' : 'font-semibold text-slate-900'}>
-                    {rows.length === 0 ? '这段时间没有数据' : `${num(rows.length)} 行`}
-                  </TD>
-                  <TD>
-                    <button
-                      type="button"
-                      onClick={() => handleExport(definition, rows)}
-                      disabled={tooWide || rows.length === 0}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-300"
-                    >
-                      <Download size={14} aria-hidden />
-                      下载 CSV
-                    </button>
-                  </TD>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {prepared.map(({ definition, rows }) => (
+            <div key={definition.id} className="flex min-h-[148px] flex-col rounded-xl border border-slate-200 p-4">
+              <div className="flex items-start justify-between gap-2">
+                <h4 className="text-sm font-semibold text-slate-900">{definition.name}</h4>
+                <span className="whitespace-nowrap text-xs text-slate-500">{num(rows.length)} 条</span>
+              </div>
+              <p className="mt-2 flex-1 text-xs leading-5 text-slate-600">{definition.desc}</p>
+              <div className="mt-3 flex items-center justify-between gap-2">
+                <button type="button" onClick={() => setActiveId(definition.id)} className="text-xs text-slate-500 underline-offset-2 hover:text-primary hover:underline">查看导出字段</button>
+                <button type="button" onClick={() => handleExport(definition, rows)} disabled={tooWide || rows.length === 0} className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400">
+                  <Download size={13} aria-hidden />下载 CSV
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
         {blocked && (
           <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">{blocked}</p>
@@ -175,8 +139,8 @@ const ReportExport: React.FC<Props> = ({ from, to }) => {
       </Panel>
 
       <Panel
-        title="字段口径"
-        desc="每个字段是什么、单位是什么、怎么算出来的。对不上账时先看这一张表。"
+        title="导出字段"
+        desc="核对每列的含义和取值示例。"
         extra={
           <label className="flex items-center gap-2">
             <span className="text-xs text-slate-500">报表</span>
@@ -196,8 +160,8 @@ const ReportExport: React.FC<Props> = ({ from, to }) => {
           <table className="w-full border-collapse">
             <thead className="border-b border-slate-200">
               <tr>
-                <TH>字段（也是文件里的表头）</TH><TH>单位</TH><TH>这是什么</TH>
-                <TH>口径说明</TH><TH>本范围内的一个真实示例</TH>
+                <TH>字段</TH><TH>单位</TH><TH>含义</TH>
+                <TH>计算口径</TH><TH>示例</TH>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -218,7 +182,7 @@ const ReportExport: React.FC<Props> = ({ from, to }) => {
             <tfoot className="border-t border-slate-200 bg-slate-50">
               <tr>
                 <td colSpan={5} className="px-3 py-3 text-xs text-slate-500">
-                  共 {active.definition.fields.length} 个字段。示例取的是范围内的第一行，与文件里表头之下第一行一致。
+                  共 {active.definition.fields.length} 个字段 · 示例取本次导出范围内第一条记录
                 </td>
               </tr>
             </tfoot>

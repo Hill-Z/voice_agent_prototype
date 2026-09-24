@@ -1,27 +1,16 @@
 // 计费中心 · 消费统计：按机器人看谁在花钱、按月份看每个月花多少。
 // 「机器人花费」是把同一个账户的消费按机器人拆开看，机器人的额度是共享的，不存在各花各的余额。
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import {
+  BILLING_CALL_ROWS,
   BILLING_MONTHS,
   BILLING_ROBOT_PROFILES,
-  CURRENT_MONTH,
-  CURRENT_MONTH_CUTOFF_DAY,
-  MONTHLY_USAGE,
-  monthCallCount,
-  monthOutboundCallCount,
-  monthOutboundMinutes,
-  monthSpentCents,
-  monthSpentCentsThrough,
-  monthTalkMinutes,
-  PREVIOUS_MONTH,
-  type RobotMonthlyUsage,
+  usageInRange,
 } from './billingData';
 import { TIER_LABEL, formatPricePerMin, getTier } from './billingEngine';
 import { EmptyTableState, StatusBadge, cx } from '../report/reportUi';
 import { Note, Panel, TD, TH, num, yuan } from './billingUi';
 import type { BillingTier } from '../../types';
-
-const SELECT = 'h-9 rounded-md border border-slate-200 bg-white px-2.5 text-sm text-slate-700';
 
 interface RobotTotal {
   robotId: string;
@@ -39,49 +28,51 @@ interface RobotTotal {
   latestMonth: string;
 }
 
-const BotBillingStats: React.FC = () => {
-  const [range, setRange] = useState<'all' | '3' | '1'>('all');
+interface Props { from: string; to: string }
 
-  const monthsInRange = useMemo(() => {
-    if (range === 'all') return BILLING_MONTHS;
-    return BILLING_MONTHS.slice(-Number(range));
-  }, [range]);
-
+const BotBillingStats: React.FC<Props> = ({ from, to }) => {
+  // 与页首和逐通明细使用同一时间，按逐通记录聚合才能正确处理自定义日期。
   const rowsInRange = useMemo(
-    () => MONTHLY_USAGE.filter((item) => monthsInRange.includes(item.month)),
-    [monthsInRange],
+    () => BILLING_CALL_ROWS.filter((row) => row.startedAt.slice(0, 10) >= from && row.startedAt.slice(0, 10) <= to),
+    [from, to],
   );
+  const monthsInRange = BILLING_MONTHS.filter((month) => month >= from.slice(0, 7) && month <= to.slice(0, 7));
 
   // 同一台机器人在多个月份各有记录，这里按机器人合并，得到「这台一共花了多少」。
   const totals = useMemo<RobotTotal[]>(() => {
     const map = new Map<string, RobotTotal>();
-    rowsInRange.forEach((item: RobotMonthlyUsage) => {
-      const existing = map.get(item.robotId);
+    rowsInRange.forEach((row) => {
+      const billed = row.record.billingStatus === 'billed';
+      const existing = map.get(row.robotId);
       if (existing) {
-        existing.calls += item.calls;
-        existing.talkMinutes += item.talkMinutes;
-        existing.outboundCalls += item.outboundCalls;
-        existing.outboundMinutes += item.outboundSeconds / 60;
-        existing.amountCents += item.pending ? 0 : item.amountCents;
-        existing.pending = existing.pending || item.pending;
-        existing.months += 1;
-        if (item.month > existing.latestMonth) existing.latestMonth = item.month;
+        if (billed) {
+          existing.calls += 1;
+          existing.talkMinutes += row.durationSec / 60;
+          existing.amountCents += row.record.amountCents;
+          if (row.direction === 'outbound') {
+            existing.outboundCalls += 1;
+            existing.outboundMinutes += row.durationSec / 60;
+          }
+          existing.rateMilli = row.record.snapshot.priceMilli;
+          existing.tier = getTier(row.record.snapshot.priceMilli);
+          existing.pending = false;
+        }
+        if (row.month > existing.latestMonth) existing.latestMonth = row.month;
         return;
       }
-      map.set(item.robotId, {
-        robotId: item.robotId,
-        robotName: item.robotName,
-        calls: item.calls,
-        talkMinutes: item.talkMinutes,
-        outboundCalls: item.outboundCalls,
-        outboundMinutes: item.outboundSeconds / 60,
-        amountCents: item.pending ? 0 : item.amountCents,
-        rateMilli: item.rateMilli,
-        // 档位一律走引擎的 getTier，避免这里再抄一遍阈值、两处慢慢对不上。
-        tier: item.rateMilli === null ? null : getTier(item.rateMilli),
-        pending: item.pending,
+      map.set(row.robotId, {
+        robotId: row.robotId,
+        robotName: row.robotName,
+        calls: billed ? 1 : 0,
+        talkMinutes: billed ? row.durationSec / 60 : 0,
+        outboundCalls: billed && row.direction === 'outbound' ? 1 : 0,
+        outboundMinutes: billed && row.direction === 'outbound' ? row.durationSec / 60 : 0,
+        amountCents: billed ? row.record.amountCents : 0,
+        rateMilli: billed ? row.record.snapshot.priceMilli : null,
+        tier: billed ? getTier(row.record.snapshot.priceMilli) : null,
+        pending: !billed,
         months: 1,
-        latestMonth: item.month,
+        latestMonth: row.month,
       });
     });
     return [...map.values()].sort((a, b) => b.amountCents - a.amountCents);
@@ -90,21 +81,11 @@ const BotBillingStats: React.FC = () => {
   const grandCents = totals.reduce((sum, item) => sum + item.amountCents, 0);
   const maxRobotCents = Math.max(1, ...totals.map((item) => item.amountCents));
 
-  const monthlyTotals = monthsInRange.map((month) => ({
-    month,
-    cents: monthSpentCents(month),
-    minutes: monthTalkMinutes(month),
-    calls: monthCallCount(month),
-    outboundCalls: monthOutboundCallCount(month),
-    outboundMinutes: monthOutboundMinutes(month),
-  }));
+  const monthlyTotals = monthsInRange.map((month) => {
+    const usage = usageInRange(from > `${month}-01` ? from : `${month}-01`, to < `${month}-31` ? to : `${month}-31`);
+    return { month, ...usage, minutes: usage.talkMinutes, outboundMinutes: usage.outboundMinutes };
+  });
   const maxMonthCents = Math.max(1, ...monthlyTotals.map((item) => item.cents));
-  const currentCents = monthSpentCents(CURRENT_MONTH);
-  const previousCents = monthSpentCents(PREVIOUS_MONTH);
-  // 本月还没过完（只统计到 22 日），拿它跟上月一整个月比，等于用 22 天去比 31 天，
-  // 会得出一个「消费下降三成」的假结论。所以环比要跟上月的同一段比。
-  const previousSamePeriodCents = monthSpentCentsThrough(PREVIOUS_MONTH, CURRENT_MONTH_CUTOFF_DAY);
-  const momPercent = previousSamePeriodCents === 0 ? 0 : Math.round(((currentCents - previousSamePeriodCents) / previousSamePeriodCents) * 1000) / 10;
   // 已删除但仍产生过通话的机器人：计费记录不随机器人一起消失，表里要标出来，
   // 否则客户会以为名单里混进了不认识的名字。
   const deletedRobotIds = new Set(BILLING_ROBOT_PROFILES.filter((item) => item.state === 'deleted').map((item) => item.id));
@@ -114,16 +95,6 @@ const BotBillingStats: React.FC = () => {
       <Panel
         title="按机器人看消费"
         desc="同一个账户的消费按机器人拆开。额度是共享的，这里看的是「谁花的」而不是「谁还剩多少」。"
-        extra={
-          <label className="flex items-center gap-2">
-            <span className="text-xs text-slate-500">时间范围</span>
-            <select className={SELECT} value={range} onChange={(event) => setRange(event.target.value as typeof range)}>
-              <option value="all">全部（{BILLING_MONTHS.length} 个月）</option>
-              <option value="3">最近 3 个月</option>
-              <option value="1">最近 1 个月</option>
-            </select>
-          </label>
-        }
       >
         {totals.length === 0 ? (
           <EmptyTableState title="这个时间范围内没有消费记录" desc="换一个时间范围试试。" />
@@ -200,33 +171,8 @@ const BotBillingStats: React.FC = () => {
 
       <Panel
         title="按月份看消费"
-        desc={`每个月的消费趋势。本月还没过完，统计到 ${CURRENT_MONTH_CUTOFF_DAY} 日，之后还会增加。`}
+        desc={`${from} 至 ${to} 的消费按月汇总。`}
       >
-        <div className="mb-4 flex flex-wrap gap-6">
-          <div>
-            <p className="text-xs text-slate-500">本月消费（{CURRENT_MONTH}，1–{CURRENT_MONTH_CUTOFF_DAY} 日）</p>
-            <p className="mt-1 text-xl font-bold text-slate-900">{yuan(currentCents)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-slate-500">上月同期（{PREVIOUS_MONTH}，1–{CURRENT_MONTH_CUTOFF_DAY} 日）</p>
-            <p className="mt-1 text-xl font-bold text-slate-900">{yuan(previousSamePeriodCents)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-slate-500">环比上月同期</p>
-            <p className={cx('mt-1 text-xl font-bold', momPercent > 0 ? 'text-amber-600' : 'text-emerald-600')}>
-              {momPercent > 0 ? '+' : ''}{momPercent}%
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-slate-500">上月整月（{PREVIOUS_MONTH}）</p>
-            <p className="mt-1 text-xl font-bold text-slate-500">{yuan(previousCents)}</p>
-          </div>
-        </div>
-        <Note>
-          环比是拿本月 1–{CURRENT_MONTH_CUTOFF_DAY} 日跟上月同样的 {CURRENT_MONTH_CUTOFF_DAY} 天比。
-          本月还没过完，直接跟上月一整个月（{yuan(previousCents)}）比会得出一个「消费下降」的假结论。
-        </Note>
-
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead className="border-b border-slate-200">
@@ -252,14 +198,6 @@ const BotBillingStats: React.FC = () => {
         </div>
       </Panel>
 
-      <Panel title="怎么用这张表" desc="三个最常见的看法。">
-        <ul className="space-y-2 text-xs leading-6 text-slate-600">
-          <li>· <b className="text-slate-800">想知道钱花在哪了</b>：看第一张表的「累计消费」，从高到低排好了。</li>
-          {/* 说「换一个档位」会让人找不到地方改：档位是由模型算出来的结果，不是一个可以选的设置。 */}
-          <li>· <b className="text-slate-800">想控制成本</b>：单价高的机器人往往是大模型或音色选了更贵的型号，把型号换成便宜一些的再发布，之后的新通话就按新价算。</li>
-          <li>· <b className="text-slate-800">想知道某个月发生了什么</b>：到「消费明细」按月份筛选，逐通看。</li>
-        </ul>
-      </Panel>
     </div>
   );
 };

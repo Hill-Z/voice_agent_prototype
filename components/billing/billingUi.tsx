@@ -24,16 +24,15 @@ export const yuan = (cents: number) => `¥${centsToYuan(cents).toFixed(2)}`;
 // 资金类别与充值方式的说法只有这一份：余额构成、额度批次、资金流水三处都要用。
 // 各写一份的后果不是重复代码，是同一笔钱在三处慢慢叫成三个名字，客户对不上号。
 export const FUND_KIND_LABEL: Record<FundKind, string> = {
-  // 「代金券额度」而不是「代金券」：它没有券号、不能转赠，就是一笔有有效期的钱，
-  // 叫「券」客户会去找券码在哪。
-  voucher: '代金券额度',
-  cash: '单独充值',
+  // 随套餐入账的是可支付通话的金额，没有独立券码；名称与套餐页保持一致。
+  voucher: '套餐通话额度',
+  cash: '独立到账余额',
   credit: '信用额度',
 };
 
 export const RECHARGE_SOURCE_LABEL: Record<RechargeSource, string> = {
-  auto: '系统自动充值',
-  manual: '单独充值',
+  auto: '套餐购买',
+  manual: '其他入账',
 };
 
 export const GRANT_STATUS_LABEL: Record<GrantStatus, string> = {
@@ -45,7 +44,7 @@ export const GRANT_STATUS_LABEL: Record<GrantStatus, string> = {
 // 流水类型的说法只有这一份。预占与释放也必须给名字：它们在「全部」里是真实的余额变动，
 // 不写清楚客户会看到两笔莫名其妙的一进一出，还以为账错了。
 export const LEDGER_TYPE_LABEL: Record<LedgerEntryType, string> = {
-  recharge: '充值到账',
+  recharge: '额度到账',
   call_charge: '通话扣费',
   refund: '退款',
   reversal: '冲正',
@@ -66,17 +65,21 @@ export const num = (value: number, digits = 0) => value.toLocaleString('zh-CN', 
 
 export const Panel: React.FC<{
   title: string;
-  desc: string;
+  desc?: string;
   children: React.ReactNode;
   // 面板右上角的时间范围切换、筛选之类，跟着标题同一行。
   extra?: React.ReactNode;
 }> = ({ title, desc, children, extra }) => (
-  <section className="rounded-lg border border-slate-200 bg-white">
-    <div className="border-b border-slate-200 px-5 py-4">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h3 className="text-sm font-bold text-slate-900">{title}</h3>
-          <p className="mt-1 text-xs text-slate-500">{desc}</p>
+  <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
+    <div className="border-b border-slate-100 px-5 py-3.5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <h3 className="text-[15px] font-semibold text-slate-900">{title}</h3>
+          {desc && (
+            <span title={desc} aria-label={desc} className="inline-flex cursor-help text-slate-400">
+              <span aria-hidden className="flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[10px] font-semibold">?</span>
+            </span>
+          )}
         </div>
         {extra}
       </div>
@@ -93,14 +96,12 @@ export const Panel: React.FC<{
 export const SummaryBar: React.FC<{
   items: { label: string; value: string; note: string; tone?: 'default' | 'risk' }[];
 }> = ({ items }) => (
-  // 容器铺一层灰、格子之间留 1px 缝、格子本身是白底：这样缝就是分隔线，
-  // 窄屏折行时也不会像左侧边框那样在行首多出一根竖线。
-  <div className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-slate-200 bg-slate-200 sm:grid-cols-2 xl:grid-cols-4">
+  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
     {items.map((item) => (
-      <div key={item.label} className="bg-white px-4 py-3">
+      <div key={item.label} className="rounded-xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm">
         <p className="text-xs text-slate-500">{item.label}</p>
-        <p className={`mt-1 text-lg font-semibold tabular-nums ${item.tone === 'risk' ? 'text-amber-700' : 'text-slate-900'}`}>{item.value}</p>
-        <p className="mt-1 text-xs leading-5 text-slate-500">{item.note}</p>
+        <p className={`mt-1.5 text-xl font-semibold tabular-nums tracking-tight ${item.tone === 'risk' ? 'text-amber-700' : 'text-slate-900'}`}>{item.value}</p>
+        <p className="mt-1 truncate text-xs text-slate-500" title={item.note}>{item.note}</p>
       </div>
     ))}
   </div>
@@ -117,7 +118,13 @@ export const TD: React.FC<{ children: React.ReactNode; className?: string }> = (
 // 表格下面那段灰色说明。计费中心每张表后面都有一句「这张表怎么读」，
 // 形状一样，所以也放这里，保证各页的说明读起来是一个口径。
 export const Note: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <p className="mt-3 rounded bg-slate-50 p-3 text-xs leading-5 text-slate-600">{children}</p>
+  <details className="group mt-3 text-xs text-slate-500">
+    <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded px-1 py-1 hover:bg-slate-50 hover:text-slate-700">
+      <span aria-hidden className="flex h-3.5 w-3.5 items-center justify-center rounded-full border border-slate-300 text-[9px] font-semibold">i</span>
+      查看说明
+    </summary>
+    <div className="mt-2 rounded-lg bg-slate-50 px-3 py-2.5 leading-5 text-slate-600">{children}</div>
+  </details>
 );
 
 // 时间范围切换：今日 / 昨日 / 最近 7 天。并发相关的表共用这一个开关。

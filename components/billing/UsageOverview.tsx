@@ -1,10 +1,10 @@
 // 计费中心 · 余额与额度：余额由哪几笔钱组成、每笔什么时候到期、并发用得紧不紧张。
 // 这一页回答的是「我还有多少钱、这些钱什么时候会没」，不是「我花了多少钱」——后者在资金流水与消费统计里。
 import React, { useState } from 'react';
-import { Bell, Wallet } from 'lucide-react';
-import { StatusBadge } from '../report/reportUi';
+import { paginateRows, ReportTablePagination, StatusBadge } from '../report/reportUi';
 import {
   ALERT_TIERS,
+  ACTIVE_CONCURRENCY,
   ALLOCATED_CONCURRENCY,
   BALANCE_AS_OF,
   BALANCE_COMPOSITION,
@@ -12,34 +12,25 @@ import {
   BILLING_PACKAGES,
   BILLING_ROBOT_PROFILES,
   CREDIT_LINE,
+  DATA_CUTOFF_LABEL,
   EXPIRY_TIER_DAYS,
   NOTIFY_SETTINGS,
-  PURCHASED_CONCURRENCY,
-  OUTBOUND_CALLS,
-  OUTBOUND_MINUTES,
   PACKAGE_SERVICE_FEE_TOTAL_CENTS,
   TALK_FEE_TOTAL_CENTS,
-  USED_CALLS,
-  USED_MINUTES,
   getRateMilli,
   grantStatusAt,
   grantsByConsumeOrder,
   nearestExpiry,
 } from './billingData';
 import PackageActionsPanel from './PackageActionsPanel';
-import RechargePanel from './RechargePanel';
 import { PRICING_RULE, computeReserveCents, milliToYuan } from './billingEngine';
 import {
-  FUND_KIND_LABEL,
   GRANT_STATUS_LABEL,
   GRANT_STATUS_TONE,
   Note,
   Panel,
   RANGE_LABEL,
   RangeToggle,
-  TD,
-  TH,
-  num,
   yuan,
   type RangeKey,
 } from './billingUi';
@@ -68,8 +59,16 @@ const expiryTierText = expiryDaysOptional
   ? `到期前 ${expiryDaysOn} 各一次（可选更早：${expiryDaysOptional}）`
   : `到期前 ${expiryDaysOn} 各一次`;
 
-const UsageOverview: React.FC = () => {
+type OverviewSection = 'account' | 'package' | 'alerts';
+
+interface Props {
+  section: OverviewSection;
+}
+
+const UsageOverview: React.FC<Props> = ({ section }) => {
   const [range, setRange] = useState<RangeKey>('today');
+  const [purchasePage, setPurchasePage] = useState<number>(1);
+  const [purchasePageSize, setPurchasePageSize] = useState<number>(5);
   // 预警设置的初值取数据层那份默认设置，不是页面里再写一遍字面量：
   // 页面上显示的数与「配置里真实的数」一旦分别维护，客户看到的就是两个不同的预警值。
   const [thresholdYuan, setThresholdYuan] = useState(String(NOTIFY_SETTINGS.thresholdCents / 100));
@@ -90,79 +89,24 @@ const UsageOverview: React.FC = () => {
     const rateMilli = getRateMilli(robotId);
     return rateMilli === undefined ? null : computeReserveCents(rateMilli) * concurrency;
   };
-  const unpricedProfiles = activeProfiles.filter((item) => getRateMilli(item.id) === undefined);
-  const unpricedConcurrency = unpricedProfiles.reduce((sum, item) => sum + item.concurrency, 0);
-  const reservedCents = activeProfiles.reduce((sum, item) => sum + (reserveOf(item.id, item.concurrency) ?? 0), 0);
   const rangeLabel = RANGE_LABEL[range];
 
   const comp = BALANCE_COMPOSITION;
+  // 并发按购买批次独立到期；当前总数只合计在统计日已经生效且尚未到期的批次。
+  const purchaseEntries = BILLING_PACKAGES.map((item) => ({
+    ...item,
+    active: item.purchasedAt.slice(0, 10) <= DATA_CUTOFF_LABEL && (!item.expiresAt || item.expiresAt > DATA_CUTOFF_LABEL),
+  })).sort((a, b) => b.purchasedAt.localeCompare(a.purchasedAt));
+  const { totalPages: purchaseTotalPages, safePage: purchaseSafePage, rows: purchaseRows } = paginateRows(purchaseEntries, purchasePage, purchasePageSize);
+  const availableConcurrency = Math.max(0, ACTIVE_CONCURRENCY - ALLOCATED_CONCURRENCY);
 
   return (
     <div className="space-y-4">
-      <Panel title="余额构成" desc="你的余额由哪几笔钱组成。它们的有效期不一样，所以要分开看；授信不在其中，它是能欠的钱。">
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead className="border-b border-slate-200">
-              <tr><TH>项目</TH><TH>金额</TH><TH>这一项是什么</TH></tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              <tr>
-                <TD className="font-medium text-slate-900">{FUND_KIND_LABEL.voucher}</TD>
-                <TD className="font-semibold text-slate-900">{yuan(comp.voucherCents)}</TD>
-                <TD className="text-xs text-slate-500">随套餐一起给的额度，有有效期，到期没用完会清零</TD>
-              </tr>
-              <tr>
-                <TD className="font-medium text-slate-900">{FUND_KIND_LABEL.cash}</TD>
-                <TD className={comp.cashCents > 0 ? 'font-semibold text-slate-900' : 'text-slate-500'}>{yuan(comp.cashCents)}</TD>
-                <TD className="text-xs text-slate-500">你自己充值进来的钱，没有有效期，不会清零</TD>
-              </tr>
-              <tr>
-                <TD className="font-medium text-slate-900">冻结中</TD>
-                <TD>{yuan(comp.frozenCents)}</TD>
-                <TD className="text-xs text-slate-500">通话进行中先占住的那部分，打完按实际费用结算，多占的马上退回</TD>
-              </tr>
-              <tr>
-                <TD className="font-medium text-slate-900">{FUND_KIND_LABEL.credit}</TD>
-                <TD className={comp.creditTotalCents > 0 ? 'font-semibold text-slate-900' : 'text-slate-400'}>
-                  {comp.creditTotalCents > 0 ? `可用 ${yuan(comp.creditAvailableCents)}` : '未开通'}
-                </TD>
-                <TD className="text-xs text-slate-500">
-                  {comp.creditTotalCents > 0
-                    ? `平台核定给你的授信额度 ${yuan(comp.creditTotalCents)}，自有资金付不出时垫上。它不增加账面余额`
-                    : '平台核定给你的授信额度，开通后余额用尽还能继续打。当前账号未开通'}
-                </TD>
-              </tr>
-              <tr>
-                <TD className="font-medium text-slate-900">欠费</TD>
-                <TD className={comp.debtCents > 0 ? 'font-semibold text-red-600' : ''}>{yuan(comp.debtCents)}</TD>
-                <TD className="text-xs text-slate-500">动用授信垫付的那部分就是欠费，需要结清</TD>
-              </tr>
-            </tbody>
-            <tfoot className="border-t border-slate-200 bg-slate-50">
-              <tr>
-                <td className="px-3 py-3 text-sm font-semibold text-slate-700">账面余额</td>
-                <td className="px-3 py-3 text-sm font-bold text-slate-900">{yuan(comp.balanceCents)}</td>
-                <td className="px-3 py-3 text-xs text-slate-500">
-                  代金券额度 + 单独充值。账上实际有的钱，<b>不含授信</b>——授信是能欠的钱，不是存的钱
-                </td>
-              </tr>
-              <tr>
-                <td className="px-3 py-3 text-sm font-semibold text-slate-700">可用额度</td>
-                <td className="px-3 py-3 text-sm font-bold text-slate-900">{yuan(comp.availableCents)}</td>
-                <td className="px-3 py-3 text-xs text-slate-500">
-                  账面余额 + 可用授信 − 冻结中，这才是现在真能花的；授信那部分花掉就成为欠费
-                </td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-        <Note>
-          余额只能用在本平台的通话，不能提现、不能转给手机号。
-          扣费先扣快到期的，所以不会出现「现金还在、代金券却过期了」。授信只算在「可用额度」里。
-        </Note>
-      </Panel>
-
-      <RechargePanel />
+      {section === 'account' && <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 shadow-sm">
+        <div><p className="text-xs text-slate-500">当前可用通话额度</p><p className="mt-1 text-lg font-semibold tabular-nums text-slate-900">{yuan(comp.availableCents)}</p></div>
+        <p className="text-xs text-slate-500">含可用授信 {yuan(comp.creditAvailableCents)} · 通话中占用 {yuan(comp.frozenCents)}</p>
+      </div>
 
       <Panel
         title="信用额度"
@@ -194,12 +138,7 @@ const UsageOverview: React.FC = () => {
             <p className="mt-3 text-xs leading-5 text-slate-500">开通时间 {CREDIT_LINE.grantedAt}</p>
           </>
         )}
-        <ul className="mt-3 space-y-2 rounded bg-slate-50 p-3 text-xs leading-6 text-slate-600">
-          <li>· 授信额度由平台核定，客户不能自行调整；需要提高额度请联系客户经理。</li>
-          <li>· 扣费顺序：先扣快到期的代金券额度，再扣单独充值的钱，<b className="text-slate-800">最后才动用授信</b>。动用授信就是欠费，需要结清。</li>
-          <li>· 欠费不会自动从余额里补扣，要在账户里结清；欠费未结清期间无法开通新的通话，正在通话中的不会中断。</li>
-          <li>· 余额低于预警值、余额用尽、已经欠费这三件事都会给你发提醒，提醒记录在「通知记录」页逐条可查。</li>
-        </ul>
+        <Note>先扣快到期的额度，再扣长期余额，最后使用授信。使用授信后会形成待结清欠费。</Note>
       </Panel>
 
       <Panel
@@ -216,121 +155,120 @@ const UsageOverview: React.FC = () => {
                 : 'mb-4 rounded-md bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-600'
             }
           >
-            <b>{expiring.grant.grant.title}</b> 将在 {expiring.daysLeft} 天后（{expiring.grant.grant.expiresAt}）到期，
-            剩余 {yuan(expiring.grant.remainingCents)}。到期没用完的部分会清零，不会结转到下一期；
-            这一笔用完之前，扣费不会动其他批次。
-            到期前 {expiryDaysOn} 会给你发提醒，不需要自己盯日期——提醒记录可在「通知记录」页回查。
+            <b>{expiring.grant.grant.title}</b> · 剩余 {yuan(expiring.grant.remainingCents)} · {expiring.grant.grant.expiresAt} 到期
           </div>
         )}
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead className="border-b border-slate-200">
-              <tr>
-                <TH>来源</TH><TH>到账时间</TH><TH>原始金额</TH><TH>剩余金额</TH><TH>有效期至</TH><TH>状态</TH>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {sortedGrants.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-3 py-10 text-center text-sm text-slate-500">
-                    还没有任何额度到账。充值或购买套餐后，每一笔都会在这里单独列一行。
-                  </td>
-                </tr>
-              ) : sortedGrants.map((item) => {
-                const status = grantStatusAt(item, BALANCE_AS_OF);
-                return (
-                  <tr key={item.grant.grantId}>
-                    <TD className="font-medium text-slate-900">{item.grant.title}</TD>
-                    <TD>{item.grant.grantedAt}</TD>
-                    <TD>{yuan(item.grant.originalCents)}</TD>
-                    <TD className="font-semibold text-slate-900">{yuan(item.remainingCents)}</TD>
-                    {/* 无限期必须写成「无限期」而不是留空：留空客户会以为漏了。 */}
-                    <TD>{item.grant.expiresAt || '无限期'}</TD>
-                    <TD><StatusBadge tone={GRANT_STATUS_TONE[status]}>{GRANT_STATUS_LABEL[status]}</StatusBadge></TD>
-                  </tr>
-                );
-              })}
-            </tbody>
-            <tfoot className="border-t border-slate-200 bg-slate-50">
-              <tr>
-                <td colSpan={3} className="px-3 py-3 text-sm font-semibold text-slate-700">
-                  合计（{sortedGrants.length} 个批次）
-                </td>
-                <td className="px-3 py-3 text-sm font-bold text-slate-900">{yuan(comp.balanceCents)}</td>
-                <td colSpan={2} className="px-3 py-3 text-xs text-slate-500">
-                  各批次剩余之和就是上面的账面余额，没有第二本账
-                </td>
-              </tr>
-            </tfoot>
-          </table>
+        <div className="space-y-2">
+          {sortedGrants.length === 0 ? (
+            <div className="rounded-lg bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">暂无额度批次</div>
+          ) : sortedGrants.map((item) => {
+            const status = grantStatusAt(item, BALANCE_AS_OF);
+            return (
+              <div key={item.grant.grantId} className="grid gap-3 rounded-lg border border-slate-100 px-4 py-3 sm:grid-cols-[minmax(0,1.5fr)_repeat(3,minmax(90px,1fr))_auto] sm:items-center">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-slate-900">{item.grant.title}</p>
+                  <p className="mt-1 text-xs text-slate-400">到账 {item.grant.grantedAt}</p>
+                </div>
+                <div><p className="text-xs text-slate-400">原始金额</p><p className="mt-1 text-sm text-slate-700">{yuan(item.grant.originalCents)}</p></div>
+                <div><p className="text-xs text-slate-400">剩余金额</p><p className="mt-1 text-sm font-semibold text-slate-900">{yuan(item.remainingCents)}</p></div>
+                <div><p className="text-xs text-slate-400">有效期至</p><p className="mt-1 text-sm text-slate-700">{item.grant.expiresAt || '无限期'}</p></div>
+                <StatusBadge tone={GRANT_STATUS_TONE[status]}>{GRANT_STATUS_LABEL[status]}</StatusBadge>
+              </div>
+            );
+          })}
         </div>
       </Panel>
 
-      <Panel title="套餐" desc="你买过的套餐。套餐金额和你账户里能打电话的余额不是同一个数。">
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead className="border-b border-slate-200">
-              <tr>
-                <TH>套餐</TH><TH>购买时间</TH><TH>并发</TH><TH>套餐金额</TH>
-                <TH>其中映射额度</TH><TH>其中平台与并发服务费</TH><TH>有效期至</TH>
-              </tr>
+      </div>}
+
+      {section === 'package' && <div className="space-y-4">
+      <Panel title="套餐购买记录" desc="每笔购买独立生效和到期；按购买时间从近到远查看。">
+        <div className="overflow-x-auto rounded-lg border border-slate-200">
+          <table className="w-full min-w-[820px] border-collapse text-sm">
+            <thead className="bg-slate-50 text-left text-xs text-slate-500">
+              <tr><th className="px-4 py-3 font-medium">套餐 / 批次</th><th className="px-3 py-3 font-medium">购买时间</th><th className="px-3 py-3 font-medium">并发</th><th className="px-3 py-3 font-medium">实付金额</th><th className="px-3 py-3 font-medium">通话额度</th><th className="px-3 py-3 font-medium">到期日</th><th className="px-3 py-3 font-medium">状态</th></tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {BILLING_PACKAGES.map((item) => (
+              {purchaseRows.map((item) => (
                 <tr key={item.id}>
-                  <TD className="font-medium text-slate-900">{item.name}</TD>
-                  <TD>{item.purchasedAt}</TD>
-                  <TD>{item.concurrency} 路</TD>
-                  <TD>{yuan(item.totalCents)}</TD>
-                  <TD className="font-semibold text-slate-900">{yuan(item.talkFeeCents)}</TD>
-                  <TD className="text-slate-500">{yuan(item.totalCents - item.talkFeeCents)}</TD>
-                  <TD>{item.expiresAt || '无限期'}</TD>
+                  <td className="px-4 py-3"><p className="font-medium text-slate-900">{item.name}</p><p className="mt-0.5 text-xs text-slate-400">{item.id}</p></td>
+                  <td className="whitespace-nowrap px-3 py-3 text-slate-600">{item.purchasedAt}</td>
+                  <td className="whitespace-nowrap px-3 py-3 font-medium text-slate-800">{item.concurrency} 路</td>
+                  <td className="whitespace-nowrap px-3 py-3 text-slate-700">{yuan(item.totalCents)}</td>
+                  <td className="whitespace-nowrap px-3 py-3 text-slate-700">{yuan(item.talkFeeCents)}</td>
+                  <td className="whitespace-nowrap px-3 py-3 text-slate-600">{item.expiresAt || '长期有效'}</td>
+                  <td className="px-3 py-3"><StatusBadge tone={item.active ? 'green' : 'slate'}>{item.active ? '使用中' : '已到期'}</StatusBadge></td>
                 </tr>
               ))}
             </tbody>
           </table>
+          <ReportTablePagination page={purchaseSafePage} totalPages={purchaseTotalPages} total={purchaseEntries.length} pageSize={purchasePageSize} onPageChange={setPurchasePage} pageSizeOptions={[5, 10, 20]} onPageSizeChange={(size) => { setPurchasePageSize(size); setPurchasePage(1); }} />
         </div>
         <Note>
-          套餐 {yuan(BILLING_PACKAGES.reduce((sum, item) => sum + item.totalCents, 0))} 里只有{' '}
-          {yuan(TALK_FEE_TOTAL_CENTS)} 是映射额度，另外 {yuan(PACKAGE_SERVICE_FEE_TOTAL_CENTS)} 是服务费，
-          不进余额、不能打电话——所以余额永远小于套餐金额。
+          套餐购买金额 {yuan(BILLING_PACKAGES.reduce((sum, item) => sum + item.totalCents, 0))} 中，
+          {yuan(TALK_FEE_TOTAL_CENTS)} 计入套餐通话额度，另有 {yuan(PACKAGE_SERVICE_FEE_TOTAL_CENTS)} 为平台服务费。
+          当前余额是通话额度扣除已消费后的剩余金额，不能直接与套餐购买金额比较。
         </Note>
       </Panel>
 
-      <PackageActionsPanel />
+      <Panel
+        title="并发容量"
+        desc="同一账户买入的并发可分批生效和到期；当前可用路数按每批有效期计算。"
+        extra={<RangeToggle value={range} onChange={setRange} />}
+      >
+        <div className="grid grid-cols-2 gap-3 rounded-lg bg-slate-50 p-4 sm:grid-cols-3">
+          <div><p className="text-xs text-slate-500">当前可用并发</p><p className="mt-1 text-xl font-semibold text-slate-900">{ACTIVE_CONCURRENCY} <span className="text-sm font-normal">路</span></p></div>
+          <div><p className="text-xs text-slate-500">已分配给机器人</p><p className="mt-1 text-xl font-semibold text-slate-900">{ALLOCATED_CONCURRENCY} <span className="text-sm font-normal">路</span></p></div>
+          <div><p className="text-xs text-slate-500">未分配</p><p className="mt-1 text-xl font-semibold text-slate-900">{availableConcurrency} <span className="text-sm font-normal">路</span></p></div>
+        </div>
+        <p className="mt-2 text-xs text-slate-500">截至 {DATA_CUTOFF_LABEL}；已到期批次不计入当前有效并发。</p>
 
+        <h4 className="mb-2 mt-5 text-sm font-semibold text-slate-900">机器人分配</h4>
+        <div className="grid gap-3 lg:grid-cols-3">
+          {activeProfiles.map((item) => {
+            const throttled = item[rangeField(range, 'throttled')];
+            const reserve = reserveOf(item.id, item.concurrency);
+            return (
+              <div key={item.id} className="rounded-lg border border-slate-100 p-4">
+                <p className="truncate text-sm font-medium text-slate-900">{item.name}</p>
+                <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
+                  <div><p className="text-slate-400">已分配</p><p className="mt-1 font-semibold text-slate-800">{item.concurrency} 路</p></div>
+                  <div><p className="text-slate-400">{rangeLabel}峰值</p><p className="mt-1 font-semibold text-slate-800">{item[rangeField(range, 'peak')]} 路</p></div>
+                  <div><p className="text-slate-400">预占额度</p><p className="mt-1 font-semibold text-slate-800">{reserve === null ? '—' : yuan(reserve)}</p></div>
+                  <div><p className="text-slate-400">限流</p><p className={`mt-1 font-semibold ${throttled > 0 ? 'text-amber-600' : 'text-slate-800'}`}>{throttled} 次</p></div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <Note>每路通话开始前按 5 分钟预占，结束后按实际费用结算并释放差额。</Note>
+      </Panel>
+      <PackageActionsPanel />
+      </div>}
+
+      {section === 'alerts' && <div className="space-y-4">
       <Panel
         title="预警设置"
         desc="余额快用完、或者额度快到期时提醒你。这两件事要防的损失不一样，所以分成两维。"
-        extra={<span className="inline-flex items-center gap-1 text-xs text-slate-400"><Bell size={13} aria-hidden />每次提醒都会留档，可在「通知记录」页回查</span>}
       >
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead className="border-b border-slate-200">
-              <tr><TH>提醒档位</TH><TH>什么时候提醒</TH><TH>能不能关</TH></tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {ALERT_TIERS.map((item) => (
-                <tr key={item.tier}>
-                  <TD className="font-medium text-slate-900">{item.label}</TD>
-                  <TD className="text-xs text-slate-600">
-                    {item.tier === 'threshold'
-                      ? `账面余额低于你设的 ${yuan(thresholdCents)} 时提醒`
-                      : item.tier === 'expiry'
-                        // 到期提醒按「还剩几天」触发，与按金额的三档不是同一维度，
-                        // 所以这里要把档位一个个列出来，不能只写一句「快到期时提醒」。
-                        ? `有额度批次快到期时提醒，${expiryTierText}`
-                        : item.desc}
-                  </TD>
-                  <TD>
-                    <StatusBadge tone={item.configurable ? 'blue' : 'slate'}>
-                      {item.configurable ? '可调整预警值' : '必提醒，不能关闭'}
-                    </StatusBadge>
-                  </TD>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {ALERT_TIERS.map((item) => (
+            <div key={item.tier} className="rounded-lg border border-slate-100 bg-slate-50/60 p-3.5">
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-sm font-semibold text-slate-900">{item.label}</p>
+                <StatusBadge tone={item.configurable ? 'blue' : 'slate'}>
+                  {item.configurable ? '可调整' : '系统提醒'}
+                </StatusBadge>
+              </div>
+              <p className="mt-2 text-xs leading-5 text-slate-600">
+                {item.tier === 'threshold'
+                  ? `余额低于 ${yuan(thresholdCents)} 时提醒`
+                  : item.tier === 'expiry'
+                    ? `额度快到期时提醒：${expiryTierText}`
+                    : item.desc}
+              </p>
+            </div>
+          ))}
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-12">
@@ -412,94 +350,40 @@ const UsageOverview: React.FC = () => {
 
         <Note>
           后三档不能关闭——它们不是偏好，是事实。同一档每天最多 1 次、连发最多 3 天，各档各自计数。
-          提醒只是通知，<b className="text-slate-700">不会自动充值</b>、也<b className="text-slate-700">不会中断通话</b>；
+          提醒只是通知，<b className="text-slate-700">不会自动增加额度</b>、也<b className="text-slate-700">不会中断通话</b>；
           但余额和授信都用尽后<b className="text-slate-700">新通话会被拦住</b>，这条要提前知道。
           到期当日会在「资金流水」记一条「额度到期清零」分录，每条提醒可在「通知记录」页回查。
         </Note>
       </Panel>
 
-      <Panel
-        title="并发容量"
-        desc={`你买了 ${PURCHASED_CONCURRENCY} 路并发，分配给 ${activeProfiles.length} 台在用的机器人 ${ALLOCATED_CONCURRENCY} 路。`}
-        extra={<RangeToggle value={range} onChange={setRange} />}
-      >
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead className="border-b border-slate-200">
-              <tr>
-                <TH>机器人</TH>
-                <TH>已分配并发</TH>
-                <TH>{rangeLabel}峰值并发</TH>
-                <TH>通话前预占额度</TH>
-                <TH>{rangeLabel}被限流次数</TH>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {activeProfiles.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-3 py-10 text-center text-sm text-slate-500">
-                    还没有在用的机器人。启用机器人并分配并发后，这里会显示每台分到几路。
-                  </td>
-                </tr>
-              ) : activeProfiles.map((item) => {
-                const throttled = item[rangeField(range, 'throttled')];
-                const reserve = reserveOf(item.id, item.concurrency);
-                return (
-                  <tr key={item.id}>
-                    <TD className="font-medium text-slate-900">{item.name}</TD>
-                    <TD>{item.concurrency} 路</TD>
-                    <TD>{item[rangeField(range, 'peak')]} 路</TD>
-                    <TD>{reserve === null ? <span title="这台机器人的模型还没有配置价格，算不出要预占多少">—</span> : yuan(reserve)}</TD>
-                    <TD className={throttled > 0 ? 'text-amber-600' : ''}>{throttled} 次</TD>
-                  </tr>
-                );
-              })}
-            </tbody>
-            <tfoot className="border-t border-slate-200 bg-slate-50">
-              <tr>
-                <td colSpan={2} className="px-3 py-3 text-sm font-semibold text-slate-700">
-                  合计（{activeProfiles.length} 台在用的机器人）
-                </td>
-                <td className="px-3 py-3 text-sm text-slate-600">
-                  {activeProfiles.reduce((sum, item) => sum + item[rangeField(range, 'peak')], 0)} 路
-                </td>
-                <td className="px-3 py-3 text-sm font-semibold text-slate-900">
-                  {yuan(reservedCents)}
-                  {unpricedConcurrency > 0 && (
-                    <span className="ml-1 text-xs font-normal text-slate-500">（另有 {unpricedConcurrency} 路待定价，未计入）</span>
-                  )}
-                </td>
-                <td className="px-3 py-3 text-sm text-slate-600">
-                  {activeProfiles.reduce((sum, item) => sum + item[rangeField(range, 'throttled')], 0)} 次
-                </td>
-              </tr>
-            </tfoot>
-          </table>
+      <Panel title="计费规则" desc="每通电话的计费口径。">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {[
+            ['计费粒度', '按秒'],
+            ['最低单价', `${milliToYuan(PRICING_RULE.priceFloorMilli).toFixed(2)} 元/分钟`],
+            ['单通最低', '0.01 元'],
+            ['价格生效', '发布时锁定'],
+          ].map(([label, value]) => (
+            <div key={label} className="rounded-lg bg-slate-50 px-3 py-2.5">
+              <p className="text-xs text-slate-500">{label}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{value}</p>
+            </div>
+          ))}
         </div>
-        <Note>
-          每路并发在通话前按 5 分钟预占一笔额度（合计 {yuan(reservedCents)}），打完按实际费用结算、多占的马上退回。
-          超过 5 分钟仍按实际时长计费，不少收也不中断。路数占满时新通话排队，这就是「被限流次数」。
-        </Note>
-      </Panel>
-
-      <Panel title="费用怎么算" desc="定价口径的完整说明，可对客户原文解释。">
-        <ul className="space-y-2 text-xs leading-6 text-slate-600">
+        <Note><ul className="space-y-1.5">
           {/* 这两句必须一句说「时长」一句说「钱」：都说「不足 1 分按 1 分算」的话，
               上一句刚说完「不会按整分钟收」，下一句看起来就是在按整分钟收。 */}
           <li>· 费用按每通电话的<b className="text-slate-800">通话时长</b>计算，按秒计费、金额向上取整到分，不会把不足一分钟的通话按整分钟收。</li>
           <li>· 每一通接通的电话最低收 <b className="text-slate-800">0.01 元</b>，即算出来的钱不足 1 分钱时按 1 分钱收；未接通的电话不计费。</li>
           <li>· 振铃等待时间不计费；通话中的静音与等待客户回应的时间照常计费。</li>
-          <li>· 每分钟单价由这个机器人使用的<b className="text-slate-800">语音识别、大模型和音色</b>共同决定，模型越强单价越高。当前平台最低 {milliToYuan(PRICING_RULE.priceFloorMilli).toFixed(2)} 元/分钟。</li>
+          <li>· 总通话数包含智呼与呼入；智呼是其中的呼出部分。</li>
+          <li>· 每分钟单价由这个机器人使用的<b className="text-slate-800">语音识别、大模型和音色</b>共同决定，模型越强单价越高。</li>
           <li>· 更换模型会重新算价，但已经打完的电话仍按当时的单价计费，不会追溯调整。</li>
           <li>· 每个机器人有各自的单价，所以同一笔余额在不同机器人上能打的时长不一样。</li>
           <li>· 扣费顺序：先扣快到期的额度，再扣没有有效期的余额，最后才动用信用额度。信用额度一旦动用就是欠款。</li>
-        </ul>
-        <Note>
-          你已经打了 {num(USED_CALLS)} 通电话、{num(USED_MINUTES)} 分钟，其中智呼 {num(OUTBOUND_CALLS)} 通、
-          {num(OUTBOUND_MINUTES)} 分钟。通数与时长必须成对看——同一笔钱在不同机器人上能打的时长不一样。
-          每一通的单价、金额和扣减来源，在「通话明细」里逐笔可查。
-        </Note>
+        </ul></Note>
       </Panel>
+      </div>}
     </div>
   );
 };

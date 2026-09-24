@@ -49,43 +49,39 @@ const NotifyRecords: React.FC = () => {
         desc="四档提醒。只有「余额低于预警值」可关，其余三档是事实。"
         extra={<span className="inline-flex items-center gap-1 text-xs text-slate-400"><Bell size={13} aria-hidden />记录长期保留，可回查</span>}
       >
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead className="border-b border-slate-200">
-              <tr><TH>提醒档位</TH><TH>触发条件</TH><TH>提醒方式</TH><TH>频率上限</TH></tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {ALERT_TIERS.map((item) => (
-                <tr key={item.tier}>
-                  <TD className="font-medium text-slate-900">{item.label}</TD>
-                  <TD className="text-xs text-slate-600">
-                    {item.tier === 'threshold'
-                      ? `账面余额低于 ${yuan(NOTIFY_SETTINGS.thresholdCents)}（可在「余额与额度」页修改）`
-                      : item.tier === 'expiry'
-                        ? `有额度批次快到期时按「还剩几天」触发：到期前 ${EXPIRY_TIER_DAYS.filter((entry) => entry.defaultOn).map((entry) => entry.days).join(' 天 / ')} 天各一次`
-                        : item.desc}
-                  </TD>
-                  <TD className="text-xs text-slate-600">
-                    {channels.length === 0 ? '—' : channels.map((channel) => channel.label).join(' / ')}
-                    {item.configurable ? '' : '（固定）'}
-                  </TD>
-                  <TD className="text-xs text-slate-600">
-                    每天最多 {NOTIFY_SETTINGS.maxPerDay} 次，最多连发 {NOTIFY_SETTINGS.maxDays} 天
-                  </TD>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {ALERT_TIERS.map((item) => (
+            <div key={item.tier} className="rounded-lg border border-slate-100 bg-slate-50/60 p-3.5">
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-sm font-semibold text-slate-900">{item.label}</p>
+                <StatusBadge tone={item.configurable ? 'blue' : 'slate'}>{item.configurable ? '可调整' : '系统提醒'}</StatusBadge>
+              </div>
+              <p className="mt-2 text-xs leading-5 text-slate-600">
+                {item.tier === 'threshold'
+                  ? `余额低于 ${yuan(NOTIFY_SETTINGS.thresholdCents)} 时提醒`
+                  : item.tier === 'expiry'
+                    ? `到期前 ${EXPIRY_TIER_DAYS.filter((entry) => entry.defaultOn).map((entry) => entry.days).join(' 天 / ')} 天各提醒一次`
+                    : item.desc}
+              </p>
+              <p className="mt-2 text-xs text-slate-400">
+                {channels.length === 0 ? '未配置渠道' : channels.map((channel) => channel.label).join(' / ')} · 每天最多 {NOTIFY_SETTINGS.maxPerDay} 次
+              </p>
+            </div>
+          ))}
         </div>
         <Note>
           四档各自计数，同一档每天最多 1 次、连发最多 3 天。
-          提醒不会自动充值、不中断通话，但余额用尽后新通话会被拦住。
+          提醒不会自动增加额度、不中断通话，但余额用尽后新通话会被拦住。
           到期清零当天会在「资金流水」记一条分录——这里只记「通知发出去过」。
         </Note>
       </Panel>
 
-      <Panel title="提醒文案" desc="你会收到的内容。括号里的数会按触发时的真实余额填入。">
-        <div className="space-y-3">
+      <Panel title="提醒文案" desc="查看邮件和短信实际发送的内容。">
+        <details className="group">
+          <summary className="inline-flex cursor-pointer list-none items-center rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+            查看提醒内容
+          </summary>
+        <div className="mt-3 grid gap-3 lg:grid-cols-2">
           <div className="rounded-md border border-slate-200 bg-white p-4">
             <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-slate-500">
               <Mail size={14} aria-hidden />
@@ -120,6 +116,7 @@ const NotifyRecords: React.FC = () => {
             <p className="text-xs leading-6 text-slate-600">{NOTIFY_TEMPLATE.expirySmsBody}</p>
           </div>
         </div>
+        </details>
         <Note>
           余额提醒与到期提醒是两个事由，文案不共用：一个是「钱快花完了」，一个是「钱快过期了」。
           短信不带链接——账务类短信带链接会被当成诈骗。
